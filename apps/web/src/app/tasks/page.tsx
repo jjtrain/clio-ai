@@ -281,7 +281,7 @@ export default function TasksPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Unassigned</SelectItem>
-                    {users?.map((user) => (
+                    {users?.users?.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.name || user.email}
                       </SelectItem>
