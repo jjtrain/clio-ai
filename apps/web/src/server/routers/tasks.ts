@@ -169,7 +169,8 @@ export const tasksRouter = router({
       const updateData: any = { ...data };
       if (data.status === "COMPLETED") {
         updateData.completedAt = new Date();
-      } else if (data.status && data.status !== "COMPLETED") {
+      } else if (data.status) {
+        // Status is NOT_STARTED or IN_PROGRESS, clear completedAt
         updateData.completedAt = null;
       }
 
