@@ -316,12 +316,12 @@ export default function TrustAccountDetailPage() {
       <div className="grid gap-6 md:grid-cols-3">
         <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
           <p className="text-sm font-medium text-gray-500">Book Balance</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(account.bookBalance)}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(Number(account.bookBalance))}</p>
           <p className="text-xs text-gray-500 mt-1">Sum of all client ledgers</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
           <p className="text-sm font-medium text-gray-500">Bank Balance</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(account.bankBalance)}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(Number(account.bankBalance))}</p>
           <p className="text-xs text-gray-500 mt-1">
             {account.lastReconciledAt ? `Last reconciled ${formatDate(account.lastReconciledAt)}` : "Not yet reconciled"}
           </p>
@@ -362,7 +362,7 @@ export default function TrustAccountDetailPage() {
                     {ledger.matter?.name || "General"}
                   </TableCell>
                   <TableCell className="text-right font-semibold">
-                    {formatCurrency(ledger.balance)}
+                    {formatCurrency(Number(ledger.balance))}
                   </TableCell>
                   <TableCell>
                     <Button variant="ghost" size="sm" asChild>
@@ -423,10 +423,10 @@ export default function TrustAccountDetailPage() {
                       : "text-red-600"
                   }`}>
                     {["DEPOSIT", "TRANSFER_IN", "INTEREST"].includes(tx.type) ? "+" : "-"}
-                    {formatCurrency(tx.amount)}
+                    {formatCurrency(Number(tx.amount))}
                   </TableCell>
                   <TableCell className="text-right font-semibold">
-                    {formatCurrency(tx.runningBalance)}
+                    {formatCurrency(Number(tx.runningBalance))}
                   </TableCell>
                 </TableRow>
               ))}

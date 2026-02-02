@@ -37,3 +37,6 @@ coverage
 # Prisma
 *.db
 *.db-journal
+
+.vercel
+.env*.local

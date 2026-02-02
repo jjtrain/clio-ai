@@ -239,10 +239,10 @@ function TransactionsList() {
                       : "text-red-600"
                   }`}>
                     {["DEPOSIT", "TRANSFER_IN", "INTEREST", "VOID_REVERSAL"].includes(tx.type) ? "+" : "-"}
-                    {formatCurrency(tx.amount)}
+                    {formatCurrency(Number(tx.amount))}
                   </TableCell>
                   <TableCell className="text-right font-semibold">
-                    {formatCurrency(tx.runningBalance)}
+                    {formatCurrency(Number(tx.runningBalance))}
                   </TableCell>
                 </TableRow>
               ))

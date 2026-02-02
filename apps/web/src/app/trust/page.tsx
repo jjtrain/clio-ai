@@ -254,13 +254,13 @@ export default function TrustAccountingPage() {
                     <div className="text-right">
                       <p className="text-sm text-gray-500">Book Balance</p>
                       <p className="text-lg font-semibold text-gray-900">
-                        {formatCurrency(account.bookBalance)}
+                        {formatCurrency(Number(account.bookBalance))}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-500">Bank Balance</p>
                       <p className="text-lg font-semibold text-gray-900">
-                        {formatCurrency(account.bankBalance)}
+                        {formatCurrency(Number(account.bankBalance))}
                       </p>
                     </div>
                     <div className="text-center">

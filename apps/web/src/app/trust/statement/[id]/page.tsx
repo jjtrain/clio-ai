@@ -142,13 +142,13 @@ export default function TrustStatementPage() {
           <div className="bg-emerald-50 rounded-lg p-4 text-center">
             <p className="text-sm font-medium text-emerald-700">Total Deposits</p>
             <p className="text-xl font-bold text-emerald-900">
-              {formatCurrency(statement.totalDeposits)}
+              {formatCurrency(Number(statement.totalDeposits))}
             </p>
           </div>
           <div className="bg-red-50 rounded-lg p-4 text-center">
             <p className="text-sm font-medium text-red-700">Total Withdrawals</p>
             <p className="text-xl font-bold text-red-900">
-              {formatCurrency(statement.totalWithdrawals)}
+              {formatCurrency(Number(statement.totalWithdrawals))}
             </p>
           </div>
           <div className="bg-gray-50 rounded-lg p-4 text-center">
@@ -211,13 +211,13 @@ export default function TrustStatementPage() {
                         {tx.reference || tx.checkNumber || "-"}
                       </TableCell>
                       <TableCell className="text-right font-medium text-emerald-600">
-                        {isCredit && !isVoided ? formatCurrency(tx.amount) : "-"}
+                        {isCredit && !isVoided ? formatCurrency(Number(tx.amount)) : "-"}
                       </TableCell>
                       <TableCell className="text-right font-medium text-red-600">
-                        {!isCredit && !isVoided ? formatCurrency(tx.amount) : "-"}
+                        {!isCredit && !isVoided ? formatCurrency(Number(tx.amount)) : "-"}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        {formatCurrency(tx.runningBalance)}
+                        {formatCurrency(Number(tx.runningBalance))}
                       </TableCell>
                     </TableRow>
                   );

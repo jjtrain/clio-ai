@@ -131,7 +131,7 @@ function ReconciliationContent() {
                     type="number"
                     value={bankBalance}
                     onChange={(e) => setBankBalance(e.target.value)}
-                    placeholder={reconciliation ? formatCurrency(reconciliation.bankBalance) : "0.00"}
+                    placeholder={reconciliation ? formatCurrency(Number(reconciliation.bankBalance)) : "0.00"}
                     step="0.01"
                   />
                   <Button onClick={handleUpdateBankBalance} disabled={!bankBalance}>
@@ -198,19 +198,19 @@ function ReconciliationContent() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-blue-700">Statement Balance</span>
-                      <span className="font-medium text-blue-900">{formatCurrency(reconciliation.bankBalance)}</span>
+                      <span className="font-medium text-blue-900">{formatCurrency(Number(reconciliation.bankBalance))}</span>
                     </div>
                     <div className="flex justify-between text-blue-600">
                       <span>Less: Uncleared Deposits</span>
-                      <span>-{formatCurrency(reconciliation.unclearedDeposits)}</span>
+                      <span>-{formatCurrency(Number(reconciliation.unclearedDeposits))}</span>
                     </div>
                     <div className="flex justify-between text-blue-600">
                       <span>Plus: Uncleared Withdrawals</span>
-                      <span>+{formatCurrency(reconciliation.unclearedWithdrawals)}</span>
+                      <span>+{formatCurrency(Number(reconciliation.unclearedWithdrawals))}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-blue-200 font-semibold">
                       <span className="text-blue-900">Adjusted Bank Balance</span>
-                      <span className="text-blue-900">{formatCurrency(reconciliation.adjustedBankBalance)}</span>
+                      <span className="text-blue-900">{formatCurrency(Number(reconciliation.adjustedBankBalance))}</span>
                     </div>
                   </div>
                 </div>
@@ -221,12 +221,12 @@ function ReconciliationContent() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-purple-700">Sum of All Ledger Balances</span>
-                      <span className="font-medium text-purple-900">{formatCurrency(reconciliation.bookBalance)}</span>
+                      <span className="font-medium text-purple-900">{formatCurrency(Number(reconciliation.bookBalance))}</span>
                     </div>
                     <div className="pt-8">
                       <div className="flex justify-between pt-2 border-t border-purple-200 font-semibold">
                         <span className="text-purple-900">Book Balance</span>
-                        <span className="text-purple-900">{formatCurrency(reconciliation.bookBalance)}</span>
+                        <span className="text-purple-900">{formatCurrency(Number(reconciliation.bookBalance))}</span>
                       </div>
                     </div>
                   </div>
@@ -238,12 +238,12 @@ function ReconciliationContent() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-emerald-700">Total Client Balances</span>
-                      <span className="font-medium text-emerald-900">{formatCurrency(reconciliation.clientLedgerTotal)}</span>
+                      <span className="font-medium text-emerald-900">{formatCurrency(Number(reconciliation.clientLedgerTotal))}</span>
                     </div>
                     <div className="pt-8">
                       <div className="flex justify-between pt-2 border-t border-emerald-200 font-semibold">
                         <span className="text-emerald-900">Ledger Total</span>
-                        <span className="text-emerald-900">{formatCurrency(reconciliation.clientLedgerTotal)}</span>
+                        <span className="text-emerald-900">{formatCurrency(Number(reconciliation.clientLedgerTotal))}</span>
                       </div>
                     </div>
                   </div>
@@ -255,7 +255,7 @@ function ReconciliationContent() {
                 <div className="mt-6 p-4 bg-red-50 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold text-red-900">Difference (Out of Balance)</span>
-                    <span className="text-xl font-bold text-red-600">{formatCurrency(reconciliation.difference)}</span>
+                    <span className="text-xl font-bold text-red-600">{formatCurrency(Number(reconciliation.difference))}</span>
                   </div>
                 </div>
               )}
@@ -280,12 +280,12 @@ function ReconciliationContent() {
                   <TableRow key={ledger.id}>
                     <TableCell className="font-medium">{ledger.client.name}</TableCell>
                     <TableCell className="text-gray-500">{ledger.matter?.name || "General"}</TableCell>
-                    <TableCell className="text-right font-semibold">{formatCurrency(ledger.balance)}</TableCell>
+                    <TableCell className="text-right font-semibold">{formatCurrency(Number(ledger.balance))}</TableCell>
                   </TableRow>
                 ))}
                 <TableRow className="bg-gray-50 font-semibold">
                   <TableCell colSpan={2}>Total</TableCell>
-                  <TableCell className="text-right">{formatCurrency(reconciliation.clientLedgerTotal)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(Number(reconciliation.clientLedgerTotal))}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -333,7 +333,7 @@ function ReconciliationContent() {
                           : "text-red-600"
                       }`}>
                         {["DEPOSIT", "TRANSFER_IN", "INTEREST"].includes(tx.type) ? "+" : "-"}
-                        {formatCurrency(tx.amount)}
+                        {formatCurrency(Number(tx.amount))}
                       </TableCell>
                     </TableRow>
                   ))}
