@@ -3,6 +3,18 @@ import { router, publicProcedure } from "../trpc";
 import { hash } from "bcryptjs";
 
 export const usersRouter = router({
+  list: publicProcedure.query(async ({ ctx }) => {
+    const users = await ctx.db.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+      orderBy: { name: "asc" },
+    });
+    return { users };
+  }),
+
   register: publicProcedure
     .input(
       z.object({
