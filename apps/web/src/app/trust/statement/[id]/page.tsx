@@ -129,7 +129,7 @@ export default function TrustStatementPage() {
           <div className="bg-blue-50 rounded-lg p-6">
             <p className="text-sm font-medium text-blue-700 uppercase tracking-wide">Current Balance</p>
             <p className="text-3xl font-bold text-blue-900 mt-1">
-              {formatCurrency(statement.ledger.balance)}
+              {formatCurrency(Number(statement.ledger.balance))}
             </p>
             <p className="text-sm text-blue-600 mt-2">
               Held in trust as of {formatDate(new Date())}
