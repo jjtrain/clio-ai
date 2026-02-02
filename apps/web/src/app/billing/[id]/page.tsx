@@ -374,9 +374,9 @@ export default function InvoiceDetailPage() {
                       <p className="text-sm text-gray-500">{formatDate(item.date)}</p>
                     )}
                   </td>
-                  <td className="text-right py-4 text-gray-900">{formatHours(item.quantity)}</td>
-                  <td className="text-right py-4 text-gray-900">{formatCurrency(item.rate)}</td>
-                  <td className="text-right py-4 font-medium text-gray-900">{formatCurrency(item.amount)}</td>
+                  <td className="text-right py-4 text-gray-900">{formatHours(Number(item.quantity))}</td>
+                  <td className="text-right py-4 text-gray-900">{formatCurrency(Number(item.rate))}</td>
+                  <td className="text-right py-4 font-medium text-gray-900">{formatCurrency(Number(item.amount))}</td>
                 </tr>
               ))}
             </tbody>
