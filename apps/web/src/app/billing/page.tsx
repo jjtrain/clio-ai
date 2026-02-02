@@ -109,14 +109,14 @@ export default function BillingPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Billing & Invoicing</h1>
-          <p className="text-gray-500 mt-1">Manage invoices and track payments</p>
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Billing & Invoicing</h1>
+          <p className="text-gray-500 mt-1 text-sm">Manage invoices and track payments</p>
         </div>
-        <Button asChild className="bg-blue-500 hover:bg-blue-600 shadow-sm">
+        <Button asChild className="bg-blue-500 hover:bg-blue-600 shadow-sm w-full sm:w-auto">
           <Link href="/billing/new">
             <Plus className="mr-2 h-4 w-4" />
             New Invoice
@@ -124,75 +124,75 @@ export default function BillingPage() {
         </Button>
       </div>
 
-      {/* Metric Cards */}
-      <div className="grid gap-6 md:grid-cols-4">
-        <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+      {/* Metric Cards - 2x2 on mobile */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-4">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-6 shadow-sm">
           <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Outstanding</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-500">Outstanding</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-1 truncate">
                 {formatCurrency(summary?.totalOutstanding || 0)}
               </p>
               <p className="text-xs text-gray-500 mt-1">{summary?.sentCount || 0} invoices sent</p>
             </div>
-            <div className="p-3 rounded-lg bg-blue-50">
-              <DollarSign className="h-5 w-5 text-blue-600" />
+            <div className="p-2 sm:p-3 rounded-lg bg-blue-50 flex-shrink-0 ml-2">
+              <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-6 shadow-sm">
           <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Overdue</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-500">Overdue</p>
+              <p className="text-lg sm:text-2xl font-bold text-red-600 mt-1 truncate">
                 {formatCurrency(summary?.totalOverdue || 0)}
               </p>
               <p className="text-xs text-gray-500 mt-1">{summary?.overdueCount || 0} invoices</p>
             </div>
-            <div className="p-3 rounded-lg bg-red-50">
-              <AlertCircle className="h-5 w-5 text-red-600" />
+            <div className="p-2 sm:p-3 rounded-lg bg-red-50 flex-shrink-0 ml-2">
+              <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-6 shadow-sm">
           <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Draft Invoices</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{summary?.draftCount || 0}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-500">Draft Invoices</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-1">{summary?.draftCount || 0}</p>
               <p className="text-xs text-gray-500 mt-1">Ready to send</p>
             </div>
-            <div className="p-3 rounded-lg bg-gray-100">
-              <FileText className="h-5 w-5 text-gray-600" />
+            <div className="p-2 sm:p-3 rounded-lg bg-gray-100 flex-shrink-0 ml-2">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-6 shadow-sm">
           <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Sent Invoices</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{summary?.sentCount || 0}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-500">Sent Invoices</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-1">{summary?.sentCount || 0}</p>
               <p className="text-xs text-gray-500 mt-1">Awaiting payment</p>
             </div>
-            <div className="p-3 rounded-lg bg-emerald-50">
-              <Clock className="h-5 w-5 text-emerald-600" />
+            <div className="p-2 sm:p-3 rounded-lg bg-emerald-50 flex-shrink-0 ml-2">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
+      {/* Filters - Stack on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
-            placeholder="Search by invoice number, matter, or client..."
+            placeholder="Search invoices..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10 bg-white border-gray-200"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px] bg-white border-gray-200">
+          <SelectTrigger className="w-full sm:w-[150px] bg-white border-gray-200">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -205,131 +205,133 @@ export default function BillingPage() {
         </Select>
       </div>
 
-      {/* Table */}
+      {/* Table with horizontal scroll on mobile */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-gray-50/50">
-              <TableHead className="font-semibold text-gray-600">Invoice</TableHead>
-              <TableHead className="font-semibold text-gray-600">Client / Matter</TableHead>
-              <TableHead className="font-semibold text-gray-600">Issue Date</TableHead>
-              <TableHead className="font-semibold text-gray-600">Due Date</TableHead>
-              <TableHead className="font-semibold text-gray-600">Amount</TableHead>
-              <TableHead className="font-semibold text-gray-600">Status</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12">
-                  <div className="flex flex-col items-center">
-                    <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                    <p className="text-gray-500 mt-3">Loading invoices...</p>
-                  </div>
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50/50">
+                <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Invoice</TableHead>
+                <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Client / Matter</TableHead>
+                <TableHead className="font-semibold text-gray-600 whitespace-nowrap hidden sm:table-cell">Issue Date</TableHead>
+                <TableHead className="font-semibold text-gray-600 whitespace-nowrap hidden md:table-cell">Due Date</TableHead>
+                <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Amount</TableHead>
+                <TableHead className="font-semibold text-gray-600 whitespace-nowrap">Status</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
               </TableRow>
-            ) : filteredInvoices?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12">
-                  <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 font-medium">No invoices found</p>
-                  <p className="text-gray-400 text-sm mt-1">Create your first invoice to get started</p>
-                  <Button asChild className="mt-4" variant="outline">
-                    <Link href="/billing/new">
-                      <Plus className="mr-2 h-4 w-4" />
-                      New Invoice
-                    </Link>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredInvoices?.map((invoice) => {
-                const balance = parseFloat(invoice.total.toString()) - parseFloat(invoice.amountPaid.toString());
-                return (
-                  <TableRow key={invoice.id} className="hover:bg-gray-50/50">
-                    <TableCell>
-                      <Link href={"/billing/" + invoice.id} className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <span className="font-medium text-gray-900 hover:text-blue-600 font-mono">
-                          {invoice.invoiceNumber}
-                        </span>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12">
+                    <div className="flex flex-col items-center">
+                      <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                      <p className="text-gray-500 mt-3 text-sm">Loading invoices...</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredInvoices?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12">
+                    <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 font-medium">No invoices found</p>
+                    <p className="text-gray-400 text-sm mt-1">Create your first invoice to get started</p>
+                    <Button asChild className="mt-4" variant="outline" size="sm">
+                      <Link href="/billing/new">
+                        <Plus className="mr-2 h-4 w-4" />
+                        New Invoice
                       </Link>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-gray-900">{invoice.matter.client.name}</p>
-                        <p className="text-sm text-gray-500">{invoice.matter.name}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-gray-600">
-                      {formatDate(invoice.issueDate)}
-                    </TableCell>
-                    <TableCell className="text-gray-600">
-                      {formatDate(invoice.dueDate)}
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-semibold text-gray-900">{formatCurrency(Number(invoice.total))}</p>
-                        {balance > 0 && invoice.status !== "DRAFT" && (
-                          <p className="text-xs text-gray-500">
-                            Balance: {formatCurrency(balance)}
-                          </p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusStyles(
-                          invoice.status
-                        )}`}
-                      >
-                        {getStatusIcon(invoice.status)}
-                        {invoice.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4 text-gray-400" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={"/billing/" + invoice.id}>View Details</Link>
-                          </DropdownMenuItem>
-                          {invoice.status === "DRAFT" && (
-                            <DropdownMenuItem
-                              onClick={() =>
-                                updateStatus.mutate({ id: invoice.id, status: "SENT" })
-                              }
-                            >
-                              <Send className="mr-2 h-4 w-4" />
-                              Mark as Sent
-                            </DropdownMenuItem>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredInvoices?.map((invoice) => {
+                  const balance = parseFloat(invoice.total.toString()) - parseFloat(invoice.amountPaid.toString());
+                  return (
+                    <TableRow key={invoice.id} className="hover:bg-gray-50/50">
+                      <TableCell>
+                        <Link href={"/billing/" + invoice.id} className="flex items-center gap-2 sm:gap-3">
+                          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                          </div>
+                          <span className="font-medium text-gray-900 hover:text-blue-600 font-mono text-sm sm:text-base">
+                            {invoice.invoiceNumber}
+                          </span>
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 text-sm truncate max-w-[150px] sm:max-w-none">{invoice.matter.client.name}</p>
+                          <p className="text-xs sm:text-sm text-gray-500 truncate max-w-[150px] sm:max-w-none">{invoice.matter.name}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-gray-600 text-sm hidden sm:table-cell whitespace-nowrap">
+                        {formatDate(invoice.issueDate)}
+                      </TableCell>
+                      <TableCell className="text-gray-600 text-sm hidden md:table-cell whitespace-nowrap">
+                        {formatDate(invoice.dueDate)}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-semibold text-gray-900 text-sm sm:text-base whitespace-nowrap">{formatCurrency(Number(invoice.total))}</p>
+                          {balance > 0 && invoice.status !== "DRAFT" && (
+                            <p className="text-xs text-gray-500 whitespace-nowrap">
+                              Bal: {formatCurrency(balance)}
+                            </p>
                           )}
-                          {invoice.status === "SENT" && (
-                            <DropdownMenuItem
-                              onClick={() =>
-                                updateStatus.mutate({ id: invoice.id, status: "PAID" })
-                              }
-                            >
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              Mark as Paid
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 rounded-full text-xs font-medium whitespace-nowrap ${getStatusStyles(
+                            invoice.status
+                          )}`}
+                        >
+                          {getStatusIcon(invoice.status)}
+                          <span className="hidden sm:inline">{invoice.status}</span>
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={"/billing/" + invoice.id}>View Details</Link>
                             </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+                            {invoice.status === "DRAFT" && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  updateStatus.mutate({ id: invoice.id, status: "SENT" })
+                                }
+                              >
+                                <Send className="mr-2 h-4 w-4" />
+                                Mark as Sent
+                              </DropdownMenuItem>
+                            )}
+                            {invoice.status === "SENT" && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  updateStatus.mutate({ id: invoice.id, status: "PAID" })
+                                }
+                              >
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Mark as Paid
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );

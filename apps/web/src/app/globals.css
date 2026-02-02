@@ -54,25 +54,82 @@
 
 @layer components {
   .page-header {
-    @apply mb-8;
+    @apply mb-6 sm:mb-8;
   }
   .page-title {
-    @apply text-2xl font-semibold text-foreground;
+    @apply text-xl sm:text-2xl font-semibold text-foreground;
   }
   .page-description {
     @apply text-sm text-muted-foreground mt-1;
   }
   .metric-card {
-    @apply bg-white rounded-xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow;
+    @apply bg-white rounded-xl border border-gray-100 p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow;
   }
   .metric-value {
-    @apply text-3xl font-bold text-foreground;
+    @apply text-2xl sm:text-3xl font-bold text-foreground;
   }
   .metric-label {
     @apply text-sm font-medium text-muted-foreground;
   }
   .data-table {
     @apply bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden;
+  }
+
+  /* Mobile-friendly table wrapper */
+  .table-wrapper {
+    @apply overflow-x-auto -mx-4 sm:mx-0;
+  }
+  .table-wrapper > table {
+    @apply min-w-full;
+  }
+
+  /* Card stack on mobile */
+  .card-grid {
+    @apply grid gap-4 sm:gap-6;
+  }
+
+  /* Form layouts */
+  .form-grid {
+    @apply grid gap-4 sm:gap-6;
+  }
+  .form-grid-2 {
+    @apply grid gap-4 sm:gap-6 sm:grid-cols-2;
+  }
+  .form-grid-3 {
+    @apply grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3;
+  }
+}
+
+@layer utilities {
+  /* Mobile sidebar animation */
+  @keyframes slide-in {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-slide-in {
+    animation: slide-in 0.2s ease-out;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Safe area padding for mobile devices with notches */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
   }
 }
 

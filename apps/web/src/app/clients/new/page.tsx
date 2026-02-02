@@ -23,10 +23,10 @@ export default function NewClientPage() {
       router.push("/clients/" + client.id);
     },
     onError: (error) => {
-      toast({ 
-        title: "Failed to create client", 
+      toast({
+        title: "Failed to create client",
         description: error.message,
-        variant: "destructive" 
+        variant: "destructive"
       });
       setIsSubmitting(false);
     },
@@ -36,7 +36,7 @@ export default function NewClientPage() {
     e.preventDefault();
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
-    
+
     createClient.mutate({
       name: formData.get("name") as string,
       email: formData.get("email") as string,
@@ -47,52 +47,65 @@ export default function NewClientPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3 sm:gap-4">
+        <Button variant="ghost" size="icon" asChild className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0">
           <Link href="/clients">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold">New Client</h1>
-          <p className="text-muted-foreground">Add a new client to your practice</p>
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">New Client</h1>
+          <p className="text-muted-foreground text-sm hidden sm:block">Add a new client to your practice</p>
         </div>
       </div>
 
+      {/* Form Card */}
       <Card className="max-w-2xl">
-        <CardHeader>
-          <CardTitle>Client Information</CardTitle>
-          <CardDescription>Enter the details for the new client</CardDescription>
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="text-lg sm:text-xl">Client Information</CardTitle>
+          <CardDescription className="text-sm">Enter the details for the new client</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <CardContent className="px-4 sm:px-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+            {/* Name - required */}
             <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
-              <Input id="name" name="name" required />
+              <Label htmlFor="name" className="text-sm font-medium">Name *</Label>
+              <Input id="name" name="name" required className="h-10 sm:h-11" />
             </div>
+
+            {/* Email & Phone - stack on mobile, side by side on sm+ */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                <Input id="email" name="email" type="email" className="h-10 sm:h-11" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-sm font-medium">Phone</Label>
+                <Input id="phone" name="phone" type="tel" className="h-10 sm:h-11" />
+              </div>
+            </div>
+
+            {/* Address */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" />
+              <Label htmlFor="address" className="text-sm font-medium">Address</Label>
+              <Textarea id="address" name="address" rows={3} className="resize-none" />
             </div>
+
+            {/* Notes */}
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" name="phone" type="tel" />
+              <Label htmlFor="notes" className="text-sm font-medium">Notes</Label>
+              <Textarea id="notes" name="notes" rows={4} className="resize-none" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Textarea id="address" name="address" rows={3} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" name="notes" rows={4} />
-            </div>
-            <div className="flex gap-4">
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Client"}
-              </Button>
-              <Button type="button" variant="outline" asChild>
+
+            {/* Buttons - full width stack on mobile */}
+            <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4 pt-2">
+              <Button type="button" variant="outline" asChild className="w-full sm:w-auto">
                 <Link href="/clients">Cancel</Link>
+              </Button>
+              <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+                {isSubmitting ? "Creating..." : "Create Client"}
               </Button>
             </div>
           </form>
