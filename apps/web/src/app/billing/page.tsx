@@ -272,7 +272,7 @@ export default function BillingPage() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-semibold text-gray-900">{formatCurrency(invoice.total)}</p>
+                        <p className="font-semibold text-gray-900">{formatCurrency(Number(invoice.total))}</p>
                         {balance > 0 && invoice.status !== "DRAFT" && (
                           <p className="text-xs text-gray-500">
                             Balance: {formatCurrency(balance)}

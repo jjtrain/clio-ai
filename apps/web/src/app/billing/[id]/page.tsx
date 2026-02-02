@@ -388,23 +388,23 @@ export default function InvoiceDetailPage() {
           <div className="w-72 space-y-2">
             <div className="flex justify-between py-2">
               <span className="text-gray-600">Subtotal</span>
-              <span className="font-medium text-gray-900">{formatCurrency(invoice.subtotal)}</span>
+              <span className="font-medium text-gray-900">{formatCurrency(Number(invoice.subtotal))}</span>
             </div>
             {parseFloat(invoice.taxRate.toString()) > 0 && (
               <div className="flex justify-between py-2">
                 <span className="text-gray-600">Tax ({invoice.taxRate.toString()}%)</span>
-                <span className="font-medium text-gray-900">{formatCurrency(invoice.taxAmount)}</span>
+                <span className="font-medium text-gray-900">{formatCurrency(Number(invoice.taxAmount))}</span>
               </div>
             )}
             <div className="flex justify-between py-3 border-t-2 border-gray-900">
               <span className="text-lg font-bold text-gray-900">Total</span>
-              <span className="text-lg font-bold text-gray-900">{formatCurrency(invoice.total)}</span>
+              <span className="text-lg font-bold text-gray-900">{formatCurrency(Number(invoice.total))}</span>
             </div>
             {parseFloat(invoice.amountPaid.toString()) > 0 && (
               <>
                 <div className="flex justify-between py-2 text-emerald-600">
                   <span>Amount Paid</span>
-                  <span className="font-medium">-{formatCurrency(invoice.amountPaid)}</span>
+                  <span className="font-medium">-{formatCurrency(Number(invoice.amountPaid))}</span>
                 </div>
                 <div className="flex justify-between py-3 bg-blue-50 rounded-lg px-3 -mx-3">
                   <span className="font-bold text-blue-900">Balance Due</span>
@@ -442,7 +442,7 @@ export default function InvoiceDetailPage() {
               <div key={payment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div>
                   <p className="font-medium text-gray-900">
-                    {formatCurrency(payment.amount)} via {payment.paymentMethod.replace("_", " ")}
+                    {formatCurrency(Number(payment.amount))} via {payment.paymentMethod.replace("_", " ")}
                   </p>
                   <p className="text-sm text-gray-500">
                     {formatDate(payment.paymentDate)}
