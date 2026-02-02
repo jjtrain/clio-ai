@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Professional blue/gray theme inspired by Clio */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 214 32% 91%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 214 32% 91%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+    --radius: 0.5rem;
+
+    /* Sidebar */
+    --sidebar: 222 47% 11%;
+    --sidebar-foreground: 214 32% 91%;
+    --sidebar-accent: 217 91% 60%;
+
+    /* Success/Warning colors */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .page-header {
+    @apply mb-8;
+  }
+  .page-title {
+    @apply text-2xl font-semibold text-foreground;
+  }
+  .page-description {
+    @apply text-sm text-muted-foreground mt-1;
+  }
+  .metric-card {
+    @apply bg-white rounded-xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow;
+  }
+  .metric-value {
+    @apply text-3xl font-bold text-foreground;
+  }
+  .metric-label {
+    @apply text-sm font-medium text-muted-foreground;
+  }
+  .data-table {
+    @apply bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden;
+  }
+}
+
+/* Print styles for invoices */
+@media print {
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  .print\:border-none {
+    border: none !important;
+  }
+
+  .print\:p-0 {
+    padding: 0 !important;
+  }
+
+  /* Hide sidebar and header when printing */
+  nav,
+  header,
+  aside,
+  .sidebar,
+  [class*="sidebar"],
+  button,
+  a[href="/billing"] {
+    display: none !important;
+  }
+
+  /* Ensure invoice fills the page */
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: letter;
+    margin: 0.75in;
+  }
+}
