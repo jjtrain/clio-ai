@@ -55,6 +55,11 @@ export default function EditEventPage() {
     },
   });
 
+  const toLocalISOString = (dateStr: string, timeStr: string) => {
+    const dt = new Date(`${dateStr}T${timeStr}`);
+    return dt.toISOString();
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -65,12 +70,16 @@ export default function EditEventPage() {
     const endDateVal = formData.get("endDate") as string;
     const endTimeVal = formData.get("endTime") as string;
 
-    let startDateTime = allDay
-      ? startDateVal + "T00:00:00"
-      : startDateVal + "T" + (startTimeVal || "09:00");
-    let endDateTime = allDay
-      ? (endDateVal || startDateVal) + "T23:59:59"
-      : (endDateVal || startDateVal) + "T" + (endTimeVal || "10:00");
+    let startISO: string;
+    let endISO: string;
+
+    if (allDay) {
+      startISO = toLocalISOString(startDateVal, "00:00:00");
+      endISO = toLocalISOString(endDateVal || startDateVal, "23:59:59");
+    } else {
+      startISO = toLocalISOString(startDateVal, (startTimeVal || "09:00") + ":00");
+      endISO = toLocalISOString(endDateVal || startDateVal, (endTimeVal || "10:00") + ":00");
+    }
 
     updateEvent.mutate({
       id: eventId,
@@ -78,8 +87,8 @@ export default function EditEventPage() {
         matterId: selectedMatterId !== "none" ? selectedMatterId : undefined,
         title: formData.get("title") as string,
         description: formData.get("description") as string,
-        startTime: startDateTime,
-        endTime: endDateTime,
+        startTime: startISO,
+        endTime: endISO,
         allDay,
         location: formData.get("location") as string,
       },
@@ -89,10 +98,22 @@ export default function EditEventPage() {
   if (isLoading) return <div>Loading...</div>;
   if (!event) return <div>Event not found</div>;
 
-  const startDate = new Date(event.startTime).toISOString().split("T")[0];
-  const startTimeDefault = new Date(event.startTime).toTimeString().slice(0, 5);
-  const endDate = new Date(event.endTime).toISOString().split("T")[0];
-  const endTimeDefault = new Date(event.endTime).toTimeString().slice(0, 5);
+  const toLocalDateStr = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  const toLocalTimeStr = (d: Date) => {
+    const hours = String(d.getHours()).padStart(2, "0");
+    const mins = String(d.getMinutes()).padStart(2, "0");
+    return `${hours}:${mins}`;
+  };
+
+  const startDate = toLocalDateStr(new Date(event.startTime));
+  const startTimeDefault = toLocalTimeStr(new Date(event.startTime));
+  const endDate = toLocalDateStr(new Date(event.endTime));
+  const endTimeDefault = toLocalTimeStr(new Date(event.endTime));
 
   return (
     <div className="space-y-6">

@@ -43,6 +43,11 @@ export default function NewEventPage() {
     },
   });
 
+  const toLocalISOString = (dateStr: string, timeStr: string) => {
+    const dt = new Date(`${dateStr}T${timeStr}`);
+    return dt.toISOString();
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -53,23 +58,23 @@ export default function NewEventPage() {
     const endDate = formData.get("endDate") as string;
     const endTime = formData.get("endTime") as string;
 
-    let startDateTime: string;
-    let endDateTime: string;
+    let startISO: string;
+    let endISO: string;
 
     if (allDay) {
-      startDateTime = startDate + "T00:00:00";
-      endDateTime = (endDate || startDate) + "T23:59:59";
+      startISO = toLocalISOString(startDate, "00:00:00");
+      endISO = toLocalISOString(endDate || startDate, "23:59:59");
     } else {
-      startDateTime = startDate + "T" + (startTime || "09:00");
-      endDateTime = (endDate || startDate) + "T" + (endTime || "10:00");
+      startISO = toLocalISOString(startDate, (startTime || "09:00") + ":00");
+      endISO = toLocalISOString(endDate || startDate, (endTime || "10:00") + ":00");
     }
 
     createEvent.mutate({
       matterId: selectedMatterId !== "none" ? selectedMatterId : undefined,
       title: formData.get("title") as string,
       description: formData.get("description") as string,
-      startTime: startDateTime,
-      endTime: endDateTime,
+      startTime: startISO,
+      endTime: endISO,
       allDay,
       location: formData.get("location") as string,
     });
