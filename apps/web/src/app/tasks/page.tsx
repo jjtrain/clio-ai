@@ -62,9 +62,9 @@ export default function TasksPage() {
   const utils = trpc.useUtils();
 
   // Filters
-  const [statusFilter, setStatusFilter] = useState<string>("");
-  const [priorityFilter, setPriorityFilter] = useState<string>("");
-  const [matterFilter, setMatterFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [matterFilter, setMatterFilter] = useState<string>("all");
   const [showCompleted, setShowCompleted] = useState(false);
 
   // Dialog state
@@ -76,13 +76,13 @@ export default function TasksPage() {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<string>("MEDIUM");
   const [dueDate, setDueDate] = useState("");
-  const [matterId, setMatterId] = useState("");
-  const [assigneeId, setAssigneeId] = useState("");
+  const [matterId, setMatterId] = useState("none");
+  const [assigneeId, setAssigneeId] = useState("none");
 
   const { data: tasksData, isLoading } = trpc.tasks.list.useQuery({
-    status: statusFilter as any || undefined,
-    priority: priorityFilter as any || undefined,
-    matterId: matterFilter || undefined,
+    status: statusFilter !== "all" ? (statusFilter as any) : undefined,
+    priority: priorityFilter !== "all" ? (priorityFilter as any) : undefined,
+    matterId: matterFilter !== "all" ? matterFilter : undefined,
     includeCompleted: showCompleted,
   });
 
@@ -138,8 +138,8 @@ export default function TasksPage() {
     setDescription("");
     setPriority("MEDIUM");
     setDueDate("");
-    setMatterId("");
-    setAssigneeId("");
+    setMatterId("none");
+    setAssigneeId("none");
   };
 
   const handleOpenDialog = (task?: any) => {
@@ -149,8 +149,8 @@ export default function TasksPage() {
       setDescription(task.description || "");
       setPriority(task.priority);
       setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "");
-      setMatterId(task.matterId || "");
-      setAssigneeId(task.assigneeId || "");
+      setMatterId(task.matterId || "none");
+      setAssigneeId(task.assigneeId || "none");
     } else {
       setEditingTask(null);
       resetForm();
@@ -165,8 +165,8 @@ export default function TasksPage() {
       description: description || undefined,
       priority: priority as any,
       dueDate: dueDate || undefined,
-      matterId: matterId || undefined,
-      assigneeId: assigneeId || undefined,
+      matterId: matterId !== "none" ? matterId : undefined,
+      assigneeId: assigneeId !== "none" ? assigneeId : undefined,
     };
 
     if (editingTask) {
@@ -264,7 +264,7 @@ export default function TasksPage() {
                     <SelectValue placeholder="Select matter" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No matter</SelectItem>
+                    <SelectItem value="none">No matter</SelectItem>
                     {matters?.matters.map((matter) => (
                       <SelectItem key={matter.id} value={matter.id}>
                         {matter.name} - {matter.client.name}
@@ -280,7 +280,7 @@ export default function TasksPage() {
                     <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
+                    <SelectItem value="none">Unassigned</SelectItem>
                     {users?.users?.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.name || user.email}
@@ -362,7 +362,7 @@ export default function TasksPage() {
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Statuses</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="NOT_STARTED">Not Started</SelectItem>
               <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
               <SelectItem value="COMPLETED">Completed</SelectItem>
@@ -373,7 +373,7 @@ export default function TasksPage() {
               <SelectValue placeholder="All Priorities" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Priorities</SelectItem>
+              <SelectItem value="all">All Priorities</SelectItem>
               <SelectItem value="LOW">Low</SelectItem>
               <SelectItem value="MEDIUM">Medium</SelectItem>
               <SelectItem value="HIGH">High</SelectItem>
@@ -385,7 +385,7 @@ export default function TasksPage() {
               <SelectValue placeholder="All Matters" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Matters</SelectItem>
+              <SelectItem value="all">All Matters</SelectItem>
               {matters?.matters.map((matter) => (
                 <SelectItem key={matter.id} value={matter.id}>
                   {matter.name}
