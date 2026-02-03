@@ -93,7 +93,7 @@ export const invoicesRouter = router({
         dueDate: z.string(),
         taxRate: z.number().min(0).max(100).optional().default(0),
         notes: z.string().optional(),
-        defaultRate: z.number().min(0).optional().default(250),
+        defaultRate: z.number().min(0).optional().default(450),
       })
     )
     .mutation(async ({ ctx, input }) => {

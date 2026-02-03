@@ -124,8 +124,8 @@ export default function DashboardPage() {
         />
         <MetricCard
           title="Billable Amount"
-          value={`$${((timeSummary?.billableMinutes ?? 0) / 60 * 250).toLocaleString()}`}
-          subtitle="At $250/hr"
+          value={`$${((timeSummary?.billableMinutes ?? 0) / 60 * 450).toLocaleString()}`}
+          subtitle="At $450/hr"
           icon={DollarSign}
           color="orange"
         />

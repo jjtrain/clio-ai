@@ -47,7 +47,7 @@ function NewInvoiceForm() {
     return date.toISOString().split("T")[0];
   });
   const [taxRate, setTaxRate] = useState("0");
-  const [defaultRate, setDefaultRate] = useState("250");
+  const [defaultRate, setDefaultRate] = useState("450");
   const [notes, setNotes] = useState("");
 
   const { data: mattersData } = trpc.matters.list.useQuery({});
