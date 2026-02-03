@@ -68,6 +68,8 @@ export default function InvoiceDetailPage() {
     { enabled: !!params.id }
   );
 
+  const { data: firmInfo } = trpc.users.getFirmInfo.useQuery();
+
   const updateStatus = trpc.invoices.updateStatus.useMutation({
     onSuccess: () => {
       toast({ title: "Invoice status updated" });
@@ -288,23 +290,28 @@ export default function InvoiceDetailPage() {
             <p className="text-xl text-gray-600 mt-1 font-mono">{invoice.invoiceNumber}</p>
           </div>
           <div className="text-right">
-            <h3 className="text-xl font-bold text-gray-900">Smith & Associates</h3>
+            <h3 className="text-xl font-bold text-gray-900">
+              {firmInfo?.firmName || "Your Firm Name"}
+            </h3>
             <div className="text-gray-600 mt-2 space-y-1">
-              <p className="flex items-center justify-end gap-2">
-                <span>123 Legal Street, Suite 100</span>
-                <MapPin className="h-4 w-4 print:hidden" />
-              </p>
-              <p className="flex items-center justify-end gap-2">
-                <span>City, State 12345</span>
-              </p>
-              <p className="flex items-center justify-end gap-2">
-                <span>(555) 123-4567</span>
-                <Phone className="h-4 w-4 print:hidden" />
-              </p>
-              <p className="flex items-center justify-end gap-2">
-                <span>billing@smithlaw.com</span>
-                <Mail className="h-4 w-4 print:hidden" />
-              </p>
+              {firmInfo?.address && (
+                <p className="flex items-center justify-end gap-2">
+                  <span>{firmInfo.address}</span>
+                  <MapPin className="h-4 w-4 print:hidden" />
+                </p>
+              )}
+              {firmInfo?.phone && (
+                <p className="flex items-center justify-end gap-2">
+                  <span>{firmInfo.phone}</span>
+                  <Phone className="h-4 w-4 print:hidden" />
+                </p>
+              )}
+              {firmInfo?.email && (
+                <p className="flex items-center justify-end gap-2">
+                  <span>{firmInfo.email}</span>
+                  <Mail className="h-4 w-4 print:hidden" />
+                </p>
+              )}
             </div>
           </div>
         </div>

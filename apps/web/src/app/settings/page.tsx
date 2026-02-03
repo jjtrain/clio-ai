@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,11 +11,11 @@ import { User, Building2, Phone, MapPin, Mail, Lock, Save, AlertCircle } from "l
 export default function SettingsPage() {
   const { toast } = useToast();
 
-  const [name, setName] = useState("John Doe");
-  const [email, setEmail] = useState("john@example.com");
-  const [firmName, setFirmName] = useState("Smith & Associates");
-  const [phone, setPhone] = useState("(555) 123-4567");
-  const [address, setAddress] = useState("123 Main St, City, State 12345");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [firmName, setFirmName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -22,15 +23,56 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  const { data: users } = trpc.users.list.useQuery();
+  const userId = users?.users?.[0]?.id;
+
+  const { data: profile } = trpc.users.getProfile.useQuery(
+    { userId: userId! },
+    { enabled: !!userId }
+  );
+
+  useEffect(() => {
+    if (profile) {
+      setName(profile.name || "");
+      setEmail(profile.email || "");
+      setFirmName(profile.firmName || "");
+      setPhone(profile.phone || "");
+      setAddress(profile.address || "");
+    }
+  }, [profile]);
+
+  const utils = trpc.useUtils();
+
+  const updateProfile = trpc.users.updateProfile.useMutation({
+    onSuccess: () => {
+      toast({ title: "Profile updated successfully" });
+      utils.users.getProfile.invalidate();
+      utils.users.getFirmInfo.invalidate();
+      setIsSaving(false);
+    },
+    onError: (error) => {
+      toast({ title: "Error saving profile", description: error.message, variant: "destructive" });
+      setIsSaving(false);
+    },
+  });
+
+  const changePassword = trpc.users.changePassword.useMutation({
+    onSuccess: () => {
+      toast({ title: "Password changed successfully" });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (error) => {
+      setPasswordError(error.message);
+    },
+  });
+
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) return;
     setIsSaving(true);
-
-    // Simulate save
-    setTimeout(() => {
-      toast({ title: "Profile updated successfully" });
-      setIsSaving(false);
-    }, 500);
+    updateProfile.mutate({ userId, name, email, firmName, phone, address });
   };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
@@ -47,11 +89,8 @@ export default function SettingsPage() {
       return;
     }
 
-    // Simulate password change
-    toast({ title: "Password changed successfully" });
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+    if (!userId) return;
+    changePassword.mutate({ userId, currentPassword, newPassword });
   };
 
   return (
@@ -222,8 +261,9 @@ export default function SettingsPage() {
             <Button
               type="submit"
               variant="outline"
+              disabled={changePassword.isLoading}
             >
-              Change Password
+              {changePassword.isLoading ? "Changing..." : "Change Password"}
             </Button>
           </div>
         </form>

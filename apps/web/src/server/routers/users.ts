@@ -40,6 +40,25 @@ export const usersRouter = router({
     return { users };
   }),
 
+  getFirmInfo: publicProcedure.query(async ({ ctx }) => {
+    const user = await ctx.db.user.findFirst({ orderBy: { createdAt: "asc" } });
+    if (!user) {
+      const defaultUser = await ensureDefaultUser(ctx.db);
+      return {
+        firmName: defaultUser.firmName || "",
+        email: defaultUser.email,
+        phone: defaultUser.phone || "",
+        address: defaultUser.address || "",
+      };
+    }
+    return {
+      firmName: user.firmName || "",
+      email: user.email,
+      phone: user.phone || "",
+      address: user.address || "",
+    };
+  }),
+
   register: publicProcedure
     .input(
       z.object({
