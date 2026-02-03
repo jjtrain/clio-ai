@@ -42,9 +42,9 @@ function TransactionsList() {
   const searchParams = useSearchParams();
   const initialAccountId = searchParams.get("accountId") || "";
 
-  const [accountId, setAccountId] = useState(initialAccountId);
-  const [clientId, setClientId] = useState("");
-  const [transactionType, setTransactionType] = useState("");
+  const [accountId, setAccountId] = useState(initialAccountId || "all");
+  const [clientId, setClientId] = useState("all");
+  const [transactionType, setTransactionType] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -52,9 +52,9 @@ function TransactionsList() {
   const { data: clients } = trpc.clients.list.useQuery({});
 
   const { data, isLoading } = trpc.trust.listTransactions.useQuery({
-    trustAccountId: accountId || undefined,
-    clientId: clientId || undefined,
-    type: transactionType as any || undefined,
+    trustAccountId: accountId !== "all" ? accountId : undefined,
+    clientId: clientId !== "all" ? clientId : undefined,
+    type: transactionType !== "all" ? (transactionType as any) : undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
     limit: 100,
@@ -103,7 +103,7 @@ function TransactionsList() {
                 <SelectValue placeholder="All Accounts" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Accounts</SelectItem>
+                <SelectItem value="all">All Accounts</SelectItem>
                 {accounts?.map((account) => (
                   <SelectItem key={account.id} value={account.id}>
                     {account.name}
@@ -118,7 +118,7 @@ function TransactionsList() {
                 <SelectValue placeholder="All Clients" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Clients</SelectItem>
+                <SelectItem value="all">All Clients</SelectItem>
                 {clients?.clients.map((client) => (
                   <SelectItem key={client.id} value={client.id}>
                     {client.name}
@@ -133,7 +133,7 @@ function TransactionsList() {
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Types</SelectItem>
+                <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="DEPOSIT">Deposit</SelectItem>
                 <SelectItem value="WITHDRAWAL">Withdrawal</SelectItem>
                 <SelectItem value="TRANSFER_IN">Transfer In</SelectItem>

@@ -58,7 +58,7 @@ export default function TrustAccountDetailPage() {
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
   const [transactionType, setTransactionType] = useState<string>("DEPOSIT");
   const [clientId, setClientId] = useState("");
-  const [matterId, setMatterId] = useState("");
+  const [matterId, setMatterId] = useState("none");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [reference, setReference] = useState("");
@@ -96,7 +96,7 @@ export default function TrustAccountDetailPage() {
   const resetTransactionForm = () => {
     setTransactionType("DEPOSIT");
     setClientId("");
-    setMatterId("");
+    setMatterId("none");
     setAmount("");
     setDescription("");
     setReference("");
@@ -110,7 +110,7 @@ export default function TrustAccountDetailPage() {
     createTransaction.mutate({
       trustAccountId: params.id as string,
       clientId,
-      matterId: matterId || undefined,
+      matterId: matterId !== "none" ? matterId : undefined,
       type: transactionType as any,
       amount: parseFloat(amount),
       description,
@@ -207,7 +207,7 @@ export default function TrustAccountDetailPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Client</Label>
-                  <Select value={clientId} onValueChange={(v) => { setClientId(v); setMatterId(""); }}>
+                  <Select value={clientId} onValueChange={(v) => { setClientId(v); setMatterId("none"); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select client" />
                     </SelectTrigger>
@@ -228,7 +228,7 @@ export default function TrustAccountDetailPage() {
                         <SelectValue placeholder="Select matter" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No specific matter</SelectItem>
+                        <SelectItem value="none">No specific matter</SelectItem>
                         {matters.matters.map((matter) => (
                           <SelectItem key={matter.id} value={matter.id}>
                             {matter.name}

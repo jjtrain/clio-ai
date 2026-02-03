@@ -25,7 +25,7 @@ export default function EditEventPage() {
   const { toast } = useToast();
   const eventId = params.id as string;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedMatterId, setSelectedMatterId] = useState("");
+  const [selectedMatterId, setSelectedMatterId] = useState("none");
   const [allDay, setAllDay] = useState(false);
 
   const { data: event, isLoading } = trpc.calendar.getById.useQuery({ id: eventId });
@@ -34,7 +34,7 @@ export default function EditEventPage() {
 
   useEffect(() => {
     if (event) {
-      setSelectedMatterId(event.matterId || "");
+      setSelectedMatterId(event.matterId || "none");
       setAllDay(event.allDay);
     }
   }, [event]);
@@ -75,7 +75,7 @@ export default function EditEventPage() {
     updateEvent.mutate({
       id: eventId,
       data: {
-        matterId: selectedMatterId || undefined,
+        matterId: selectedMatterId !== "none" ? selectedMatterId : undefined,
         title: formData.get("title") as string,
         description: formData.get("description") as string,
         startTime: startDateTime,
@@ -127,7 +127,7 @@ export default function EditEventPage() {
                   <SelectValue placeholder="Select a matter" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No matter</SelectItem>
+                  <SelectItem value="none">No matter</SelectItem>
                   {mattersData?.matters.map((matter) => (
                     <SelectItem key={matter.id} value={matter.id}>
                       {matter.matterNumber} - {matter.name}

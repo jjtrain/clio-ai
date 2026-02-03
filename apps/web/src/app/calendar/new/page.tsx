@@ -23,7 +23,7 @@ export default function NewEventPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedMatterId, setSelectedMatterId] = useState("");
+  const [selectedMatterId, setSelectedMatterId] = useState("none");
   const [allDay, setAllDay] = useState(false);
 
   const { data: mattersData } = trpc.matters.list.useQuery({ status: "OPEN" });
@@ -65,7 +65,7 @@ export default function NewEventPage() {
     }
 
     createEvent.mutate({
-      matterId: selectedMatterId || undefined,
+      matterId: selectedMatterId !== "none" ? selectedMatterId : undefined,
       title: formData.get("title") as string,
       description: formData.get("description") as string,
       startTime: startDateTime,
@@ -110,7 +110,7 @@ export default function NewEventPage() {
                   <SelectValue placeholder="Select a matter" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No matter</SelectItem>
+                  <SelectItem value="none">No matter</SelectItem>
                   {mattersData?.matters.map((matter) => (
                     <SelectItem key={matter.id} value={matter.id}>
                       {matter.matterNumber} - {matter.name}
