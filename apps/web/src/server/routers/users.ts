@@ -1,10 +1,28 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
 import { hash } from "bcryptjs";
+import type { PrismaClient } from "@prisma/client";
+
+const DEFAULT_USER_EMAIL = "admin@clio.local";
+
+export async function ensureDefaultUser(db: PrismaClient) {
+  const existing = await db.user.findFirst({ orderBy: { createdAt: "asc" } });
+  if (existing) return existing;
+
+  const passwordHash = await hash("password123", 12);
+  return db.user.create({
+    data: {
+      email: DEFAULT_USER_EMAIL,
+      name: "Default User",
+      passwordHash,
+      firmName: "My Firm",
+    },
+  });
+}
 
 export const usersRouter = router({
   list: publicProcedure.query(async ({ ctx }) => {
-    const users = await ctx.db.user.findMany({
+    let users = await ctx.db.user.findMany({
       select: {
         id: true,
         name: true,
@@ -12,6 +30,13 @@ export const usersRouter = router({
       },
       orderBy: { name: "asc" },
     });
+
+    // Auto-create a default user if none exist
+    if (users.length === 0) {
+      const defaultUser = await ensureDefaultUser(ctx.db);
+      users = [{ id: defaultUser.id, name: defaultUser.name, email: defaultUser.email }];
+    }
+
     return { users };
   }),
 

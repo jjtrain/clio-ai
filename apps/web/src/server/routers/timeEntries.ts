@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
+import { ensureDefaultUser } from "./users";
 
 const timeEntryInput = z.object({
   matterId: z.string().min(1, "Matter is required"),
@@ -96,10 +97,18 @@ export const timeEntriesRouter = router({
   create: publicProcedure
     .input(timeEntryInput)
     .mutation(async ({ ctx, input }) => {
+      // Resolve userId: verify it exists, otherwise fall back to default user
+      let userId = input.userId;
+      const userExists = await ctx.db.user.findUnique({ where: { id: userId } });
+      if (!userExists) {
+        const defaultUser = await ensureDefaultUser(ctx.db);
+        userId = defaultUser.id;
+      }
+
       const timeEntry = await ctx.db.timeEntry.create({
         data: {
           matterId: input.matterId,
-          userId: input.userId,
+          userId,
           description: input.description,
           duration: input.duration,
           date: new Date(input.date),

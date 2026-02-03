@@ -19,19 +19,18 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-// Temporary user ID until auth is implemented
-const TEMP_USER_ID = "temp-user-id";
-
 export default function NewTimeEntryPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedMatterId, setSelectedMatterId] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [hours, setHours] = useState("");
   const [minutes, setMinutes] = useState("");
   const [billable, setBillable] = useState(true);
 
   const { data: mattersData } = trpc.matters.list.useQuery({ status: "OPEN" });
+  const { data: usersData } = trpc.users.list.useQuery();
 
   const createEntry = trpc.timeEntries.create.useMutation({
     onSuccess: () => {
@@ -65,9 +64,11 @@ export default function NewTimeEntryPage() {
       return;
     }
 
+    const userId = selectedUserId || usersData?.users?.[0]?.id || "default";
+
     createEntry.mutate({
       matterId: selectedMatterId,
-      userId: TEMP_USER_ID,
+      userId,
       description: formData.get("description") as string,
       duration: totalMinutes,
       date: formData.get("date") as string,
@@ -117,6 +118,25 @@ export default function NewTimeEntryPage() {
               </Select>
             </div>
             
+            <div className="space-y-2">
+              <Label>Timekeeper *</Label>
+              <Select
+                value={selectedUserId || usersData?.users?.[0]?.id || ""}
+                onValueChange={setSelectedUserId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a user" />
+                </SelectTrigger>
+                <SelectContent>
+                  {usersData?.users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name || user.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="date">Date *</Label>
               <Input
