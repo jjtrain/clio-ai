@@ -8,13 +8,10 @@ out
 dist
 build
 
-# Environment
+# Environment (all env files)
 .env
-.env.local
-.env.neon
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
 # IDE
 .idea
@@ -34,9 +31,13 @@ pnpm-debug.log*
 # Testing
 coverage
 
-# Prisma
+# Prisma / Database
 *.db
 *.db-journal
+*.sql
 
+# Vercel
 .vercel
-.env*.local
+
+# Claude Code local settings (may contain credentials)
+.claude/settings.local.json
