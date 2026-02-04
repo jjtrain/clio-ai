@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
+import { useHelcim } from "@/lib/use-helcim";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ import {
   Phone,
   MapPin,
   Trash2,
+  Globe,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -69,6 +71,49 @@ export default function InvoiceDetailPage() {
   );
 
   const { data: firmInfo } = trpc.users.getFirmInfo.useQuery();
+
+  const { data: helcimStatus } = trpc.invoices.helcimEnabled.useQuery();
+
+  const initHelcimCheckout = trpc.invoices.initializeHelcimCheckout.useMutation({
+    onError: (error) => {
+      toast({ title: "Failed to initialize payment", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const confirmHelcimPayment = trpc.invoices.confirmHelcimPayment.useMutation({
+    onSuccess: () => {
+      toast({ title: "Payment successful", description: "Your online payment has been recorded." });
+      utils.invoices.getById.invalidate();
+      utils.invoices.list.invalidate();
+    },
+    onError: (error) => {
+      toast({ title: "Payment verification failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const { isScriptLoaded, openCheckout, isProcessing } = useHelcim({
+    onSuccess: (result) => {
+      if (!invoice) return;
+      confirmHelcimPayment.mutate({
+        invoiceId: invoice.id,
+        transactionId: result.transactionId,
+        approvalCode: result.approvalCode,
+        cardType: result.cardType,
+        amount: result.amount,
+        hash: result.hash,
+        rawResponse: result.rawResponse,
+      });
+    },
+    onError: (error) => {
+      toast({ title: "Payment error", description: error, variant: "destructive" });
+    },
+  });
+
+  const handlePayOnline = async () => {
+    if (!invoice) return;
+    const result = await initHelcimCheckout.mutateAsync({ invoiceId: invoice.id });
+    openCheckout(result.checkoutToken);
+  };
 
   const updateStatus = trpc.invoices.updateStatus.useMutation({
     onSuccess: () => {
@@ -200,6 +245,23 @@ export default function InvoiceDetailPage() {
             </>
           )}
           {(invoice.status === "SENT" || invoice.status === "OVERDUE") && (
+            <>
+            {helcimStatus?.enabled && (
+              <Button
+                className="bg-blue-500 hover:bg-blue-600"
+                onClick={handlePayOnline}
+                disabled={isProcessing || initHelcimCheckout.isLoading || confirmHelcimPayment.isLoading || !isScriptLoaded}
+              >
+                <Globe className="mr-2 h-4 w-4" />
+                {initHelcimCheckout.isLoading
+                  ? "Initializing..."
+                  : isProcessing
+                  ? "Processing..."
+                  : confirmHelcimPayment.isLoading
+                  ? "Confirming..."
+                  : "Pay Online"}
+              </Button>
+            )}
             <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-emerald-500 hover:bg-emerald-600">
@@ -277,6 +339,7 @@ export default function InvoiceDetailPage() {
                 </form>
               </DialogContent>
             </Dialog>
+            </>
           )}
         </div>
       </div>

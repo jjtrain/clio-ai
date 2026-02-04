@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
 import { Decimal } from "@prisma/client/runtime/library";
+import {
+  isHelcimConfigured,
+  initializeCheckout,
+  verifyTransactionResponse,
+} from "@/lib/helcim";
 
 export const invoicesRouter = router({
   list: publicProcedure
@@ -311,5 +316,105 @@ export const invoicesRouter = router({
       });
 
       return { success: true };
+    }),
+
+  helcimEnabled: publicProcedure.query(() => {
+    return { enabled: isHelcimConfigured() };
+  }),
+
+  initializeHelcimCheckout: publicProcedure
+    .input(z.object({ invoiceId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice.findUnique({
+        where: { id: input.invoiceId },
+      });
+
+      if (!invoice) {
+        throw new Error("Invoice not found");
+      }
+
+      if (invoice.status !== "SENT" && invoice.status !== "OVERDUE") {
+        throw new Error("Invoice must be in SENT or OVERDUE status to pay online");
+      }
+
+      const balance = new Decimal(invoice.total.toString()).sub(
+        invoice.amountPaid.toString()
+      );
+
+      if (balance.lte(0)) {
+        throw new Error("Invoice has no remaining balance");
+      }
+
+      const result = await initializeCheckout({
+        amount: balance.toNumber(),
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceId: invoice.id,
+      });
+
+      return { checkoutToken: result.checkoutToken, amount: balance.toNumber() };
+    }),
+
+  confirmHelcimPayment: publicProcedure
+    .input(
+      z.object({
+        invoiceId: z.string(),
+        transactionId: z.string(),
+        approvalCode: z.string(),
+        cardType: z.string(),
+        amount: z.string(),
+        hash: z.string(),
+        rawResponse: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice.findUnique({
+        where: { id: input.invoiceId },
+      });
+
+      if (!invoice) {
+        throw new Error("Invoice not found");
+      }
+
+      // Verify the transaction hash
+      const isValid = verifyTransactionResponse(
+        input.invoiceId,
+        input.hash,
+        input.rawResponse
+      );
+
+      if (!isValid) {
+        throw new Error("Transaction verification failed");
+      }
+
+      const paymentAmount = new Decimal(input.amount);
+
+      // Create payment record using existing pattern
+      const payment = await ctx.db.payment.create({
+        data: {
+          invoiceId: input.invoiceId,
+          amount: paymentAmount,
+          paymentDate: new Date(),
+          paymentMethod: "CREDIT_CARD",
+          reference: `Helcim #${input.transactionId}`,
+          notes: `Approval: ${input.approvalCode} | Card: ${input.cardType}`,
+        },
+      });
+
+      // Update invoice amount paid
+      const newAmountPaid = new Decimal(invoice.amountPaid.toString()).add(
+        paymentAmount
+      );
+      const total = new Decimal(invoice.total.toString());
+
+      await ctx.db.invoice.update({
+        where: { id: input.invoiceId },
+        data: {
+          amountPaid: newAmountPaid,
+          status: newAmountPaid.gte(total) ? "PAID" : invoice.status,
+          paidAt: newAmountPaid.gte(total) ? new Date() : invoice.paidAt,
+        },
+      });
+
+      return payment;
     }),
 });

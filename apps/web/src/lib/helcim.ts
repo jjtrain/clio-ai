@@ -1,0 +1,106 @@
+import crypto from "crypto";
+
+// In-memory store for secret tokens, keyed by invoiceId
+// Each entry expires after 30 minutes
+const secretTokenStore = new Map<
+  string,
+  { secretToken: string; expiresAt: number }
+>();
+
+const TOKEN_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+function cleanExpiredTokens() {
+  const now = Date.now();
+  secretTokenStore.forEach((entry, key) => {
+    if (entry.expiresAt <= now) {
+      secretTokenStore.delete(key);
+    }
+  });
+}
+
+export function isHelcimConfigured(): boolean {
+  return !!(process.env.HELCIM_API_TOKEN && process.env.HELCIM_ACCOUNT_ID);
+}
+
+export async function initializeCheckout({
+  amount,
+  invoiceNumber,
+  invoiceId,
+}: {
+  amount: number;
+  invoiceNumber: string;
+  invoiceId: string;
+}): Promise<{ checkoutToken: string }> {
+  const apiToken = process.env.HELCIM_API_TOKEN;
+  const accountId = process.env.HELCIM_ACCOUNT_ID;
+
+  if (!apiToken || !accountId) {
+    throw new Error("Helcim is not configured");
+  }
+
+  const response = await fetch("https://api.helcim.com/v2/helcim-pay/initialize", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-token": apiToken,
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      paymentType: "purchase",
+      amount: amount.toFixed(2),
+      currency: "USD",
+      invoiceNumber,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Helcim API error (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+  const { checkoutToken, secretToken } = data;
+
+  if (!checkoutToken || !secretToken) {
+    throw new Error("Helcim API returned incomplete response");
+  }
+
+  // Store secretToken for later hash verification
+  cleanExpiredTokens();
+  secretTokenStore.set(invoiceId, {
+    secretToken,
+    expiresAt: Date.now() + TOKEN_TTL_MS,
+  });
+
+  return { checkoutToken };
+}
+
+export function verifyTransactionResponse(
+  invoiceId: string,
+  responseHash: string,
+  rawResponse: string
+): boolean {
+  cleanExpiredTokens();
+
+  const entry = secretTokenStore.get(invoiceId);
+  if (!entry) {
+    throw new Error("No pending checkout found for this invoice (may have expired)");
+  }
+
+  const { secretToken } = entry;
+
+  // Helcim hash verification: SHA-256 HMAC of the raw response using secretToken
+  const computedHash = crypto
+    .createHash("sha256")
+    .update(rawResponse + secretToken)
+    .digest("hex");
+
+  const isValid = computedHash === responseHash;
+
+  if (isValid) {
+    // Remove used token
+    secretTokenStore.delete(invoiceId);
+  }
+
+  return isValid;
+}
