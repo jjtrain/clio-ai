@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
 import { Decimal } from "@prisma/client/runtime/library";
 import {
-  isHelcimConfigured,
+  getHelcimCredentials,
   initializeCheckout,
   verifyTransactionResponse,
 } from "@/lib/helcim";
@@ -318,13 +318,19 @@ export const invoicesRouter = router({
       return { success: true };
     }),
 
-  helcimEnabled: publicProcedure.query(() => {
-    return { enabled: isHelcimConfigured() };
+  helcimEnabled: publicProcedure.query(async ({ ctx }) => {
+    const creds = await getHelcimCredentials(ctx.db);
+    return { enabled: !!creds };
   }),
 
   initializeHelcimCheckout: publicProcedure
     .input(z.object({ invoiceId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const creds = await getHelcimCredentials(ctx.db);
+      if (!creds) {
+        throw new Error("Online payments are not configured. Add Helcim credentials in Settings.");
+      }
+
       const invoice = await ctx.db.invoice.findUnique({
         where: { id: input.invoiceId },
       });
@@ -349,6 +355,7 @@ export const invoicesRouter = router({
         amount: balance.toNumber(),
         invoiceNumber: invoice.invoiceNumber,
         invoiceId: invoice.id,
+        apiToken: creds.apiToken,
       });
 
       return { checkoutToken: result.checkoutToken, amount: balance.toNumber() };

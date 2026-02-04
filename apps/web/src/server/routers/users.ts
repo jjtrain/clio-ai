@@ -41,6 +41,22 @@ export const usersRouter = router({
   }),
 
   getFirmInfo: publicProcedure.query(async ({ ctx }) => {
+    // Try Settings table first
+    try {
+      const settings = await ctx.db.settings.findUnique({ where: { id: "default" } });
+      if (settings?.firmName) {
+        return {
+          firmName: settings.firmName || "",
+          email: settings.email || "",
+          phone: settings.phone || "",
+          address: settings.address || "",
+        };
+      }
+    } catch {
+      // Settings table may not exist yet, fall through to User
+    }
+
+    // Fall back to User model
     const user = await ctx.db.user.findFirst({ orderBy: { createdAt: "asc" } });
     if (!user) {
       const defaultUser = await ensureDefaultUser(ctx.db);

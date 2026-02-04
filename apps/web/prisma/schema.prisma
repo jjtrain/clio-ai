@@ -375,3 +375,21 @@ enum TaskPriority {
   HIGH
   URGENT
 }
+
+// Application-wide settings (singleton row)
+model Settings {
+  id                String   @id @default("default")
+  firmName          String?
+  address           String?
+  city              String?
+  state             String?
+  zip               String?
+  phone             String?
+  email             String?
+  website           String?
+  defaultHourlyRate Decimal  @default(450) @db.Decimal(10, 2)
+  helcimApiToken    String?
+  helcimAccountId   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

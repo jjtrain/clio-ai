@@ -18,26 +18,43 @@ function cleanExpiredTokens() {
   });
 }
 
-export function isHelcimConfigured(): boolean {
-  return !!(process.env.HELCIM_API_TOKEN && process.env.HELCIM_ACCOUNT_ID);
+export async function getHelcimCredentials(
+  db: any
+): Promise<{ apiToken: string; accountId: string } | null> {
+  // Try Settings table first
+  try {
+    const settings = await db.settings.findUnique({ where: { id: "default" } });
+    if (settings?.helcimApiToken && settings?.helcimAccountId) {
+      return {
+        apiToken: settings.helcimApiToken,
+        accountId: settings.helcimAccountId,
+      };
+    }
+  } catch {
+    // Settings table may not exist yet
+  }
+
+  // Fall back to env vars
+  const apiToken = process.env.HELCIM_API_TOKEN;
+  const accountId = process.env.HELCIM_ACCOUNT_ID;
+  if (apiToken && accountId) {
+    return { apiToken, accountId };
+  }
+
+  return null;
 }
 
 export async function initializeCheckout({
   amount,
   invoiceNumber,
   invoiceId,
+  apiToken,
 }: {
   amount: number;
   invoiceNumber: string;
   invoiceId: string;
+  apiToken: string;
 }): Promise<{ checkoutToken: string }> {
-  const apiToken = process.env.HELCIM_API_TOKEN;
-  const accountId = process.env.HELCIM_ACCOUNT_ID;
-
-  if (!apiToken || !accountId) {
-    throw new Error("Helcim is not configured");
-  }
-
   const response = await fetch("https://api.helcim.com/v2/helcim-pay/initialize", {
     method: "POST",
     headers: {
@@ -89,7 +106,7 @@ export function verifyTransactionResponse(
 
   const { secretToken } = entry;
 
-  // Helcim hash verification: SHA-256 HMAC of the raw response using secretToken
+  // Helcim hash verification: SHA-256 of raw response + secretToken
   const computedHash = crypto
     .createHash("sha256")
     .update(rawResponse + secretToken)

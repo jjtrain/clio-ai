@@ -247,7 +247,7 @@ export default function InvoiceDetailPage() {
             <Button
               className="bg-blue-500 hover:bg-blue-600"
               onClick={handlePayOnline}
-              disabled={isProcessing || initHelcimCheckout.isLoading || confirmHelcimPayment.isLoading || !isScriptLoaded}
+              disabled={isProcessing || initHelcimCheckout.isLoading || confirmHelcimPayment.isLoading}
             >
               <Globe className="mr-2 h-4 w-4" />
               {initHelcimCheckout.isLoading
