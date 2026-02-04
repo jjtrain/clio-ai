@@ -72,8 +72,6 @@ export default function InvoiceDetailPage() {
 
   const { data: firmInfo } = trpc.users.getFirmInfo.useQuery();
 
-  const { data: helcimStatus } = trpc.invoices.helcimEnabled.useQuery();
-
   const initHelcimCheckout = trpc.invoices.initializeHelcimCheckout.useMutation({
     onError: (error) => {
       toast({ title: "Failed to initialize payment", description: error.message, variant: "destructive" });
@@ -246,22 +244,20 @@ export default function InvoiceDetailPage() {
           )}
           {(invoice.status === "SENT" || invoice.status === "OVERDUE") && (
             <>
-            {helcimStatus?.enabled && (
-              <Button
-                className="bg-blue-500 hover:bg-blue-600"
-                onClick={handlePayOnline}
-                disabled={isProcessing || initHelcimCheckout.isLoading || confirmHelcimPayment.isLoading || !isScriptLoaded}
-              >
-                <Globe className="mr-2 h-4 w-4" />
-                {initHelcimCheckout.isLoading
-                  ? "Initializing..."
-                  : isProcessing
-                  ? "Processing..."
-                  : confirmHelcimPayment.isLoading
-                  ? "Confirming..."
-                  : "Pay Online"}
-              </Button>
-            )}
+            <Button
+              className="bg-blue-500 hover:bg-blue-600"
+              onClick={handlePayOnline}
+              disabled={isProcessing || initHelcimCheckout.isLoading || confirmHelcimPayment.isLoading || !isScriptLoaded}
+            >
+              <Globe className="mr-2 h-4 w-4" />
+              {initHelcimCheckout.isLoading
+                ? "Initializing..."
+                : isProcessing
+                ? "Processing..."
+                : confirmHelcimPayment.isLoading
+                ? "Confirming..."
+                : "Pay Online"}
+            </Button>
             <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-emerald-500 hover:bg-emerald-600">
