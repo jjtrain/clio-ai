@@ -85,6 +85,7 @@ export default function InvoiceDetailPage() {
 
   const { data: firmInfo } = trpc.users.getFirmInfo.useQuery();
   const { data: helcimStatus } = trpc.invoices.helcimEnabled.useQuery();
+  const { data: rateData } = trpc.users.getDefaultHourlyRate.useQuery();
 
   // Log helcim status for debugging
   useEffect(() => {
@@ -228,7 +229,7 @@ export default function InvoiceDetailPage() {
   const addEditLineItem = () => {
     setEditLineItems((prev) => [
       ...prev,
-      { description: "", quantity: "1", rate: "450" },
+      { description: "", quantity: "1", rate: (rateData?.rate || 450).toString() },
     ]);
   };
 

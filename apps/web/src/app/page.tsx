@@ -84,6 +84,9 @@ export default function DashboardPage() {
   const { data: invoiceSummary } = trpc.invoices.summary.useQuery();
   const { data: trustSummary } = trpc.trust.summary.useQuery();
   const { data: tasksSummary } = trpc.tasks.dashboardSummary.useQuery();
+  const { data: rateData } = trpc.users.getDefaultHourlyRate.useQuery();
+
+  const defaultRate = rateData?.rate ?? 450;
 
   const formatHours = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -124,8 +127,8 @@ export default function DashboardPage() {
         />
         <MetricCard
           title="Billable Amount"
-          value={`$${((timeSummary?.billableMinutes ?? 0) / 60 * 450).toLocaleString()}`}
-          subtitle="At $450/hr"
+          value={`$${((timeSummary?.billableMinutes ?? 0) / 60 * defaultRate).toLocaleString()}`}
+          subtitle={`At $${defaultRate}/hr`}
           icon={DollarSign}
           color="orange"
         />

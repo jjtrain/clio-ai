@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
@@ -54,11 +54,19 @@ function NewInvoiceForm() {
     return date.toISOString().split("T")[0];
   });
   const [taxRate, setTaxRate] = useState("0");
-  const [defaultRate, setDefaultRate] = useState("450");
+  const [defaultRate, setDefaultRate] = useState("");
   const [notes, setNotes] = useState("");
   const [manualLineItems, setManualLineItems] = useState<ManualLineItem[]>([]);
 
   const { data: mattersData } = trpc.matters.list.useQuery({});
+  const { data: rateData } = trpc.users.getDefaultHourlyRate.useQuery();
+
+  // Set default rate from settings when loaded
+  useEffect(() => {
+    if (rateData?.rate && !defaultRate) {
+      setDefaultRate(rateData.rate.toString());
+    }
+  }, [rateData, defaultRate]);
   const { data: timeEntries, isLoading: entriesLoading } = trpc.invoices.getUnbilledTimeEntries.useQuery(
     { matterId },
     { enabled: !!matterId }

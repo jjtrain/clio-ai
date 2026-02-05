@@ -55,6 +55,16 @@ export async function initializeCheckout({
   invoiceId: string;
   apiToken: string;
 }): Promise<{ checkoutToken: string }> {
+  // Helcim requires numeric-only invoice numbers (no hyphens or special chars)
+  // Extract just the numeric portion from "INV-1001" -> "1001"
+  const numericInvoiceNumber = invoiceNumber.replace(/[^0-9]/g, "");
+
+  console.log("[Helcim] Initializing checkout:", {
+    amount: amount.toFixed(2),
+    originalInvoiceNumber: invoiceNumber,
+    numericInvoiceNumber,
+  });
+
   const response = await fetch("https://api.helcim.com/v2/helcim-pay/initialize", {
     method: "POST",
     headers: {
@@ -66,7 +76,7 @@ export async function initializeCheckout({
       paymentType: "purchase",
       amount: amount.toFixed(2),
       currency: "USD",
-      invoiceNumber,
+      invoiceNumber: numericInvoiceNumber,
     }),
   });
 

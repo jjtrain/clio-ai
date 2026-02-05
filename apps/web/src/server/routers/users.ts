@@ -50,6 +50,7 @@ export const usersRouter = router({
           email: settings.email || "",
           phone: settings.phone || "",
           address: settings.address || "",
+          defaultHourlyRate: settings.defaultHourlyRate ? Number(settings.defaultHourlyRate) : 450,
         };
       }
     } catch {
@@ -65,6 +66,7 @@ export const usersRouter = router({
         email: defaultUser.email,
         phone: defaultUser.phone || "",
         address: defaultUser.address || "",
+        defaultHourlyRate: 450,
       };
     }
     return {
@@ -72,7 +74,20 @@ export const usersRouter = router({
       email: user.email,
       phone: user.phone || "",
       address: user.address || "",
+      defaultHourlyRate: 450,
     };
+  }),
+
+  getDefaultHourlyRate: publicProcedure.query(async ({ ctx }) => {
+    try {
+      const settings = await ctx.db.settings.findUnique({ where: { id: "default" } });
+      if (settings?.defaultHourlyRate) {
+        return { rate: Number(settings.defaultHourlyRate) };
+      }
+    } catch {
+      // Settings table may not exist yet
+    }
+    return { rate: 450 };
   }),
 
   register: publicProcedure
