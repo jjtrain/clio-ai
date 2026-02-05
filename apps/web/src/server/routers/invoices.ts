@@ -225,6 +225,124 @@ export const invoicesRouter = router({
       return invoice;
     }),
 
+  update: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        lineItems: z.array(z.object({
+          id: z.string().optional(), // existing item ID, if updating
+          description: z.string(),
+          quantity: z.number().min(0),
+          rate: z.number().min(0),
+        })),
+        dueDate: z.string().optional(),
+        taxRate: z.number().min(0).max(100).optional(),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice.findUnique({
+        where: { id: input.id },
+        include: { lineItems: true },
+      });
+
+      if (!invoice) {
+        throw new Error("Invoice not found");
+      }
+
+      // Only allow editing DRAFT invoices
+      if (invoice.status !== "DRAFT") {
+        throw new Error("Only draft invoices can be edited");
+      }
+
+      // Calculate new totals from line items
+      let subtotal = new Decimal(0);
+      for (const item of input.lineItems) {
+        const quantity = new Decimal(item.quantity);
+        const rate = new Decimal(item.rate);
+        subtotal = subtotal.add(quantity.mul(rate));
+      }
+
+      const taxRate = input.taxRate !== undefined
+        ? new Decimal(input.taxRate)
+        : new Decimal(invoice.taxRate.toString());
+      const taxAmount = subtotal.mul(taxRate).div(100);
+      const total = subtotal.add(taxAmount);
+
+      // Delete existing line items that are not in the update
+      const existingIds = input.lineItems
+        .filter(item => item.id)
+        .map(item => item.id as string);
+
+      // Unlink time entries from line items being deleted
+      const lineItemsToDelete = invoice.lineItems.filter(li => !existingIds.includes(li.id));
+      for (const li of lineItemsToDelete) {
+        await ctx.db.timeEntry.updateMany({
+          where: { invoiceLineItemId: li.id },
+          data: { invoiceLineItemId: null },
+        });
+      }
+
+      // Delete old line items
+      await ctx.db.invoiceLineItem.deleteMany({
+        where: {
+          invoiceId: input.id,
+          id: { notIn: existingIds },
+        },
+      });
+
+      // Update or create line items
+      for (const item of input.lineItems) {
+        const quantity = new Decimal(item.quantity);
+        const rate = new Decimal(item.rate);
+        const amount = quantity.mul(rate);
+
+        if (item.id) {
+          // Update existing
+          await ctx.db.invoiceLineItem.update({
+            where: { id: item.id },
+            data: {
+              description: item.description,
+              quantity,
+              rate,
+              amount,
+            },
+          });
+        } else {
+          // Create new
+          await ctx.db.invoiceLineItem.create({
+            data: {
+              invoiceId: input.id,
+              description: item.description,
+              quantity,
+              rate,
+              amount,
+              date: new Date(),
+            },
+          });
+        }
+      }
+
+      // Update invoice totals
+      const updatedInvoice = await ctx.db.invoice.update({
+        where: { id: input.id },
+        data: {
+          subtotal,
+          taxRate,
+          taxAmount,
+          total,
+          dueDate: input.dueDate ? new Date(input.dueDate) : undefined,
+          notes: input.notes,
+        },
+        include: {
+          lineItems: true,
+          matter: { include: { client: true } },
+        },
+      });
+
+      return updatedInvoice;
+    }),
+
   updateStatus: publicProcedure
     .input(
       z.object({

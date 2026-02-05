@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
@@ -30,11 +30,11 @@ import {
   Printer,
   Plus,
   CreditCard,
-  Building2,
   Mail,
   Phone,
   MapPin,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -51,6 +51,13 @@ function formatHours(hours: number | string): string {
   return num.toFixed(2);
 }
 
+interface EditLineItem {
+  id?: string;
+  description: string;
+  quantity: string;
+  rate: string;
+}
+
 export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -58,11 +65,18 @@ export default function InvoiceDetailPage() {
   const utils = trpc.useUtils();
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [paymentMethod, setPaymentMethod] = useState<string>("BANK_TRANSFER");
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
+
+  // Edit form state
+  const [editLineItems, setEditLineItems] = useState<EditLineItem[]>([]);
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editTaxRate, setEditTaxRate] = useState("0");
+  const [editNotes, setEditNotes] = useState("");
 
   const { data: invoice, isLoading } = trpc.invoices.getById.useQuery(
     { id: params.id as string },
@@ -70,9 +84,18 @@ export default function InvoiceDetailPage() {
   );
 
   const { data: firmInfo } = trpc.users.getFirmInfo.useQuery();
+  const { data: helcimStatus } = trpc.invoices.helcimEnabled.useQuery();
+
+  // Log helcim status for debugging
+  useEffect(() => {
+    if (helcimStatus !== undefined) {
+      console.log("[Helcim] Payment enabled:", helcimStatus.enabled);
+    }
+  }, [helcimStatus]);
 
   const initHelcimCheckout = trpc.invoices.initializeHelcimCheckout.useMutation({
     onError: (error) => {
+      console.error("[Helcim] Checkout init error:", error.message);
       toast({ title: "Failed to initialize payment", description: error.message, variant: "destructive" });
     },
   });
@@ -84,12 +107,14 @@ export default function InvoiceDetailPage() {
       utils.invoices.list.invalidate();
     },
     onError: (error) => {
+      console.error("[Helcim] Payment confirm error:", error.message);
       toast({ title: "Payment verification failed", description: error.message, variant: "destructive" });
     },
   });
 
   const { isScriptLoaded, openCheckout, isProcessing } = useHelcim({
     onSuccess: (result) => {
+      console.log("[Helcim] Payment success:", result);
       if (!invoice) return;
       confirmHelcimPayment.mutate({
         invoiceId: invoice.id,
@@ -102,14 +127,26 @@ export default function InvoiceDetailPage() {
       });
     },
     onError: (error) => {
+      console.error("[Helcim] Payment error:", error);
       toast({ title: "Payment error", description: error, variant: "destructive" });
     },
   });
 
+  // Log script loaded status
+  useEffect(() => {
+    console.log("[Helcim] Script loaded:", isScriptLoaded);
+  }, [isScriptLoaded]);
+
   const handlePayOnline = async () => {
     if (!invoice) return;
-    const result = await initHelcimCheckout.mutateAsync({ invoiceId: invoice.id });
-    openCheckout(result.checkoutToken);
+    console.log("[Helcim] Starting payment for invoice:", invoice.id);
+    try {
+      const result = await initHelcimCheckout.mutateAsync({ invoiceId: invoice.id });
+      console.log("[Helcim] Checkout token received, opening modal");
+      openCheckout(result.checkoutToken);
+    } catch (error) {
+      console.error("[Helcim] Failed to start payment:", error);
+    }
   };
 
   const updateStatus = trpc.invoices.updateStatus.useMutation({
@@ -117,6 +154,18 @@ export default function InvoiceDetailPage() {
       toast({ title: "Invoice status updated" });
       utils.invoices.getById.invalidate();
       utils.invoices.list.invalidate();
+    },
+  });
+
+  const updateInvoice = trpc.invoices.update.useMutation({
+    onSuccess: () => {
+      toast({ title: "Invoice updated successfully" });
+      utils.invoices.getById.invalidate();
+      utils.invoices.list.invalidate();
+      setEditDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({ title: "Error updating invoice", description: error.message, variant: "destructive" });
     },
   });
 
@@ -160,6 +209,77 @@ export default function InvoiceDetailPage() {
     });
   };
 
+  const openEditDialog = () => {
+    if (!invoice) return;
+    setEditLineItems(
+      invoice.lineItems.map((item) => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity.toString(),
+        rate: item.rate.toString(),
+      }))
+    );
+    setEditDueDate(new Date(invoice.dueDate).toISOString().split("T")[0]);
+    setEditTaxRate(invoice.taxRate.toString());
+    setEditNotes(invoice.notes || "");
+    setEditDialogOpen(true);
+  };
+
+  const addEditLineItem = () => {
+    setEditLineItems((prev) => [
+      ...prev,
+      { description: "", quantity: "1", rate: "450" },
+    ]);
+  };
+
+  const updateEditLineItem = (index: number, field: keyof EditLineItem, value: string) => {
+    setEditLineItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const removeEditLineItem = (index: number) => {
+    setEditLineItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const calculateEditTotals = () => {
+    let subtotal = 0;
+    for (const item of editLineItems) {
+      const qty = parseFloat(item.quantity) || 0;
+      const rate = parseFloat(item.rate) || 0;
+      subtotal += qty * rate;
+    }
+    const tax = subtotal * (parseFloat(editTaxRate) / 100);
+    return { subtotal, tax, total: subtotal + tax };
+  };
+
+  const handleUpdateInvoice = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!invoice) return;
+
+    const validItems = editLineItems.filter(
+      (item) => item.description.trim() && parseFloat(item.quantity) > 0
+    );
+
+    if (validItems.length === 0) {
+      toast({ title: "Please add at least one line item", variant: "destructive" });
+      return;
+    }
+
+    updateInvoice.mutate({
+      id: invoice.id,
+      lineItems: validItems.map((item) => ({
+        id: item.id,
+        description: item.description,
+        quantity: parseFloat(item.quantity),
+        rate: parseFloat(item.rate),
+      })),
+      dueDate: editDueDate,
+      taxRate: parseFloat(editTaxRate),
+      notes: editNotes || undefined,
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -180,6 +300,8 @@ export default function InvoiceDetailPage() {
   }
 
   const balance = parseFloat(invoice.total.toString()) - parseFloat(invoice.amountPaid.toString());
+  const editTotals = calculateEditTotals();
+  const canPayOnline = (invoice.status === "SENT" || invoice.status === "OVERDUE") && balance > 0;
 
   const getStatusStyles = (status: string) => {
     switch (status) {
@@ -220,6 +342,10 @@ export default function InvoiceDetailPage() {
           </Button>
           {invoice.status === "DRAFT" && (
             <>
+              <Button variant="outline" onClick={openEditDialog}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => updateStatus.mutate({ id: invoice.id, status: "SENT" })}
@@ -241,103 +367,232 @@ export default function InvoiceDetailPage() {
               </Button>
             </>
           )}
-          {(invoice.status === "SENT" || invoice.status === "OVERDUE") && (
+          {canPayOnline && (
             <>
-            <Button
-              className="bg-blue-500 hover:bg-blue-600"
-              onClick={handlePayOnline}
-              disabled={isProcessing || initHelcimCheckout.isLoading || confirmHelcimPayment.isLoading}
-            >
-              <CreditCard className="mr-2 h-4 w-4" />
-              {initHelcimCheckout.isLoading
-                ? "Initializing..."
-                : isProcessing
-                ? "Processing..."
-                : confirmHelcimPayment.isLoading
-                ? "Confirming..."
-                : "Pay Now"}
-            </Button>
-            <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-emerald-500 hover:bg-emerald-600">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Record Payment
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Record Payment</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleAddPayment} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Amount</Label>
-                    <Input
-                      type="number"
-                      value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(e.target.value)}
-                      placeholder={formatCurrency(balance)}
-                      min="0.01"
-                      max={balance}
-                      step="0.01"
-                      required
-                    />
-                    <p className="text-sm text-gray-500">Balance due: {formatCurrency(balance)}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Payment Date</Label>
-                    <Input
-                      type="date"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Payment Method</Label>
-                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
-                        <SelectItem value="CHECK">Check</SelectItem>
-                        <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
-                        <SelectItem value="CASH">Cash</SelectItem>
-                        <SelectItem value="OTHER">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Reference (optional)</Label>
-                    <Input
-                      value={paymentReference}
-                      onChange={(e) => setPaymentReference(e.target.value)}
-                      placeholder="Check number, transaction ID, etc."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Notes (optional)</Label>
-                    <Input
-                      value={paymentNotes}
-                      onChange={(e) => setPaymentNotes(e.target.value)}
-                      placeholder="Additional notes"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setPaymentDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={addPayment.isLoading}>
-                      {addPayment.isLoading ? "Recording..." : "Record Payment"}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+              <Button
+                className="bg-blue-500 hover:bg-blue-600"
+                onClick={handlePayOnline}
+                disabled={isProcessing || initHelcimCheckout.isLoading || confirmHelcimPayment.isLoading}
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                {initHelcimCheckout.isLoading
+                  ? "Initializing..."
+                  : isProcessing
+                  ? "Processing..."
+                  : confirmHelcimPayment.isLoading
+                  ? "Confirming..."
+                  : "Pay Now"}
+              </Button>
+              <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-emerald-500 hover:bg-emerald-600">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Record Payment
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Record Payment</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleAddPayment} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Amount</Label>
+                      <Input
+                        type="number"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        placeholder={formatCurrency(balance)}
+                        min="0.01"
+                        max={balance}
+                        step="0.01"
+                        required
+                      />
+                      <p className="text-sm text-gray-500">Balance due: {formatCurrency(balance)}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Payment Date</Label>
+                      <Input
+                        type="date"
+                        value={paymentDate}
+                        onChange={(e) => setPaymentDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Payment Method</Label>
+                      <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                          <SelectItem value="CHECK">Check</SelectItem>
+                          <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
+                          <SelectItem value="CASH">Cash</SelectItem>
+                          <SelectItem value="OTHER">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Reference (optional)</Label>
+                      <Input
+                        value={paymentReference}
+                        onChange={(e) => setPaymentReference(e.target.value)}
+                        placeholder="Check number, transaction ID, etc."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Notes (optional)</Label>
+                      <Input
+                        value={paymentNotes}
+                        onChange={(e) => setPaymentNotes(e.target.value)}
+                        placeholder="Additional notes"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button type="button" variant="outline" onClick={() => setPaymentDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={addPayment.isLoading}>
+                        {addPayment.isLoading ? "Recording..." : "Record Payment"}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </>
           )}
         </div>
       </div>
+
+      {/* Edit Invoice Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Invoice</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdateInvoice} className="space-y-6">
+            {/* Line Items */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <Label className="text-base font-semibold">Line Items</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addEditLineItem}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Item
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {editLineItems.map((item, index) => {
+                  const amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0);
+                  return (
+                    <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Description"
+                          value={item.description}
+                          onChange={(e) => updateEditLineItem(index, "description", e.target.value)}
+                        />
+                      </div>
+                      <div className="w-20">
+                        <Input
+                          type="number"
+                          placeholder="Qty"
+                          value={item.quantity}
+                          onChange={(e) => updateEditLineItem(index, "quantity", e.target.value)}
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                      <div className="w-24">
+                        <Input
+                          type="number"
+                          placeholder="Rate"
+                          value={item.rate}
+                          onChange={(e) => updateEditLineItem(index, "rate", e.target.value)}
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                      <div className="w-24 text-right font-medium">
+                        {formatCurrency(amount)}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeEditLineItem(index)}
+                        className="text-red-500 hover:text-red-700"
+                        disabled={editLineItems.length === 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Settings */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input
+                  type="date"
+                  value={editDueDate}
+                  onChange={(e) => setEditDueDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Tax Rate (%)</Label>
+                <Input
+                  type="number"
+                  value={editTaxRate}
+                  onChange={(e) => setEditTaxRate(e.target.value)}
+                  min="0"
+                  max="100"
+                  step="0.01"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Input
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                placeholder="Payment terms, instructions, etc."
+              />
+            </div>
+
+            {/* Totals Preview */}
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between text-gray-600">
+                <span>Subtotal</span>
+                <span>{formatCurrency(editTotals.subtotal)}</span>
+              </div>
+              {parseFloat(editTaxRate) > 0 && (
+                <div className="flex justify-between text-gray-600">
+                  <span>Tax ({editTaxRate}%)</span>
+                  <span>{formatCurrency(editTotals.tax)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                <span>Total</span>
+                <span>{formatCurrency(editTotals.total)}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateInvoice.isLoading}>
+                {updateInvoice.isLoading ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Invoice Document */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 print:shadow-none print:border-none print:p-0">
@@ -425,7 +680,7 @@ export default function InvoiceDetailPage() {
             <thead>
               <tr className="border-b-2 border-gray-200">
                 <th className="text-left py-3 text-sm font-semibold text-gray-600">Description</th>
-                <th className="text-right py-3 text-sm font-semibold text-gray-600 w-20">Hours</th>
+                <th className="text-right py-3 text-sm font-semibold text-gray-600 w-20">Qty</th>
                 <th className="text-right py-3 text-sm font-semibold text-gray-600 w-24">Rate</th>
                 <th className="text-right py-3 text-sm font-semibold text-gray-600 w-28">Amount</th>
               </tr>
