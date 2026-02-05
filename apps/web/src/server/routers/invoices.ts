@@ -499,6 +499,13 @@ export const invoicesRouter = router({
         throw new Error("Invoice has no remaining balance");
       }
 
+      console.log("[Helcim Server] Invoice data:", {
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        total: invoice.total.toString(),
+        balance: balance.toString(),
+      });
+
       const result = await initializeCheckout({
         amount: balance.toNumber(),
         invoiceNumber: invoice.invoiceNumber,
