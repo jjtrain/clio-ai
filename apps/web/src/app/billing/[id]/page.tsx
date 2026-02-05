@@ -35,7 +35,6 @@ import {
   Phone,
   MapPin,
   Trash2,
-  Globe,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -249,14 +248,14 @@ export default function InvoiceDetailPage() {
               onClick={handlePayOnline}
               disabled={isProcessing || initHelcimCheckout.isLoading || confirmHelcimPayment.isLoading}
             >
-              <Globe className="mr-2 h-4 w-4" />
+              <CreditCard className="mr-2 h-4 w-4" />
               {initHelcimCheckout.isLoading
                 ? "Initializing..."
                 : isProcessing
                 ? "Processing..."
                 : confirmHelcimPayment.isLoading
                 ? "Confirming..."
-                : "Pay Online"}
+                : "Pay Now"}
             </Button>
             <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
               <DialogTrigger asChild>

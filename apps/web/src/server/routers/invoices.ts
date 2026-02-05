@@ -94,7 +94,12 @@ export const invoicesRouter = router({
     .input(
       z.object({
         matterId: z.string(),
-        timeEntryIds: z.array(z.string()),
+        timeEntryIds: z.array(z.string()).optional().default([]),
+        manualLineItems: z.array(z.object({
+          description: z.string(),
+          quantity: z.number().min(0),
+          rate: z.number().min(0),
+        })).optional().default([]),
         dueDate: z.string(),
         taxRate: z.number().min(0).max(100).optional().default(0),
         notes: z.string().optional(),
@@ -102,20 +107,23 @@ export const invoicesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // Get the time entries
-      const timeEntries = await ctx.db.timeEntry.findMany({
-        where: {
-          id: { in: input.timeEntryIds },
-          billable: true,
-          invoiceLineItemId: null,
-        },
-        include: {
-          user: true,
-        },
-      });
+      // Get the time entries if any
+      const timeEntries = input.timeEntryIds.length > 0
+        ? await ctx.db.timeEntry.findMany({
+            where: {
+              id: { in: input.timeEntryIds },
+              billable: true,
+              invoiceLineItemId: null,
+            },
+            include: {
+              user: true,
+            },
+          })
+        : [];
 
-      if (timeEntries.length === 0) {
-        throw new Error("No billable time entries selected");
+      // Must have at least one time entry or one manual line item
+      if (timeEntries.length === 0 && input.manualLineItems.length === 0) {
+        throw new Error("Please add at least one line item or select time entries");
       }
 
       // Generate invoice number
@@ -138,6 +146,7 @@ export const invoicesRouter = router({
         timeEntryIds: string[];
       }[] = [];
 
+      // Add time entry line items
       for (const entry of timeEntries) {
         const hours = new Decimal(entry.duration).div(60);
         const rate = entry.rate ? new Decimal(entry.rate.toString()) : new Decimal(input.defaultRate);
@@ -151,6 +160,23 @@ export const invoicesRouter = router({
           amount: amount,
           date: entry.date,
           timeEntryIds: [entry.id],
+        });
+      }
+
+      // Add manual line items
+      for (const item of input.manualLineItems) {
+        const quantity = new Decimal(item.quantity);
+        const rate = new Decimal(item.rate);
+        const amount = quantity.mul(rate);
+        subtotal = subtotal.add(amount);
+
+        lineItemsData.push({
+          description: item.description,
+          quantity: quantity,
+          rate: rate,
+          amount: amount,
+          date: new Date(),
+          timeEntryIds: [],
         });
       }
 
@@ -184,12 +210,16 @@ export const invoicesRouter = router({
         },
       });
 
-      // Link time entries to line items
-      for (let i = 0; i < lineItemsData.length; i++) {
-        await ctx.db.timeEntry.updateMany({
-          where: { id: { in: lineItemsData[i].timeEntryIds } },
-          data: { invoiceLineItemId: invoice.lineItems[i].id },
-        });
+      // Link time entries to line items (only for time-entry-based items)
+      let lineItemIndex = 0;
+      for (const itemData of lineItemsData) {
+        if (itemData.timeEntryIds.length > 0) {
+          await ctx.db.timeEntry.updateMany({
+            where: { id: { in: itemData.timeEntryIds } },
+            data: { invoiceLineItemId: invoice.lineItems[lineItemIndex].id },
+          });
+        }
+        lineItemIndex++;
       }
 
       return invoice;
