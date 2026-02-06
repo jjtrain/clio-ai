@@ -55,14 +55,21 @@ export async function initializeCheckout({
   invoiceId: string;
   apiToken: string;
 }): Promise<{ checkoutToken: string }> {
-  // Helcim requires numeric-only invoice numbers (no hyphens or special chars)
-  // Extract just the numeric portion from "INV-1001" -> "1001"
-  const numericInvoiceNumber = invoiceNumber.replace(/[^0-9]/g, "");
+  // Note: We don't pass invoiceNumber to Helcim because that field expects
+  // an existing invoice in Helcim's system. Instead, we let Helcim auto-create
+  // an invoice on successful payment.
+
+  const requestBody = {
+    paymentType: "purchase",
+    amount: parseFloat(amount.toFixed(2)),
+    currency: "USD",
+  };
 
   console.log("[Helcim] Initializing checkout:", {
+    ourInvoiceId: invoiceId,
+    ourInvoiceNumber: invoiceNumber,
     amount: amount.toFixed(2),
-    originalInvoiceNumber: invoiceNumber,
-    numericInvoiceNumber,
+    requestBody,
   });
 
   const response = await fetch("https://api.helcim.com/v2/helcim-pay/initialize", {
@@ -72,16 +79,17 @@ export async function initializeCheckout({
       "api-token": apiToken,
       Accept: "application/json",
     },
-    body: JSON.stringify({
-      paymentType: "purchase",
-      amount: amount.toFixed(2),
-      currency: "USD",
-      invoiceNumber: numericInvoiceNumber,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error("[Helcim] API error:", {
+      status: response.status,
+      statusText: response.statusText,
+      errorBody: errorText,
+      requestBody,
+    });
     throw new Error(`Helcim API error (${response.status}): ${errorText}`);
   }
 
