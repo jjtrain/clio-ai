@@ -8,6 +8,7 @@ import { usersRouter } from "./users";
 import { invoicesRouter } from "./invoices";
 import { trustRouter } from "./trust";
 import { tasksRouter } from "./tasks";
+import { schedulerRouter } from "./scheduler";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   invoices: invoicesRouter,
   trust: trustRouter,
   tasks: tasksRouter,
+  scheduler: schedulerRouter,
 });
 
 export type AppRouter = typeof appRouter;

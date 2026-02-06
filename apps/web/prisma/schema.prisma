@@ -393,3 +393,72 @@ model Settings {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
+
+// Appointment Scheduler Settings (singleton row)
+model SchedulerSettings {
+  id                    String   @id @default("default")
+  isEnabled             Boolean  @default(false)
+  // Availability - JSON array of { dayOfWeek: 0-6, startTime: "09:00", endTime: "17:00" }
+  availability          String?  @db.Text
+  consultationDuration  Int      @default(30)  // minutes
+  consultationFee       Decimal  @default(150) @db.Decimal(10, 2)
+  bufferTime            Int      @default(15)  // minutes between appointments
+  minAdvanceBooking     Int      @default(24)  // hours - minimum notice required
+  maxAdvanceBooking     Int      @default(30)  // days - how far ahead can book
+  preventSameDayBooking Boolean  @default(true)
+  requirePaymentUpfront Boolean  @default(true)
+  // Practice areas offered for consultations
+  practiceAreas         String?  @db.Text  // JSON array of strings
+  confirmationMessage   String?  @db.Text
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// Client Appointments
+model Appointment {
+  id                  String            @id @default(cuid())
+  // Scheduling
+  startTime           DateTime
+  endTime             DateTime
+  duration            Int               // minutes
+  // Client info
+  clientName          String
+  clientEmail         String
+  clientPhone         String?
+  practiceArea        String?
+  notes               String?           @db.Text
+  // Status
+  status              AppointmentStatus @default(PENDING)
+  // Payment
+  consultationFee     Decimal           @db.Decimal(10, 2)
+  paymentStatus       PaymentStatus     @default(UNPAID)
+  helcimTransactionId String?
+  paidAt              DateTime?
+  // Calendar integration
+  calendarEventId     String?           // Link to CalendarEvent if created
+  // Timestamps
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  cancelledAt         DateTime?
+  cancellationReason  String?
+  // Reminders
+  reminderSentAt      DateTime?
+
+  @@index([startTime])
+  @@index([status])
+  @@index([clientEmail])
+}
+
+enum AppointmentStatus {
+  PENDING     // Awaiting payment/confirmation
+  CONFIRMED   // Paid and confirmed
+  CANCELLED   // Cancelled by client or firm
+  COMPLETED   // Appointment has occurred
+  NO_SHOW     // Client didn't show up
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}

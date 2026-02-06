@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { User, Building2, Phone, MapPin, Mail, Lock, Save, AlertCircle } from "lucide-react";
+import { User, Building2, Phone, MapPin, Mail, Lock, Save, AlertCircle, Calendar, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -268,6 +269,24 @@ export default function SettingsPage() {
           </div>
         </form>
       </div>
+
+      {/* Scheduler Settings Link */}
+      <Link href="/settings/scheduler">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:border-blue-200 hover:shadow-md transition-all cursor-pointer">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-50">
+                <Calendar className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Appointment Scheduler</h2>
+                <p className="text-sm text-gray-500">Configure online booking for client consultations</p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-gray-400" />
+          </div>
+        </div>
+      </Link>
     </div>
   );
 }
