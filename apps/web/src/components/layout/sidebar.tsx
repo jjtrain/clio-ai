@@ -12,6 +12,7 @@ import {
   Calendar,
   CalendarClock,
   ClipboardList,
+  Inbox,
   LayoutDashboard,
   Scale,
   Settings,
@@ -35,6 +36,7 @@ const mainNavigation = [
   { name: "Calendar", href: "/calendar", icon: Calendar },
   { name: "Appointments", href: "/appointments", icon: CalendarClock },
   { name: "Intake Forms", href: "/intake-forms", icon: ClipboardList },
+  { name: "Lead Inbox", href: "/leads", icon: Inbox },
 ];
 
 const bottomNavigation = [

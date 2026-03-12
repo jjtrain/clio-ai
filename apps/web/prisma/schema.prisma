@@ -564,3 +564,216 @@ enum IntakeLeadStatus {
   DECLINED
   ARCHIVED
 }
+
+// ============================================
+// LEAD INBOX & LIVE CHAT
+// ============================================
+
+model Lead {
+  id              String          @id @default(cuid())
+
+  // Contact info
+  name            String
+  email           String?
+  phone           String?
+
+  // Lead details
+  source          LeadSource      @default(MANUAL)
+  status          LeadStatus      @default(NEW)
+  priority        LeadPriority    @default(MEDIUM)
+  practiceArea    String?
+  description     String?         @db.Text
+
+  // Internal tracking
+  notes           String?         @db.Text
+  assignedTo      String?
+
+  // Source references
+  intakeSubmissionId  String?     @unique
+  chatSessionId       String?     @unique
+  contactFormId       String?
+
+  // Conversion tracking
+  clientId        String?
+  matterId        String?
+  convertedAt     DateTime?
+
+  // Metadata
+  ipAddress       String?
+  userAgent       String?
+  referrer        String?
+
+  // Timestamps
+  lastContactedAt DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  chatSession     ChatSession?    @relation
+  activities      LeadActivity[]
+
+  @@index([status])
+  @@index([source])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([assignedTo])
+}
+
+enum LeadSource {
+  INTAKE_FORM
+  LIVE_CHAT
+  CONTACT_FORM
+  MANUAL
+  REFERRAL
+  WEBSITE
+  PHONE
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFYING
+  QUALIFIED
+  PROPOSAL_SENT
+  CONVERTED
+  DECLINED
+  ARCHIVED
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model LeadActivity {
+  id          String          @id @default(cuid())
+  leadId      String
+  lead        Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  type        LeadActivityType
+  description String          @db.Text
+  metadata    String?         @db.Text
+
+  createdAt   DateTime        @default(now())
+
+  @@index([leadId])
+  @@index([createdAt])
+}
+
+enum LeadActivityType {
+  CREATED
+  STATUS_CHANGED
+  NOTE_ADDED
+  EMAIL_SENT
+  CALL_LOGGED
+  CHAT_MESSAGE
+  FORM_SUBMITTED
+  ASSIGNED
+  CONVERTED
+}
+
+model ChatSession {
+  id              String          @id @default(cuid())
+
+  visitorName     String?
+  visitorEmail    String?
+  visitorPhone    String?
+  practiceArea    String?
+
+  status          ChatSessionStatus @default(AI_HANDLING)
+  isAiHandling    Boolean         @default(true)
+
+  aiSummary       String?         @db.Text
+  aiQualified     Boolean?
+
+  leadId          String?         @unique
+  lead            Lead?           @relation(fields: [leadId], references: [id])
+
+  messages        ChatMessage[]
+
+  ipAddress       String?
+  userAgent       String?
+  referrer        String?
+  pageUrl         String?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  endedAt         DateTime?
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum ChatSessionStatus {
+  AI_HANDLING
+  WAITING_FOR_AGENT
+  AGENT_CONNECTED
+  ENDED
+}
+
+model ChatMessage {
+  id              String          @id @default(cuid())
+  sessionId       String
+  session         ChatSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  role            ChatRole
+  content         String          @db.Text
+
+  createdAt       DateTime        @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+enum ChatRole {
+  VISITOR
+  AI
+  AGENT
+}
+
+model ChatWidgetSettings {
+  id                    String    @id @default("default")
+  isEnabled             Boolean   @default(false)
+
+  widgetColor           String    @default("#3B82F6")
+  widgetPosition        String    @default("bottom-right")
+  welcomeMessage        String?   @db.Text
+  offlineMessage        String?   @db.Text
+
+  aiEnabled             Boolean   @default(true)
+  aiSystemPrompt        String?   @db.Text
+  aiModel               String    @default("claude-sonnet-4-20250514")
+
+  practiceAreas         String?   @db.Text
+
+  autoCreateLead        Boolean   @default(true)
+
+  businessHours         String?   @db.Text
+  showOfflineForm       Boolean   @default(true)
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model ContactFormSubmission {
+  id              String          @id @default(cuid())
+  name            String
+  email           String
+  phone           String?
+  practiceArea    String?
+  message         String          @db.Text
+
+  leadId          String?
+
+  ipAddress       String?
+  userAgent       String?
+  referrer        String?
+  pageUrl         String?
+
+  createdAt       DateTime        @default(now())
+
+  @@index([createdAt])
+}

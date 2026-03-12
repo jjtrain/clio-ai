@@ -476,6 +476,29 @@ export const intakeFormsRouter = router({
         });
       }
 
+      // Create Lead record for the Lead Inbox
+      const lead = await ctx.db.lead.create({
+        data: {
+          name: submitterName || "Unknown",
+          email: submitterEmail,
+          phone: submitterPhone,
+          source: "INTAKE_FORM",
+          status: "NEW",
+          practiceArea: template.practiceArea,
+          description: `Submitted via intake form: ${template.name}`,
+          intakeSubmissionId: submission.id,
+          referrer: input.referrer,
+        },
+      });
+
+      await ctx.db.leadActivity.create({
+        data: {
+          leadId: lead.id,
+          type: "FORM_SUBMITTED",
+          description: `Lead created from intake form "${template.name}"`,
+        },
+      });
+
       // TODO: Send email notification
       if (template.notifyEmail) {
         console.log("[IntakeForms] Notification would be sent to:", template.notifyEmail, {

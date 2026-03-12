@@ -6,7 +6,7 @@ import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 
 const authRoutes = ["/login", "/register", "/book"];
-const publicPrefixes = ["/intake/"];
+const publicPrefixes = ["/intake/", "/widget/"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

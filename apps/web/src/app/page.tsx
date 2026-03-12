@@ -20,6 +20,7 @@ import {
   Flag,
   ExternalLink,
   Copy,
+  Inbox,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
@@ -89,6 +90,8 @@ export default function DashboardPage() {
   const { data: tasksSummary } = trpc.tasks.dashboardSummary.useQuery();
   const { data: rateData } = trpc.users.getDefaultHourlyRate.useQuery();
   const { data: schedulerSettings } = trpc.scheduler.getSettings.useQuery();
+  const { data: recentLeads } = trpc.leads.getRecent.useQuery({ limit: 5 });
+  const { data: leadStats } = trpc.leads.getStats.useQuery();
 
   const defaultRate = rateData?.rate ?? 450;
 
@@ -107,7 +110,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Metric Cards - Stack on mobile, 2 cols on sm, 4 cols on lg */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-5">
         <MetricCard
           title="Total Clients"
           value={clientsData?.clients.length ?? 0}
@@ -135,6 +138,13 @@ export default function DashboardPage() {
           subtitle={`At $${defaultRate}/hr`}
           icon={DollarSign}
           color="orange"
+        />
+        <MetricCard
+          title="New Leads"
+          value={leadStats?.newCount ?? 0}
+          subtitle="Awaiting review"
+          icon={Inbox}
+          color="blue"
         />
       </div>
 
@@ -453,6 +463,85 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Leads */}
+      <Card className="shadow-sm border-gray-100">
+        <CardHeader className="flex flex-row items-center justify-between pb-4 px-4 sm:px-6">
+          <CardTitle className="text-base sm:text-lg font-semibold">Recent Leads</CardTitle>
+          <Button variant="ghost" size="sm" asChild className="text-blue-600 hover:text-blue-700 text-sm">
+            <Link href="/leads">
+              View all
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="px-4 sm:px-6">
+          {!recentLeads || recentLeads.length === 0 ? (
+            <div className="text-center py-6 sm:py-8">
+              <Inbox className="h-10 w-10 sm:h-12 sm:w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500 text-sm sm:text-base">No leads yet</p>
+              <Button asChild className="mt-4" variant="outline" size="sm">
+                <Link href="/leads/new">Add a lead</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2 sm:space-y-3">
+              {recentLeads.map((lead: any) => {
+                const sourceColors: Record<string, string> = {
+                  INTAKE_FORM: "bg-purple-100 text-purple-700",
+                  CONTACT_FORM: "bg-blue-100 text-blue-700",
+                  CHAT_WIDGET: "bg-teal-100 text-teal-700",
+                  MANUAL: "bg-gray-100 text-gray-700",
+                  REFERRAL: "bg-amber-100 text-amber-700",
+                  WEBSITE: "bg-indigo-100 text-indigo-700",
+                };
+                const statusColors: Record<string, string> = {
+                  NEW: "bg-blue-100 text-blue-700",
+                  CONTACTED: "bg-yellow-100 text-yellow-700",
+                  QUALIFIED: "bg-emerald-100 text-emerald-700",
+                  CONVERTED: "bg-green-100 text-green-700",
+                  LOST: "bg-red-100 text-red-700",
+                  UNRESPONSIVE: "bg-gray-100 text-gray-600",
+                };
+                const timeAgo = (date: string) => {
+                  const diff = Date.now() - new Date(date).getTime();
+                  const mins = Math.floor(diff / 60000);
+                  if (mins < 60) return `${mins}m ago`;
+                  const hours = Math.floor(mins / 60);
+                  if (hours < 24) return `${hours}h ago`;
+                  const days = Math.floor(hours / 24);
+                  return `${days}d ago`;
+                };
+                return (
+                  <Link
+                    key={lead.id}
+                    href="/leads"
+                    className="flex items-center justify-between p-2 sm:p-3 rounded-lg hover:bg-gray-50 transition-colors gap-2"
+                  >
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <Inbox className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{lead.name}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-[10px] sm:text-xs font-medium px-1.5 py-0.5 rounded-full ${sourceColors[lead.source] || "bg-gray-100 text-gray-600"}`}>
+                            {lead.source.replace(/_/g, " ")}
+                          </span>
+                          <span className="text-xs text-gray-400">{timeAgo(lead.createdAt)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className={`text-xs font-medium px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full flex-shrink-0 ${statusColors[lead.status] || "bg-gray-100 text-gray-600"}`}>
+                      {lead.status}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Quick Actions - 3 cols on mobile, 6 on md+ */}
       <Card className="shadow-sm border-gray-100">
