@@ -236,8 +236,18 @@ export const leadsRouter = router({
             name: `${lead.practiceArea || "New Matter"} - ${lead.name}`,
             matterNumber: `${year}-${random}`,
             practiceArea: lead.practiceArea,
+            pipelineStage: "NEW",
           },
         });
+
+        await ctx.db.matterActivity.create({
+          data: {
+            matterId: matter.id,
+            type: "LEAD_CONVERTED",
+            description: `Matter created from lead: ${lead.name}`,
+          },
+        });
+
         updateData.matterId = matter.id;
       }
 

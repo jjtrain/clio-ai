@@ -13,6 +13,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ArrowLeft,
   Edit,
   MoreHorizontal,
@@ -24,9 +31,36 @@ import {
   Clock,
   Flag,
   AlertCircle,
+  ArrowRight,
+  Calendar,
+  FileText,
+  UserPlus,
+  MessageSquare,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+
+const stageConfig: Record<string, { label: string; badge: string }> = {
+  NEW:            { label: "New",            badge: "bg-blue-100 text-blue-700" },
+  CONSULTATION:   { label: "Consultation",   badge: "bg-purple-100 text-purple-700" },
+  CONFLICT_CHECK: { label: "Conflict Check", badge: "bg-amber-100 text-amber-700" },
+  RETAINER_SENT:  { label: "Retainer Sent",  badge: "bg-orange-100 text-orange-700" },
+  RETAINED:       { label: "Retained",       badge: "bg-emerald-100 text-emerald-700" },
+  ACTIVE:         { label: "Active",         badge: "bg-green-100 text-green-700" },
+};
+
+const STAGES = ["NEW", "CONSULTATION", "CONFLICT_CHECK", "RETAINER_SENT", "RETAINED", "ACTIVE"] as const;
+
+const activityIcons: Record<string, React.ElementType> = {
+  STAGE_CHANGED: ArrowRight,
+  STATUS_CHANGED: CheckCircle,
+  NOTE_ADDED: MessageSquare,
+  CONSULTATION_SCHEDULED: Calendar,
+  RETAINER_SENT: FileText,
+  TIME_LOGGED: Clock,
+  LEAD_CONVERTED: UserPlus,
+  CREATED: Plus,
+};
 
 export default function MatterDetailPage() {
   const params = useParams();
@@ -37,6 +71,10 @@ export default function MatterDetailPage() {
   const { data: matter, isLoading } = trpc.matters.getById.useQuery({ id: matterId });
   const { data: matterTasks } = trpc.tasks.getByMatter.useQuery(
     { matterId, includeCompleted: false },
+    { enabled: !!matterId }
+  );
+  const { data: activities } = trpc.matters.getActivities.useQuery(
+    { matterId, limit: 20 },
     { enabled: !!matterId }
   );
   const utils = trpc.useUtils();
@@ -51,6 +89,7 @@ export default function MatterDetailPage() {
     onSuccess: () => {
       toast({ title: "Matter closed" });
       utils.matters.getById.invalidate({ id: matterId });
+      utils.matters.getActivities.invalidate({ matterId });
     },
   });
 
@@ -58,6 +97,15 @@ export default function MatterDetailPage() {
     onSuccess: () => {
       toast({ title: "Matter reopened" });
       utils.matters.getById.invalidate({ id: matterId });
+      utils.matters.getActivities.invalidate({ matterId });
+    },
+  });
+
+  const updateStage = trpc.matters.updatePipelineStage.useMutation({
+    onSuccess: () => {
+      toast({ title: "Pipeline stage updated" });
+      utils.matters.getById.invalidate({ id: matterId });
+      utils.matters.getActivities.invalidate({ matterId });
     },
   });
 
@@ -97,6 +145,8 @@ export default function MatterDetailPage() {
     return <div>Matter not found</div>;
   }
 
+  const currentStageConfig = stageConfig[matter.pipelineStage] || stageConfig.NEW;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -107,11 +157,14 @@ export default function MatterDetailPage() {
             </Link>
           </Button>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-muted-foreground">
                 {matter.matterNumber}
               </span>
               {getStatusBadge(matter.status)}
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${currentStageConfig.badge}`}>
+                {currentStageConfig.label}
+              </span>
             </div>
             <h1 className="text-3xl font-bold">{matter.name}</h1>
             <p className="text-muted-foreground">
@@ -126,6 +179,19 @@ export default function MatterDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Select
+            value={matter.pipelineStage}
+            onValueChange={(val) => updateStage.mutate({ id: matterId, stage: val as any })}
+          >
+            <SelectTrigger className="w-[170px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STAGES.map((s) => (
+                <SelectItem key={s} value={s}>{stageConfig[s].label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button variant="outline" asChild>
             <Link href={"/matters/" + matterId + "/edit"}>
               <Edit className="mr-2 h-4 w-4" />
@@ -322,6 +388,38 @@ export default function MatterDetailPage() {
                   <Link href={`/tasks?matterId=${matterId}`}>View all tasks</Link>
                 </Button>
               </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Activity Timeline */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Activity Timeline</CardTitle>
+          <CardDescription>History of changes and events for this matter</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!activities || activities.length === 0 ? (
+            <p className="text-muted-foreground text-center py-6">No activity yet</p>
+          ) : (
+            <div className="space-y-4">
+              {activities.map((activity: any) => {
+                const Icon = activityIcons[activity.type] || Plus;
+                return (
+                  <div key={activity.id} className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5 h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                      <Icon className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-900">{activity.description}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {new Date(activity.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>

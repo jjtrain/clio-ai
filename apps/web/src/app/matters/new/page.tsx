@@ -19,6 +19,15 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useState, Suspense } from "react";
 
+const pipelineStages = [
+  { value: "NEW", label: "New" },
+  { value: "CONSULTATION", label: "Consultation" },
+  { value: "CONFLICT_CHECK", label: "Conflict Check" },
+  { value: "RETAINER_SENT", label: "Retainer Sent" },
+  { value: "RETAINED", label: "Retained" },
+  { value: "ACTIVE", label: "Active" },
+];
+
 const practiceAreas = [
   "Corporate",
   "Litigation",
@@ -42,6 +51,7 @@ function NewMatterForm() {
   const [selectedClientId, setSelectedClientId] = useState(
     searchParams.get("clientId") || ""
   );
+  const [selectedStage, setSelectedStage] = useState("NEW");
 
   const { data: clientsData } = trpc.clients.list.useQuery({});
 
@@ -70,6 +80,7 @@ function NewMatterForm() {
       name: formData.get("name") as string,
       description: formData.get("description") as string,
       practiceArea: formData.get("practiceArea") as string,
+      pipelineStage: selectedStage as any,
     });
   };
 
@@ -127,6 +138,21 @@ function NewMatterForm() {
                   {practiceAreas.map((area) => (
                     <SelectItem key={area} value={area}>
                       {area}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Pipeline Stage</Label>
+              <Select value={selectedStage} onValueChange={setSelectedStage}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select pipeline stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelineStages.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

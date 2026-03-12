@@ -48,8 +48,9 @@ model Matter {
   name         String
   description  String?
   matterNumber String          @unique
-  status       MatterStatus    @default(OPEN)
-  practiceArea String?
+  status        MatterStatus    @default(OPEN)
+  pipelineStage PipelineStage   @default(NEW)
+  practiceArea  String?
   openDate     DateTime        @default(now())
   closeDate    DateTime?
   createdAt    DateTime        @default(now())
@@ -60,8 +61,25 @@ model Matter {
   invoices     Invoice[]
   trustLedgers TrustLedger[]
   tasks        Task[]
+  activities   MatterActivity[]
 
   @@index([clientId])
+  @@index([pipelineStage])
+}
+
+model MatterActivity {
+  id          String              @id @default(cuid())
+  matterId    String
+  matter      Matter              @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  type        MatterActivityType
+  description String              @db.Text
+  metadata    String?             @db.Text
+
+  createdAt   DateTime            @default(now())
+
+  @@index([matterId])
+  @@index([createdAt])
 }
 
 model TimeEntry {
@@ -126,6 +144,26 @@ enum MatterStatus {
   OPEN
   CLOSED
   PENDING
+}
+
+enum PipelineStage {
+  NEW
+  CONSULTATION
+  CONFLICT_CHECK
+  RETAINER_SENT
+  RETAINED
+  ACTIVE
+}
+
+enum MatterActivityType {
+  STAGE_CHANGED
+  STATUS_CHANGED
+  NOTE_ADDED
+  CONSULTATION_SCHEDULED
+  RETAINER_SENT
+  TIME_LOGGED
+  LEAD_CONVERTED
+  CREATED
 }
 
 enum InvoiceStatus {
