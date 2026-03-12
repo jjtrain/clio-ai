@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 
-const authRoutes = ["/login", "/register"];
+const authRoutes = ["/login", "/register", "/book"];
+const publicPrefixes = ["/intake/"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAuthRoute = authRoutes.includes(pathname);
+  const isAuthRoute = authRoutes.includes(pathname) || publicPrefixes.some(p => pathname.startsWith(p));
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Close sidebar when route changes

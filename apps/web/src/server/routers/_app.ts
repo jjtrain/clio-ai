@@ -9,6 +9,7 @@ import { invoicesRouter } from "./invoices";
 import { trustRouter } from "./trust";
 import { tasksRouter } from "./tasks";
 import { schedulerRouter } from "./scheduler";
+import { intakeFormsRouter } from "./intakeForms";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   trust: trustRouter,
   tasks: tasksRouter,
   scheduler: schedulerRouter,
+  intakeForms: intakeFormsRouter,
 });
 
 export type AppRouter = typeof appRouter;

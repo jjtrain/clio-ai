@@ -10,6 +10,8 @@ import {
   Clock,
   FileText,
   Calendar,
+  CalendarClock,
+  ClipboardList,
   LayoutDashboard,
   Scale,
   Settings,
@@ -31,6 +33,8 @@ const mainNavigation = [
   { name: "Trust Accounting", href: "/trust", icon: Landmark },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Calendar", href: "/calendar", icon: Calendar },
+  { name: "Appointments", href: "/appointments", icon: CalendarClock },
+  { name: "Intake Forms", href: "/intake-forms", icon: ClipboardList },
 ];
 
 const bottomNavigation = [

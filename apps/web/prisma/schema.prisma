@@ -462,3 +462,105 @@ enum PaymentStatus {
   PAID
   REFUNDED
 }
+
+// ============================================
+// PUBLIC INTAKE FORMS
+// ============================================
+
+model IntakeFormTemplate {
+  id              String                @id @default(cuid())
+  name            String
+  description     String?               @db.Text
+  slug            String                @unique
+  isPublic        Boolean               @default(true)
+  isActive        Boolean               @default(true)
+  practiceArea    String?
+
+  // Branding
+  headerText      String?               @db.Text
+  confirmationMsg String?               @db.Text
+
+  // Auto-actions on submission
+  autoCreateClient Boolean              @default(true)
+  autoCreateMatter Boolean              @default(false)
+  defaultMatterStatus MatterStatus      @default(OPEN)
+  notifyEmail     String?
+
+  fields          IntakeFormField[]
+  submissions     IntakeFormSubmission[]
+
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+}
+
+model IntakeFormField {
+  id              String                @id @default(cuid())
+  templateId      String
+  template        IntakeFormTemplate     @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  label           String
+  fieldType       IntakeFieldType
+  isRequired      Boolean               @default(false)
+  placeholder     String?
+  helpText        String?
+  options         String?               @db.Text
+  sortOrder       Int                   @default(0)
+
+  clientFieldMap  String?
+
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([templateId])
+  @@index([sortOrder])
+}
+
+enum IntakeFieldType {
+  TEXT
+  TEXTAREA
+  EMAIL
+  PHONE
+  SELECT
+  MULTISELECT
+  CHECKBOX
+  DATE
+  FILE
+}
+
+model IntakeFormSubmission {
+  id              String                @id @default(cuid())
+  templateId      String
+  template        IntakeFormTemplate     @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  data            String                @db.Text
+
+  status          IntakeLeadStatus      @default(NEW)
+  notes           String?               @db.Text
+
+  clientId        String?
+  matterId        String?
+
+  submitterName   String?
+  submitterEmail  String?
+  submitterPhone  String?
+
+  ipAddress       String?
+  userAgent       String?
+  referrer        String?
+
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([templateId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum IntakeLeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  DECLINED
+  ARCHIVED
+}
