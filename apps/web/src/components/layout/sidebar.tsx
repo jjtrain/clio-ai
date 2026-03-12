@@ -22,6 +22,7 @@ import {
   Landmark,
   CheckSquare,
   X,
+  ShieldAlert,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -37,6 +38,7 @@ const mainNavigation = [
   { name: "Appointments", href: "/appointments", icon: CalendarClock },
   { name: "Intake Forms", href: "/intake-forms", icon: ClipboardList },
   { name: "Lead Inbox", href: "/leads", icon: Inbox },
+  { name: "Conflict Check", href: "/conflicts", icon: ShieldAlert },
 ];
 
 const bottomNavigation = [

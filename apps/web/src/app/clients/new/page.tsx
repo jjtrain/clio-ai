@@ -11,11 +11,13 @@ import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { ConflictCheckPanel } from "@/components/conflict-check-panel";
 
 export default function NewClientPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clientName, setClientName] = useState("");
 
   const createClient = trpc.clients.create.useMutation({
     onSuccess: (client) => {
@@ -72,8 +74,22 @@ export default function NewClientPage() {
             {/* Name - required */}
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-medium">Name *</Label>
-              <Input id="name" name="name" required className="h-10 sm:h-11" />
+              <Input
+                id="name"
+                name="name"
+                required
+                className="h-10 sm:h-11"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+              />
             </div>
+
+            {/* Auto Conflict Check */}
+            <ConflictCheckPanel
+              query={clientName}
+              searchType="AUTO_CLIENT"
+              debounceMs={500}
+            />
 
             {/* Email & Phone - stack on mobile, side by side on sm+ */}
             <div className="grid gap-4 sm:grid-cols-2">

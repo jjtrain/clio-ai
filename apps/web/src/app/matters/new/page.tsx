@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useState, Suspense } from "react";
+import { ConflictCheckPanel } from "@/components/conflict-check-panel";
 
 const pipelineStages = [
   { value: "NEW", label: "New" },
@@ -52,6 +53,7 @@ function NewMatterForm() {
     searchParams.get("clientId") || ""
   );
   const [selectedStage, setSelectedStage] = useState("NEW");
+  const [matterName, setMatterName] = useState("");
 
   const { data: clientsData } = trpc.clients.list.useQuery({});
 
@@ -126,8 +128,19 @@ function NewMatterForm() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="name">Matter Name *</Label>
-              <Input id="name" name="name" required />
+              <Input
+                id="name"
+                name="name"
+                required
+                value={matterName}
+                onChange={(e) => setMatterName(e.target.value)}
+              />
             </div>
+            <ConflictCheckPanel
+              query={matterName}
+              searchType="AUTO_MATTER"
+              debounceMs={500}
+            />
             <div className="space-y-2">
               <Label htmlFor="practiceArea">Practice Area</Label>
               <Select name="practiceArea">

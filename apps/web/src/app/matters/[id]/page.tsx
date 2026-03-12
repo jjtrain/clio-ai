@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
@@ -37,8 +38,37 @@ import {
   UserPlus,
   MessageSquare,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { Trash2 } from "lucide-react";
+
+const PARTY_ROLES = [
+  { value: "OPPOSING_PARTY", label: "Opposing Party" },
+  { value: "OPPOSING_COUNSEL", label: "Opposing Counsel" },
+  { value: "CO_COUNSEL", label: "Co-Counsel" },
+  { value: "WITNESS", label: "Witness" },
+  { value: "EXPERT_WITNESS", label: "Expert Witness" },
+  { value: "JUDGE", label: "Judge" },
+  { value: "MEDIATOR", label: "Mediator" },
+  { value: "GUARDIAN", label: "Guardian" },
+  { value: "INTERESTED_PARTY", label: "Interested Party" },
+  { value: "OTHER", label: "Other" },
+];
+
+const roleBadgeColors: Record<string, string> = {
+  OPPOSING_PARTY: "bg-red-100 text-red-700",
+  OPPOSING_COUNSEL: "bg-red-100 text-red-700",
+  CO_COUNSEL: "bg-blue-100 text-blue-700",
+  WITNESS: "bg-purple-100 text-purple-700",
+  EXPERT_WITNESS: "bg-purple-100 text-purple-700",
+  JUDGE: "bg-amber-100 text-amber-700",
+  MEDIATOR: "bg-amber-100 text-amber-700",
+  GUARDIAN: "bg-teal-100 text-teal-700",
+  INTERESTED_PARTY: "bg-gray-100 text-gray-700",
+  OTHER: "bg-gray-100 text-gray-600",
+};
 
 const stageConfig: Record<string, { label: string; badge: string }> = {
   NEW:            { label: "New",            badge: "bg-blue-100 text-blue-700" },
@@ -77,6 +107,11 @@ export default function MatterDetailPage() {
     { matterId, limit: 20 },
     { enabled: !!matterId }
   );
+  const { data: relatedParties } = trpc.relatedParties.list.useQuery(
+    { matterId },
+    { enabled: !!matterId }
+  );
+  const [showAddParty, setShowAddParty] = useState(false);
   const utils = trpc.useUtils();
 
   const toggleComplete = trpc.tasks.toggleComplete.useMutation({
@@ -98,6 +133,21 @@ export default function MatterDetailPage() {
       toast({ title: "Matter reopened" });
       utils.matters.getById.invalidate({ id: matterId });
       utils.matters.getActivities.invalidate({ matterId });
+    },
+  });
+
+  const createParty = trpc.relatedParties.create.useMutation({
+    onSuccess: () => {
+      toast({ title: "Related party added" });
+      utils.relatedParties.list.invalidate({ matterId });
+      setShowAddParty(false);
+    },
+  });
+
+  const deleteParty = trpc.relatedParties.delete.useMutation({
+    onSuccess: () => {
+      toast({ title: "Related party removed" });
+      utils.relatedParties.list.invalidate({ matterId });
     },
   });
 
@@ -388,6 +438,121 @@ export default function MatterDetailPage() {
                   <Link href={`/tasks?matterId=${matterId}`}>View all tasks</Link>
                 </Button>
               </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Related Parties */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Related Parties</CardTitle>
+            <CardDescription>Parties involved in this matter for conflict checking</CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowAddParty(!showAddParty)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Party
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {showAddParty && (
+            <form
+              className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                createParty.mutate({
+                  matterId,
+                  name: fd.get("name") as string,
+                  email: (fd.get("email") as string) || undefined,
+                  phone: (fd.get("phone") as string) || undefined,
+                  company: (fd.get("company") as string) || undefined,
+                  role: fd.get("role") as any,
+                  relationship: (fd.get("relationship") as string) || undefined,
+                });
+              }}
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Name *</Label>
+                  <Input name="name" required className="h-9" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Role *</Label>
+                  <Select name="role" required>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PARTY_ROLES.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Email</Label>
+                  <Input name="email" type="email" className="h-9" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Phone</Label>
+                  <Input name="phone" className="h-9" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Company</Label>
+                  <Input name="company" className="h-9" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Relationship</Label>
+                  <Input name="relationship" className="h-9" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" disabled={createParty.isLoading}>
+                  {createParty.isLoading ? "Adding..." : "Add Party"}
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => setShowAddParty(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {!relatedParties || relatedParties.length === 0 ? (
+            <div className="text-center py-6">
+              <UserPlus className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+              <p className="text-muted-foreground">No related parties added</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {relatedParties.map((party: any) => {
+                const roleLabel = PARTY_ROLES.find((r) => r.value === party.role)?.label || party.role;
+                const badgeColor = roleBadgeColors[party.role] || "bg-gray-100 text-gray-600";
+                return (
+                  <div key={party.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-200">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-sm text-gray-900">{party.name}</p>
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badgeColor}`}>
+                          {roleLabel}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {[party.email, party.phone, party.company, party.relationship].filter(Boolean).join(" · ")}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-gray-400 hover:text-red-500"
+                      onClick={() => deleteParty.mutate({ id: party.id })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>

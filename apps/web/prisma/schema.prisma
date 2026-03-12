@@ -60,8 +60,9 @@ model Matter {
   events       CalendarEvent[]
   invoices     Invoice[]
   trustLedgers TrustLedger[]
-  tasks        Task[]
-  activities   MatterActivity[]
+  tasks          Task[]
+  activities     MatterActivity[]
+  relatedParties RelatedParty[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -814,4 +815,78 @@ model ContactFormSubmission {
   createdAt       DateTime        @default(now())
 
   @@index([createdAt])
+}
+
+// ============================================
+// CONFLICT OF INTEREST CHECKING
+// ============================================
+
+model RelatedParty {
+  id           String      @id @default(cuid())
+  matterId     String
+  matter       Matter      @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  name         String
+  email        String?
+  phone        String?
+  company      String?
+  role         PartyRole
+  relationship String?
+  notes        String?     @db.Text
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([matterId])
+  @@index([name])
+  @@index([email])
+}
+
+enum PartyRole {
+  OPPOSING_PARTY
+  OPPOSING_COUNSEL
+  CO_COUNSEL
+  WITNESS
+  EXPERT_WITNESS
+  JUDGE
+  MEDIATOR
+  GUARDIAN
+  INTERESTED_PARTY
+  OTHER
+}
+
+model ConflictCheck {
+  id           String              @id @default(cuid())
+  searchQuery  String
+  searchType   ConflictSearchType
+  resultsCount Int                 @default(0)
+  resultsData  String?             @db.Text
+
+  triggeredBy  String?
+  entityType   String?
+  entityId     String?
+
+  status       ConflictStatus      @default(PENDING)
+  resolvedBy   String?
+  resolution   String?             @db.Text
+  resolvedAt   DateTime?
+
+  createdAt    DateTime            @default(now())
+
+  @@index([searchQuery])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum ConflictSearchType {
+  MANUAL
+  AUTO_CLIENT
+  AUTO_MATTER
+}
+
+enum ConflictStatus {
+  PENDING
+  CLEARED
+  CONFLICT
+  WAIVED
 }
