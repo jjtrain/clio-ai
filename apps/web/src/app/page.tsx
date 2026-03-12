@@ -141,7 +141,7 @@ export default function DashboardPage() {
         />
         <MetricCard
           title="New Leads"
-          value={leadStats?.newCount ?? 0}
+          value={leadStats?.byStatus?.NEW ?? 0}
           subtitle="Awaiting review"
           icon={Inbox}
           color="blue"
