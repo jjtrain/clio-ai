@@ -10,6 +10,7 @@ import {
   FileText,
   TrendingUp,
   Calendar,
+  CalendarCheck,
   ArrowRight,
   DollarSign,
   Receipt,
@@ -17,6 +18,8 @@ import {
   Landmark,
   CheckSquare,
   Flag,
+  ExternalLink,
+  Copy,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
@@ -85,6 +88,7 @@ export default function DashboardPage() {
   const { data: trustSummary } = trpc.trust.summary.useQuery();
   const { data: tasksSummary } = trpc.tasks.dashboardSummary.useQuery();
   const { data: rateData } = trpc.users.getDefaultHourlyRate.useQuery();
+  const { data: schedulerSettings } = trpc.scheduler.getSettings.useQuery();
 
   const defaultRate = rateData?.rate ?? 450;
 
@@ -221,6 +225,48 @@ export default function DashboardPage() {
                     </Link>
                   </Button>
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Online Booking Link */}
+      {schedulerSettings?.isEnabled && (
+        <Card className="shadow-sm border-gray-100 bg-gradient-to-r from-teal-50 to-white">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-xl bg-teal-100 flex-shrink-0">
+                  <CalendarCheck className="h-5 w-5 sm:h-6 sm:w-6 text-teal-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-gray-500">Online Booking</p>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900">
+                    Share this link with clients to book consultations
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <code className="text-sm bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-lg text-teal-700">
+                  {typeof window !== "undefined" ? `${window.location.origin}/book` : "/book"}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-teal-600 border-teal-200 hover:bg-teal-50"
+                  onClick={() => {
+                    const url = `${window.location.origin}/book`;
+                    navigator.clipboard.writeText(url);
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" asChild className="text-teal-600 border-teal-200 hover:bg-teal-50">
+                  <Link href="/book" target="_blank">
+                    <ExternalLink className="h-4 w-4" />
+                  </Link>
+                </Button>
               </div>
             </div>
           </CardContent>
