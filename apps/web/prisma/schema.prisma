@@ -60,9 +60,10 @@ model Matter {
   events       CalendarEvent[]
   invoices     Invoice[]
   trustLedgers TrustLedger[]
-  tasks          Task[]
-  activities     MatterActivity[]
-  relatedParties RelatedParty[]
+  tasks              Task[]
+  activities         MatterActivity[]
+  relatedParties     RelatedParty[]
+  signatureRequests  SignatureRequest[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -105,16 +106,17 @@ model TimeEntry {
 }
 
 model Document {
-  id        String   @id @default(cuid())
-  matterId  String
-  matter    Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  name      String
-  filename  String
-  mimeType  String
-  size      Int
-  path      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String             @id @default(cuid())
+  matterId          String
+  matter            Matter             @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  name              String
+  filename          String
+  mimeType          String
+  size              Int
+  path              String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  signatureRequests SignatureRequest[]
 
   @@index([matterId])
 }
@@ -913,4 +915,59 @@ model GoogleCalendarSync {
   lastSyncAt       DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+}
+
+// ============================================
+// E-SIGNATURES
+// ============================================
+
+model SignatureRequest {
+  id                String          @id @default(cuid())
+  documentId        String?
+  document          Document?       @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  matterId          String
+  matter            Matter          @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  title             String
+  description       String?         @db.Text
+  status            SignatureStatus @default(DRAFT)
+  documentContent   String?         @db.Text
+
+  // Client signer
+  clientName        String
+  clientEmail       String
+  clientSignature   String?         @db.Text
+  clientSignedAt    DateTime?
+  clientIpAddress   String?
+
+  // Attorney signer
+  attorneyName      String?
+  attorneySignature String?         @db.Text
+  attorneySignedAt  DateTime?
+  attorneyIpAddress String?
+
+  // Signing link
+  signingToken      String          @unique
+
+  // Lifecycle
+  expiresAt         DateTime?
+  sentAt            DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([matterId])
+  @@index([documentId])
+  @@index([signingToken])
+  @@index([status])
+}
+
+enum SignatureStatus {
+  DRAFT
+  PENDING_CLIENT
+  CLIENT_SIGNED
+  PENDING_ATTORNEY
+  COMPLETED
+  CANCELLED
+  EXPIRED
 }

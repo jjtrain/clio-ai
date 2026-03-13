@@ -23,6 +23,7 @@ import {
   CheckSquare,
   X,
   ShieldAlert,
+  PenTool,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -39,6 +40,7 @@ const mainNavigation = [
   { name: "Intake Forms", href: "/intake-forms", icon: ClipboardList },
   { name: "Lead Inbox", href: "/leads", icon: Inbox },
   { name: "Conflict Check", href: "/conflicts", icon: ShieldAlert },
+  { name: "E-Signatures", href: "/signatures", icon: PenTool },
 ];
 
 const bottomNavigation = [

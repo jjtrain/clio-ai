@@ -110,6 +110,84 @@ export async function sendAppointmentReminder(data: AppointmentEmailData) {
   });
 }
 
+// ─── Signature Emails ───────────────────────────────────────────────
+
+interface SignatureEmailData {
+  to: string;
+  clientName: string;
+  title: string;
+  firmName: string;
+  fromEmail: string;
+}
+
+export async function sendSignatureRequest(
+  data: SignatureEmailData & { signingUrl: string }
+) {
+  return sendEmail({
+    to: data.to,
+    from: data.fromEmail,
+    subject: `Please sign: ${data.title}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a1a1a;">Document Ready for Signature</h2>
+        <p>Hello ${data.clientName},</p>
+        <p>${data.firmName} has sent you a document to review and sign electronically.</p>
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>Document:</strong> ${data.title}</p>
+        </div>
+        <p>Please click the button below to review and sign the document:</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${data.signingUrl}" style="display: inline-block; background: #3B82F6; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+            Review & Sign Document
+          </a>
+        </div>
+        <p style="color: #666; font-size: 13px;">If the button doesn't work, copy and paste this link: ${data.signingUrl}</p>
+        <p style="color: #666; font-size: 14px;">${data.firmName}</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendSignatureCompleteNotification(data: SignatureEmailData) {
+  return sendEmail({
+    to: data.to,
+    from: data.fromEmail,
+    subject: `Client signed: ${data.title}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a1a1a;">Client Has Signed</h2>
+        <p>${data.clientName} has signed the following document:</p>
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>Document:</strong> ${data.title}</p>
+          <p style="margin: 4px 0;"><strong>Client:</strong> ${data.clientName}</p>
+        </div>
+        <p>Please log in to review and countersign the document.</p>
+        <p style="color: #666; font-size: 14px;">${data.firmName}</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendSignatureFullyComplete(data: SignatureEmailData) {
+  return sendEmail({
+    to: data.to,
+    from: data.fromEmail,
+    subject: `Fully executed: ${data.title}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a1a1a;">Document Fully Executed</h2>
+        <p>Hello ${data.clientName},</p>
+        <p>All parties have signed the following document:</p>
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>Document:</strong> ${data.title}</p>
+        </div>
+        <p>The document is now fully executed. Please contact our office if you have any questions.</p>
+        <p style="color: #666; font-size: 14px;">${data.firmName}</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendAppointmentCancellation(data: AppointmentEmailData & { reason?: string }) {
   return sendEmail({
     to: data.clientEmail,
