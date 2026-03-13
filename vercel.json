@@ -4,11 +4,5 @@
   "buildCommand": "npx pnpm@8.14.0 build",
   "outputDirectory": ".next",
   "installCommand": "npx pnpm@8.14.0 install",
-  "devCommand": "npx pnpm@8.14.0 dev",
-  "crons": [
-    {
-      "path": "/api/cron/reminders",
-      "schedule": "0 8 * * *"
-    }
-  ]
+  "devCommand": "npx pnpm@8.14.0 dev"
 }
