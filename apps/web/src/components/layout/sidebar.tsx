@@ -25,6 +25,7 @@ import {
   ShieldAlert,
   PenTool,
   BarChart3,
+  Mail,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -43,6 +44,7 @@ const mainNavigation = [
   { name: "Conflict Check", href: "/conflicts", icon: ShieldAlert },
   { name: "E-Signatures", href: "/signatures", icon: PenTool },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
+  { name: "Campaigns", href: "/campaigns", icon: Mail },
 ];
 
 const bottomNavigation = [

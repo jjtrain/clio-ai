@@ -141,6 +141,8 @@ export const leadsRouter = router({
         },
       });
 
+      const oldStatus = (await ctx.db.lead.findUnique({ where: { id: input.id }, select: { status: true } }))?.status;
+
       await ctx.db.leadActivity.create({
         data: {
           leadId: input.id,
@@ -148,6 +150,22 @@ export const leadsRouter = router({
           description: `Status changed to ${input.status}`,
         },
       });
+
+      // Fire campaign triggers for lead status change
+      if (lead.email) {
+        try {
+          const { campaignsRouter } = await import("./campaigns");
+          const caller = campaignsRouter.createCaller(ctx);
+          await caller.checkTrigger({
+            event: "LEAD_STATUS_CHANGE",
+            conditionData: { fromStatus: oldStatus, toStatus: input.status },
+            recipientEmail: lead.email,
+            recipientName: lead.name,
+          });
+        } catch (err) {
+          console.error("[Leads] Trigger check failed:", err);
+        }
+      }
 
       return lead;
     }),

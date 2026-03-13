@@ -188,6 +188,33 @@ export async function sendSignatureFullyComplete(data: SignatureEmailData) {
   });
 }
 
+// ─── Campaign Emails ──────────────────────────────────────────────
+
+export async function sendCampaignEmail(options: {
+  to: string;
+  name: string;
+  subject: string;
+  htmlContent: string;
+  fromEmail: string;
+  firmName?: string;
+}) {
+  const html = options.htmlContent
+    .replace(/\{NAME\}/g, options.name || "there")
+    .replace(/\{EMAIL\}/g, options.to)
+    .replace(/\{FIRM_NAME\}/g, options.firmName || "Our Law Firm");
+
+  const subject = options.subject
+    .replace(/\{NAME\}/g, options.name || "there")
+    .replace(/\{FIRM_NAME\}/g, options.firmName || "Our Law Firm");
+
+  return sendEmail({
+    to: options.to,
+    from: options.fromEmail,
+    subject,
+    html,
+  });
+}
+
 export async function sendAppointmentCancellation(data: AppointmentEmailData & { reason?: string }) {
   return sendEmail({
     to: data.clientEmail,

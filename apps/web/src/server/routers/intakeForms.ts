@@ -499,6 +499,22 @@ export const intakeFormsRouter = router({
         },
       });
 
+      // Fire campaign triggers for intake submission
+      if (submitterEmail) {
+        try {
+          const { campaignsRouter } = await import("./campaigns");
+          const caller = campaignsRouter.createCaller(ctx);
+          await caller.checkTrigger({
+            event: "INTAKE_SUBMITTED",
+            conditionData: { templateName: template.name, practiceArea: template.practiceArea },
+            recipientEmail: submitterEmail,
+            recipientName: submitterName || undefined,
+          });
+        } catch (err) {
+          console.error("[IntakeForms] Trigger check failed:", err);
+        }
+      }
+
       // TODO: Send email notification
       if (template.notifyEmail) {
         console.log("[IntakeForms] Notification would be sent to:", template.notifyEmail, {

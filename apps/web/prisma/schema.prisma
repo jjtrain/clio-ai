@@ -971,3 +971,101 @@ enum SignatureStatus {
   CANCELLED
   EXPIRED
 }
+
+// ============================================
+// EMAIL MARKETING CAMPAIGNS
+// ============================================
+
+model EmailTemplate {
+  id          String          @id @default(cuid())
+  name        String
+  subject     String
+  htmlContent String          @db.Text
+  category    String?
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  campaigns   EmailCampaign[]
+}
+
+model EmailCampaign {
+  id              String            @id @default(cuid())
+  name            String
+  subject         String
+  htmlContent     String            @db.Text
+
+  templateId      String?
+  template        EmailTemplate?    @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  status          CampaignStatus    @default(DRAFT)
+  campaignType    CampaignType      @default(BLAST)
+
+  // Audience
+  audienceType    String            @default("ALL_CLIENTS")
+  audienceFilter  String?           @db.Text
+  recipientCount  Int               @default(0)
+
+  // Scheduling
+  scheduledAt     DateTime?
+  sentAt          DateTime?
+  completedAt     DateTime?
+
+  // Stats
+  totalSent       Int               @default(0)
+  totalDelivered  Int               @default(0)
+  totalFailed     Int               @default(0)
+
+  // Trigger fields
+  triggerEvent    String?
+  triggerCondition String?          @db.Text
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  recipients      CampaignRecipient[]
+
+  @@index([status])
+  @@index([campaignType])
+}
+
+model CampaignRecipient {
+  id          String          @id @default(cuid())
+  campaignId  String
+  campaign    EmailCampaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  email       String
+  name        String?
+
+  sourceType  String
+  sourceId    String?
+
+  status      RecipientStatus @default(PENDING)
+  sentAt      DateTime?
+  errorMessage String?
+
+  createdAt   DateTime        @default(now())
+
+  @@index([campaignId])
+  @@index([status])
+  @@index([email])
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+}
+
+enum CampaignType {
+  BLAST
+  TRIGGERED
+}
+
+enum RecipientStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+}
