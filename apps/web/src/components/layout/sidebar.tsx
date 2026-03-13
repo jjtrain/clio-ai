@@ -24,6 +24,7 @@ import {
   X,
   ShieldAlert,
   PenTool,
+  BarChart3,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -41,6 +42,7 @@ const mainNavigation = [
   { name: "Lead Inbox", href: "/leads", icon: Inbox },
   { name: "Conflict Check", href: "/conflicts", icon: ShieldAlert },
   { name: "E-Signatures", href: "/signatures", icon: PenTool },
+  { name: "Analytics", href: "/analytics", icon: BarChart3 },
 ];
 
 const bottomNavigation = [

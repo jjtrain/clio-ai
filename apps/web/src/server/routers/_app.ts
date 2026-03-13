@@ -16,6 +16,7 @@ import { contactFormRouter } from "./contactForm";
 import { conflictsRouter } from "./conflicts";
 import { relatedPartiesRouter } from "./relatedParties";
 import { signaturesRouter } from "./signatures";
+import { analyticsRouter } from "./analytics";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -35,6 +36,7 @@ export const appRouter = router({
   conflicts: conflictsRouter,
   relatedParties: relatedPartiesRouter,
   signatures: signaturesRouter,
+  analytics: analyticsRouter,
 });
 
 export type AppRouter = typeof appRouter;
