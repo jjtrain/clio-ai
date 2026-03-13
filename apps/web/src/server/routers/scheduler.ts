@@ -68,6 +68,10 @@ export const schedulerRouter = router({
       consultationFee: settings.consultationFee
         ? Number(settings.consultationFee)
         : 150,
+      sendReminders: settings.sendReminders,
+      reminderHoursBefore: settings.reminderHoursBefore,
+      secondReminderHours: settings.secondReminderHours,
+      reminderEmailFrom: settings.reminderEmailFrom,
     };
   }),
 
@@ -86,6 +90,10 @@ export const schedulerRouter = router({
         requirePaymentUpfront: z.boolean().optional(),
         practiceAreas: z.array(z.string()).optional(),
         confirmationMessage: z.string().optional(),
+        sendReminders: z.boolean().optional(),
+        reminderHoursBefore: z.number().min(1).max(168).optional(),
+        secondReminderHours: z.number().min(1).max(168).nullable().optional(),
+        reminderEmailFrom: z.string().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -109,6 +117,13 @@ export const schedulerRouter = router({
       if (input.practiceAreas) data.practiceAreas = JSON.stringify(input.practiceAreas);
       if (input.confirmationMessage !== undefined)
         data.confirmationMessage = input.confirmationMessage;
+      if (input.sendReminders !== undefined) data.sendReminders = input.sendReminders;
+      if (input.reminderHoursBefore !== undefined)
+        data.reminderHoursBefore = input.reminderHoursBefore;
+      if (input.secondReminderHours !== undefined)
+        data.secondReminderHours = input.secondReminderHours;
+      if (input.reminderEmailFrom !== undefined)
+        data.reminderEmailFrom = input.reminderEmailFrom;
 
       const settings = await ctx.db.schedulerSettings.upsert({
         where: { id: "default" },

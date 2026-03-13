@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { Suspense, useState, useMemo, useCallback, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { useHelcim } from "@/lib/use-helcim";
 import { Button } from "@/components/ui/button";
@@ -147,7 +148,23 @@ function StepIndicator({
 
 // ─── Main Page Component ─────────────────────────────────────────────
 
-export default function BookingPage() {
+export default function BookingPageWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+      </div>
+    }>
+      <BookingPage />
+    </Suspense>
+  );
+}
+
+function BookingPage() {
+  const searchParams = useSearchParams();
+  const isEmbed = searchParams.get("embed") === "true";
+  const hideHeader = searchParams.get("hideHeader") === "true";
+
   const [step, setStep] = useState<Step>(1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -166,6 +183,19 @@ export default function BookingPage() {
   // Calendar nav state
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
+
+  // Notify parent iframe of height changes for embed mode
+  useEffect(() => {
+    if (!isEmbed) return;
+    const observer = new ResizeObserver(() => {
+      window.parent.postMessage(
+        { type: "clio-booking-resize", height: document.body.scrollHeight },
+        "*"
+      );
+    });
+    observer.observe(document.body);
+    return () => observer.disconnect();
+  }, [isEmbed]);
 
   // Queries
   const { data: settings, isLoading: settingsLoading } =
@@ -395,17 +425,19 @@ export default function BookingPage() {
   // ─── Render ────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4">
+    <div className={`min-h-screen py-8 px-4 ${isEmbed ? "bg-transparent" : "bg-slate-50"}`}>
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">
-            {firmInfo?.firmName || "Book a Consultation"}
-          </h1>
-          {firmInfo?.firmName && (
-            <p className="text-gray-500 mt-1">Book a Consultation</p>
-          )}
-        </div>
+        {!hideHeader && !isEmbed && (
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-semibold text-gray-900">
+              {firmInfo?.firmName || "Book a Consultation"}
+            </h1>
+            {firmInfo?.firmName && (
+              <p className="text-gray-500 mt-1">Book a Consultation</p>
+            )}
+          </div>
+        )}
 
         {/* Step Indicator */}
         <StepIndicator

@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
+import {
+  refreshTokenIfNeeded,
+  createGoogleEvent,
+  updateGoogleEvent,
+  deleteGoogleEvent,
+} from "@/lib/google-calendar";
 
 const calendarEventInput = z.object({
   matterId: z.string().optional(),
@@ -10,6 +16,62 @@ const calendarEventInput = z.object({
   allDay: z.boolean().default(false),
   location: z.string().optional(),
 });
+
+async function syncToGoogle(
+  db: any,
+  action: "create" | "update" | "delete",
+  event: { id: string; title: string; description?: string | null; startTime: Date; endTime: Date; allDay: boolean; location?: string | null; googleEventId?: string | null }
+) {
+  try {
+    const sync = await db.googleCalendarSync.findUnique({ where: { id: "default" } });
+    if (!sync?.isEnabled || !sync.accessToken || !sync.googleCalendarId) return;
+    if (sync.syncDirection === "from_google") return;
+
+    const accessToken = await refreshTokenIfNeeded(sync);
+
+    // Update stored token if refreshed
+    if (accessToken !== sync.accessToken) {
+      await db.googleCalendarSync.update({
+        where: { id: "default" },
+        data: {
+          accessToken,
+          tokenExpiry: new Date(Date.now() + 3600 * 1000),
+        },
+      });
+    }
+
+    const calendarId = sync.googleCalendarId;
+
+    if (action === "create") {
+      const googleEventId = await createGoogleEvent(accessToken, calendarId, {
+        summary: event.title,
+        description: event.description || undefined,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        allDay: event.allDay,
+        location: event.location || undefined,
+      });
+      await db.calendarEvent.update({
+        where: { id: event.id },
+        data: { googleEventId },
+      });
+    } else if (action === "update" && event.googleEventId) {
+      await updateGoogleEvent(accessToken, calendarId, event.googleEventId, {
+        summary: event.title,
+        description: event.description || undefined,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        allDay: event.allDay,
+        location: event.location || undefined,
+      });
+    } else if (action === "delete" && event.googleEventId) {
+      await deleteGoogleEvent(accessToken, calendarId, event.googleEventId);
+    }
+  } catch (err) {
+    console.error("[Google Sync] Error:", err);
+    // Don't throw - Google sync failures shouldn't break local operations
+  }
+}
 
 export const calendarRouter = router({
   list: publicProcedure
@@ -98,6 +160,9 @@ export const calendarRouter = router({
         },
       });
 
+      // Sync to Google Calendar
+      await syncToGoogle(ctx.db, "create", event);
+
       return event;
     }),
 
@@ -118,12 +183,24 @@ export const calendarRouter = router({
         },
       });
 
+      // Sync to Google Calendar
+      await syncToGoogle(ctx.db, "update", event);
+
       return event;
     }),
 
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Get the event first to check for Google event ID
+      const event = await ctx.db.calendarEvent.findUnique({
+        where: { id: input.id },
+      });
+
+      if (event) {
+        await syncToGoogle(ctx.db, "delete", event);
+      }
+
       await ctx.db.calendarEvent.delete({
         where: { id: input.id },
       });
@@ -155,4 +232,51 @@ export const calendarRouter = router({
 
       return events;
     }),
+
+  // Google Calendar sync settings
+  getGoogleSyncStatus: publicProcedure.query(async ({ ctx }) => {
+    const sync = await ctx.db.googleCalendarSync.findUnique({
+      where: { id: "default" },
+    });
+    return {
+      isConnected: !!sync?.accessToken,
+      isEnabled: sync?.isEnabled ?? false,
+      syncDirection: sync?.syncDirection ?? "both",
+      lastSyncAt: sync?.lastSyncAt ?? null,
+      googleCalendarId: sync?.googleCalendarId ?? "primary",
+    };
+  }),
+
+  updateGoogleSync: publicProcedure
+    .input(
+      z.object({
+        isEnabled: z.boolean().optional(),
+        syncDirection: z.enum(["to_google", "from_google", "both"]).optional(),
+        googleCalendarId: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.googleCalendarSync.upsert({
+        where: { id: "default" },
+        update: input,
+        create: { id: "default", ...input },
+      });
+    }),
+
+  disconnectGoogle: publicProcedure.mutation(async ({ ctx }) => {
+    await ctx.db.googleCalendarSync.upsert({
+      where: { id: "default" },
+      update: {
+        isEnabled: false,
+        accessToken: null,
+        refreshToken: null,
+        tokenExpiry: null,
+      },
+      create: {
+        id: "default",
+        isEnabled: false,
+      },
+    });
+    return { success: true };
+  }),
 });

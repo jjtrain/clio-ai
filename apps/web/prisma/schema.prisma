@@ -120,17 +120,18 @@ model Document {
 }
 
 model CalendarEvent {
-  id          String    @id @default(cuid())
-  matterId    String?
-  matter      Matter?   @relation(fields: [matterId], references: [id], onDelete: SetNull)
-  title       String
-  description String?
-  startTime   DateTime
-  endTime     DateTime
-  allDay      Boolean   @default(false)
-  location    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  matterId      String?
+  matter        Matter?   @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  title         String
+  description   String?
+  startTime     DateTime
+  endTime       DateTime
+  allDay        Boolean   @default(false)
+  location      String?
+  googleEventId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([matterId])
 }
@@ -446,6 +447,11 @@ model SchedulerSettings {
   maxAdvanceBooking     Int      @default(30)  // days - how far ahead can book
   preventSameDayBooking Boolean  @default(true)
   requirePaymentUpfront Boolean  @default(true)
+  // Reminder settings
+  sendReminders         Boolean  @default(true)
+  reminderHoursBefore   Int      @default(24)
+  secondReminderHours   Int?
+  reminderEmailFrom     String?
   // Practice areas offered for consultations
   practiceAreas         String?  @db.Text  // JSON array of strings
   confirmationMessage   String?  @db.Text
@@ -475,6 +481,7 @@ model Appointment {
   paidAt              DateTime?
   // Calendar integration
   calendarEventId     String?           // Link to CalendarEvent if created
+  googleEventId       String?
   // Timestamps
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
@@ -889,4 +896,21 @@ enum ConflictStatus {
   CLEARED
   CONFLICT
   WAIVED
+}
+
+// ============================================
+// GOOGLE CALENDAR SYNC
+// ============================================
+
+model GoogleCalendarSync {
+  id               String    @id @default("default")
+  isEnabled        Boolean   @default(false)
+  accessToken      String?   @db.Text
+  refreshToken     String?   @db.Text
+  tokenExpiry      DateTime?
+  googleCalendarId String?
+  syncDirection    String    @default("both")
+  lastSyncAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
