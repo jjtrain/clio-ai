@@ -2209,3 +2209,17 @@ model ReportExecution {
   @@index([reportId])
   @@index([createdAt])
 }
+
+model MarketingSpend {
+  id        String   @id @default(cuid())
+  source    String
+  amount    Decimal  @db.Decimal(10, 2)
+  period    String   // YYYY-MM format
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([source, period])
+  @@index([source])
+  @@index([period])
+}
