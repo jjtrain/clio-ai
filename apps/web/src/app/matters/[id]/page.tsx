@@ -124,6 +124,10 @@ export default function MatterDetailPage() {
     { matterId, status: "NEW", limit: 10 },
     { enabled: !!matterId }
   );
+  const { data: injuryCaseDetails } = trpc.medicalRecords.getCaseDetails.useQuery(
+    { matterId },
+    { enabled: !!matterId }
+  );
   const [showAddParty, setShowAddParty] = useState(false);
   const utils = trpc.useUtils();
   const aiEstimate = trpc.forecasting.aiEstimate.useMutation({
@@ -251,6 +255,13 @@ export default function MatterDetailPage() {
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${currentStageConfig.badge}`}>
                 {currentStageConfig.label}
               </span>
+              {injuryCaseDetails && (
+                <Link href={`/injury/${matterId}`}>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-700 hover:bg-pink-200 cursor-pointer transition-colors">
+                    PI Case
+                  </span>
+                </Link>
+              )}
             </div>
             <h1 className="text-3xl font-bold">{matter.name}</h1>
             <p className="text-muted-foreground">
@@ -331,6 +342,12 @@ export default function MatterDetailPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {injuryCaseDetails && (
+                <DropdownMenuItem onClick={() => router.push(`/injury/${matterId}`)}>
+                  <Flag className="mr-2 h-4 w-4" />
+                  Manage PI Case
+                </DropdownMenuItem>
+              )}
               {matter.status === "OPEN" || matter.status === "PENDING" ? (
                 <DropdownMenuItem onClick={() => closeMatter.mutate({ id: matterId })}>
                   <CheckCircle className="mr-2 h-4 w-4" />

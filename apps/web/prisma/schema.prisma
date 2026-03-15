@@ -80,6 +80,10 @@ model Matter {
   valuation          MatterValuation?
   billingForecasts   BillingForecast[]
   riskAlerts         RiskAlert[]
+  medicalRecords     MedicalRecord[]
+  liens              MedicalLien[]
+  injuryCaseDetails  InjuryCaseDetails?
+  settlementDistributions SettlementDistribution[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -2381,4 +2385,232 @@ model RiskSettings {
   notifyEmail              String?
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
+}
+
+// ============================================
+// MEDICAL RECORDS & LIENS (PERSONAL INJURY)
+// ============================================
+
+model MedicalProvider {
+  id            String       @id @default(cuid())
+  name          String
+  type          ProviderType
+  phone         String?
+  fax           String?
+  email         String?
+  address       String?
+  city          String?
+  state         String?
+  zip           String?
+  contactPerson String?
+  notes         String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  records       MedicalRecord[]
+  liens         MedicalLien[]
+
+  @@index([name])
+  @@index([type])
+}
+
+model MedicalRecord {
+  id                 String              @id @default(cuid())
+  matterId           String
+  matter             Matter              @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  providerId         String?
+  provider           MedicalProvider?    @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  providerName       String
+  recordType         MedicalRecordType
+  dateOfService      DateTime
+  endDate            DateTime?
+  description        String?             @db.Text
+  diagnosis          String?             @db.Text
+  treatingPhysician  String?
+  totalCharges       Decimal?            @db.Decimal(12, 2)
+  amountPaid         Decimal?            @db.Decimal(12, 2)
+  adjustments        Decimal?            @db.Decimal(12, 2)
+  outstandingBalance Decimal?            @db.Decimal(12, 2)
+  requestStatus      RecordRequestStatus @default(NOT_REQUESTED)
+  requestedAt        DateTime?
+  receivedAt         DateTime?
+  documentId         String?
+  notes              String?             @db.Text
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([matterId])
+  @@index([providerId])
+  @@index([dateOfService])
+  @@index([requestStatus])
+}
+
+model MedicalLien {
+  id                  String           @id @default(cuid())
+  matterId            String
+  matter              Matter           @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  providerId          String?
+  provider            MedicalProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  providerName        String
+  lienType            LienType
+  originalAmount      Decimal          @db.Decimal(12, 2)
+  negotiatedAmount    Decimal?         @db.Decimal(12, 2)
+  paidAmount          Decimal?         @db.Decimal(12, 2)
+  status              LienStatus       @default(PENDING)
+  priority            Int              @default(0)
+  lienHolderName      String
+  lienHolderContact   String?          @db.Text
+  assertedDate        DateTime?
+  dueDate             DateTime?
+  lienLetterReceivedAt DateTime?
+  reductionPercentage Decimal?         @db.Decimal(5, 2)
+  reductionNotes      String?          @db.Text
+  documentId          String?
+  notes               String?          @db.Text
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@index([matterId])
+  @@index([lienType])
+  @@index([status])
+}
+
+model InjuryCaseDetails {
+  id                    String            @id @default(cuid())
+  matterId              String            @unique
+  matter                Matter            @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  dateOfIncident        DateTime
+  incidentType          IncidentType
+  incidentDescription   String?           @db.Text
+  injuryDescription     String?           @db.Text
+  liabilityAssessment   String?           @db.Text
+  insuranceCompany      String?
+  claimNumber           String?
+  adjusterName          String?
+  adjusterPhone         String?
+  adjusterEmail         String?
+  policyLimits          Decimal?          @db.Decimal(12, 2)
+  umUimLimits           Decimal?          @db.Decimal(12, 2)
+  totalMedicalSpecials  Decimal?          @db.Decimal(12, 2)
+  totalLienAmount       Decimal?          @db.Decimal(12, 2)
+  demandAmount          Decimal?          @db.Decimal(12, 2)
+  settlementAmount      Decimal?          @db.Decimal(12, 2)
+  attorneyFeePercentage Decimal?          @db.Decimal(5, 2)
+  attorneyFeeAmount     Decimal?          @db.Decimal(12, 2)
+  netToClient           Decimal?          @db.Decimal(12, 2)
+  caseStatus            InjuryCaseStatus  @default(PRE_SUIT)
+  aiSummary             String?           @db.Text
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@index([matterId])
+  @@index([caseStatus])
+}
+
+model SettlementDistribution {
+  id               String             @id @default(cuid())
+  matterId         String
+  matter           Matter             @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  settlementAmount Decimal            @db.Decimal(12, 2)
+  lineItems        String             @db.Text
+  status           DistributionStatus @default(DRAFT)
+  approvedAt       DateTime?
+  distributedAt    DateTime?
+  notes            String?            @db.Text
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([matterId])
+}
+
+enum ProviderType {
+  HOSPITAL
+  ER
+  PRIMARY_CARE
+  SPECIALIST
+  SURGEON
+  CHIROPRACTOR
+  PHYSICAL_THERAPY
+  IMAGING
+  PHARMACY
+  AMBULANCE
+  MENTAL_HEALTH
+  OTHER
+}
+
+enum MedicalRecordType {
+  OFFICE_VISIT
+  ER_VISIT
+  HOSPITAL_ADMISSION
+  SURGERY
+  IMAGING
+  LAB_WORK
+  PHYSICAL_THERAPY
+  PRESCRIPTION
+  AMBULANCE
+  MENTAL_HEALTH
+  DENTAL
+  OTHER
+}
+
+enum RecordRequestStatus {
+  NOT_REQUESTED
+  REQUESTED
+  RECEIVED
+  REVIEWED
+  SUMMARIZED
+}
+
+enum LienType {
+  HOSPITAL
+  MEDICAL_PROVIDER
+  HEALTH_INSURANCE
+  MEDICARE
+  MEDICAID
+  ERISA
+  WORKERS_COMP
+  CHILD_SUPPORT
+  GOVERNMENT
+  OTHER
+}
+
+enum LienStatus {
+  PENDING
+  VERIFIED
+  NEGOTIATING
+  AGREED
+  PAID
+  DISPUTED
+  WAIVED
+}
+
+enum IncidentType {
+  AUTO_ACCIDENT
+  SLIP_FALL
+  MEDICAL_MALPRACTICE
+  PRODUCT_LIABILITY
+  WORK_INJURY
+  DOG_BITE
+  ASSAULT
+  PREMISES_LIABILITY
+  OTHER
+}
+
+enum InjuryCaseStatus {
+  PRE_SUIT
+  TREATMENT
+  MAX_MEDICAL_IMPROVEMENT
+  DEMAND_SENT
+  NEGOTIATION
+  LITIGATION
+  MEDIATION
+  TRIAL
+  SETTLED
+  CLOSED
+}
+
+enum DistributionStatus {
+  DRAFT
+  APPROVED
+  DISTRIBUTED
 }
