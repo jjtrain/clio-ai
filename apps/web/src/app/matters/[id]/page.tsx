@@ -43,7 +43,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
-import { Trash2, Upload } from "lucide-react";
+import { Trash2, Upload, DollarSign, TrendingUp as TrendingUpIcon } from "lucide-react";
 
 const PARTY_ROLES = [
   { value: "OPPOSING_PARTY", label: "Opposing Party" },
@@ -112,8 +112,19 @@ export default function MatterDetailPage() {
     { matterId },
     { enabled: !!matterId }
   );
+  const { data: valuation } = trpc.forecasting.getValuation.useQuery(
+    { matterId },
+    { enabled: !!matterId }
+  );
+  const { data: matterForecast } = trpc.forecasting.getMatterForecast.useQuery(
+    { matterId },
+    { enabled: !!matterId }
+  );
   const [showAddParty, setShowAddParty] = useState(false);
   const utils = trpc.useUtils();
+  const aiEstimate = trpc.forecasting.aiEstimate.useMutation({
+    onSuccess: () => { toast({ title: "AI estimate generated" }); utils.forecasting.invalidate(); },
+  });
 
   const toggleComplete = trpc.tasks.toggleComplete.useMutation({
     onSuccess: () => {
@@ -611,6 +622,72 @@ export default function MatterDetailPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Financial Summary */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5 text-blue-500" />Financial Summary</CardTitle>
+              <CardDescription>Matter valuation and billing progress</CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <a href={`/forecasting`}><TrendingUpIcon className="mr-1.5 h-3 w-3" />Forecasting</a>
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => aiEstimate.mutate({ matterId })} disabled={aiEstimate.isPending}>
+                <Sparkles className="mr-1.5 h-3 w-3" />{aiEstimate.isPending ? "Estimating..." : "AI Estimate"}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {matterForecast ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <p className="text-xs text-blue-600 font-medium">Estimated Value</p>
+                  <p className="text-lg font-bold text-blue-700">${matterForecast.estimatedValue.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-3">
+                  <p className="text-xs text-emerald-600 font-medium">Actual Billed</p>
+                  <p className="text-lg font-bold text-emerald-700">${matterForecast.actualBilled.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div className={`rounded-lg p-3 ${matterForecast.remaining > 0 ? "bg-amber-50" : "bg-red-50"}`}>
+                  <p className={`text-xs font-medium ${matterForecast.remaining > 0 ? "text-amber-600" : "text-red-600"}`}>Remaining</p>
+                  <p className={`text-lg font-bold ${matterForecast.remaining > 0 ? "text-amber-700" : "text-red-700"}`}>${matterForecast.remaining.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-600 font-medium">Monthly Burn</p>
+                  <p className="text-lg font-bold text-gray-700">${matterForecast.monthlyBurnRate.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+              {matterForecast.estimatedValue > 0 && (
+                <div>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="text-gray-500">Budget consumed</span>
+                    <span className="font-medium text-gray-700">{matterForecast.percentComplete.toFixed(1)}%</span>
+                  </div>
+                  <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all ${matterForecast.percentComplete > 100 ? "bg-red-500" : matterForecast.percentComplete > 80 ? "bg-amber-500" : "bg-blue-500"}`} style={{ width: `${Math.min(matterForecast.percentComplete, 100)}%` }} />
+                  </div>
+                </div>
+              )}
+              {valuation?.aiReasoning && (
+                <div className="bg-purple-50 rounded-lg p-3">
+                  <p className="text-xs text-purple-600 font-medium mb-1">AI Analysis</p>
+                  <p className="text-sm text-purple-700">{valuation.aiReasoning}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <DollarSign className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-gray-400 text-sm">No valuation set. Click "AI Estimate" to generate one.</p>
             </div>
           )}
         </CardContent>

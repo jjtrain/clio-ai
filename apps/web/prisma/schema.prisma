@@ -76,6 +76,8 @@ model Matter {
   efilings           EFilingSubmission[]
   portalMessages     ClientPortalMessage[]
   textMessages       TextMessage[]
+  valuation          MatterValuation?
+  billingForecasts   BillingForecast[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -2221,5 +2223,72 @@ model MarketingSpend {
 
   @@unique([source, period])
   @@index([source])
+  @@index([period])
+}
+
+enum FeeType {
+  HOURLY
+  FLAT_FEE
+  CONTINGENCY
+  HYBRID
+  RETAINER
+}
+
+enum ConfidenceLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ForecastType {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  MATTER_COMPLETION
+}
+
+model MatterValuation {
+  id                     String          @id @default(cuid())
+  matterId               String          @unique
+  matter                 Matter          @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  estimatedValue         Decimal         @db.Decimal(12, 2)
+  estimatedHours         Decimal?        @db.Decimal(10, 2)
+  estimatedFees          Decimal?        @db.Decimal(12, 2)
+  estimatedCosts         Decimal?        @db.Decimal(10, 2)
+  feeType                FeeType         @default(HOURLY)
+  contingencyPercentage  Decimal?        @db.Decimal(5, 2)
+  retainerAmount         Decimal?        @db.Decimal(10, 2)
+  hourlyRate             Decimal?        @db.Decimal(10, 2)
+  estimatedDurationMonths Int?
+  confidenceLevel        ConfidenceLevel @default(MEDIUM)
+  notes                  String?         @db.Text
+  aiEstimate             Boolean         @default(false)
+  aiReasoning            String?         @db.Text
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  @@index([matterId])
+}
+
+model BillingForecast {
+  id                 String       @id @default(cuid())
+  matterId           String?
+  matter             Matter?      @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  forecastType       ForecastType @default(MONTHLY)
+  period             String
+  projectedRevenue   Decimal      @db.Decimal(12, 2)
+  projectedHours     Decimal?     @db.Decimal(10, 2)
+  projectedExpenses  Decimal?     @db.Decimal(10, 2)
+  actualRevenue      Decimal?     @db.Decimal(12, 2)
+  actualHours        Decimal?     @db.Decimal(10, 2)
+  variance           Decimal?     @db.Decimal(12, 2)
+  variancePercentage Decimal?     @db.Decimal(5, 2)
+  methodology        String?
+  aiGenerated        Boolean      @default(false)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([matterId])
+  @@index([forecastType])
   @@index([period])
 }

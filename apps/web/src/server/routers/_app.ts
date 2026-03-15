@@ -31,6 +31,7 @@ import { invoiceTemplatesRouter } from "./invoiceTemplates";
 import { reportsRouter } from "./reports";
 import { dashboardsRouter } from "./dashboards";
 import { marketingRoiRouter } from "./marketingRoi";
+import { forecastingRouter } from "./forecasting";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -65,6 +66,7 @@ export const appRouter = router({
   reports: reportsRouter,
   dashboards: dashboardsRouter,
   marketingRoi: marketingRoiRouter,
+  forecasting: forecastingRouter,
 });
 
 export type AppRouter = typeof appRouter;
