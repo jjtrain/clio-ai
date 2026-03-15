@@ -372,7 +372,7 @@ export default function DashboardsPage() {
                           innerRadius={65}
                           outerRadius={100}
                           paddingAngle={2}
-                          label={({ practiceArea, percentage }) => `${practiceArea} ${percentage}%`}
+                          label={(props: any) => `${props.practiceArea} ${props.percentage}%`}
                         >
                           {revenue.revenueByPracticeArea.map((_, i) => (
                             <Cell key={i} fill={COLORS.palette[i % COLORS.palette.length]} />
@@ -471,7 +471,7 @@ export default function DashboardsPage() {
                   {productivity.hoursByPracticeArea.length > 0 ? (
                     <ResponsiveContainer width="100%" height={280}>
                       <PieChart>
-                        <Pie data={productivity.hoursByPracticeArea} dataKey="hours" nameKey="practiceArea" cx="50%" cy="50%" outerRadius={100} label={({ practiceArea, hours }) => `${practiceArea}: ${hours}h`}>
+                        <Pie data={productivity.hoursByPracticeArea} dataKey="hours" nameKey="practiceArea" cx="50%" cy="50%" outerRadius={100} label={(props: any) => `${props.practiceArea}: ${props.hours}h`}>
                           {productivity.hoursByPracticeArea.map((_, i) => (
                             <Cell key={i} fill={COLORS.palette[i % COLORS.palette.length]} />
                           ))}
@@ -709,7 +709,7 @@ export default function DashboardsPage() {
                   {clients.clientsByPracticeArea.length > 0 ? (
                     <ResponsiveContainer width="100%" height={280}>
                       <PieChart>
-                        <Pie data={clients.clientsByPracticeArea} dataKey="count" nameKey="practiceArea" cx="50%" cy="50%" outerRadius={100} label={({ practiceArea, count }) => `${practiceArea}: ${count}`}>
+                        <Pie data={clients.clientsByPracticeArea} dataKey="count" nameKey="practiceArea" cx="50%" cy="50%" outerRadius={100} label={(props: any) => `${props.practiceArea}: ${props.count}`}>
                           {clients.clientsByPracticeArea.map((_, i) => (
                             <Cell key={i} fill={COLORS.palette[i % COLORS.palette.length]} />
                           ))}
