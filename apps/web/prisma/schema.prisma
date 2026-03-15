@@ -1336,22 +1336,48 @@ model ResearchSettings {
 // ============================================
 
 model DocumentTemplate {
-  id           String           @id @default(cuid())
-  name         String
-  description  String?          @db.Text
-  category     DocumentCategory
-  practiceArea String?
-  content      String           @db.Text
-  variables    String           @db.Text
-  isActive     Boolean          @default(true)
-  usageCount   Int              @default(0)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  drafts       DraftDocument[]
+  id               String           @id @default(cuid())
+  name             String
+  description      String?          @db.Text
+  category         DocumentCategory
+  practiceArea     String?
+  content          String           @db.Text
+  variables        String           @db.Text
+  mergeFieldSetIds String?          @db.Text // JSON array of MergeFieldSet IDs
+  isActive         Boolean          @default(true)
+  usageCount       Int              @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  drafts           DraftDocument[]
+  versions         TemplateVersion[]
 
   @@index([category])
   @@index([practiceArea])
   @@index([isActive])
+}
+
+model TemplateVersion {
+  id            String           @id @default(cuid())
+  templateId    String
+  template      DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  content       String           @db.Text
+  variables     String           @db.Text
+  changeNote    String?
+  createdAt     DateTime         @default(now())
+
+  @@index([templateId])
+  @@index([versionNumber])
+}
+
+model MergeFieldSet {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  fields      String   @db.Text // JSON array of {key, label, source, path}
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model DraftDocument {

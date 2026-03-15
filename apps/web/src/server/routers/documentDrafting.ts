@@ -7,6 +7,7 @@ import {
   improveDocument,
   assembleDocumentSetSuggestion,
 } from "@/lib/ai-documents";
+import { SYSTEM_FIELD_SETS, resolveFields, applyMergeFields, extractUsedFields } from "@/lib/merge-fields";
 import crypto from "crypto";
 
 const STARTER_TEMPLATES = [
@@ -238,6 +239,22 @@ async function ensureStarterTemplates(db: any) {
         practiceArea: t.practiceArea,
         content: t.content,
         variables: t.variables,
+      },
+    });
+  }
+}
+
+async function ensureSystemMergeFields(db: any) {
+  const count = await db.mergeFieldSet.count({ where: { isSystem: true } });
+  if (count > 0) return;
+
+  for (const [key, setDef] of Object.entries(SYSTEM_FIELD_SETS)) {
+    await db.mergeFieldSet.create({
+      data: {
+        name: setDef.name,
+        description: setDef.description,
+        fields: JSON.stringify(setDef.fields),
+        isSystem: true,
       },
     });
   }
@@ -612,5 +629,121 @@ export const documentDraftingRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.documentSet.delete({ where: { id: input.id } });
+    }),
+
+  // ── Merge Fields ──────────────────────────────────────────────
+
+  listMergeFieldSets: publicProcedure.query(async ({ ctx }) => {
+    await ensureSystemMergeFields(ctx.db);
+    return ctx.db.mergeFieldSet.findMany({ orderBy: [{ isSystem: "desc" }, { name: "asc" }] });
+  }),
+
+  createMergeFieldSet: publicProcedure
+    .input(z.object({ name: z.string().min(1), description: z.string().optional(), fields: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.mergeFieldSet.create({ data: { name: input.name, description: input.description, fields: input.fields, isSystem: false } });
+    }),
+
+  updateMergeFieldSet: publicProcedure
+    .input(z.object({ id: z.string(), name: z.string().optional(), description: z.string().optional(), fields: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const set = await ctx.db.mergeFieldSet.findUnique({ where: { id: input.id } });
+      if (set?.isSystem) throw new Error("Cannot modify system merge field sets");
+      const { id, ...data } = input;
+      return ctx.db.mergeFieldSet.update({ where: { id }, data });
+    }),
+
+  deleteMergeFieldSet: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const set = await ctx.db.mergeFieldSet.findUnique({ where: { id: input.id } });
+      if (set?.isSystem) throw new Error("Cannot delete system merge field sets");
+      return ctx.db.mergeFieldSet.delete({ where: { id: input.id } });
+    }),
+
+  resolveFieldsForMatter: publicProcedure
+    .input(z.object({ matterId: z.string(), clientId: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      return resolveFields(ctx.db, input.matterId, input.clientId);
+    }),
+
+  previewTemplate: publicProcedure
+    .input(z.object({ templateId: z.string(), matterId: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const template = await ctx.db.documentTemplate.findUniqueOrThrow({ where: { id: input.templateId } });
+      let fields: Record<string, string> = {};
+      if (input.matterId) {
+        fields = await resolveFields(ctx.db, input.matterId);
+      }
+      // Also resolve date fields regardless
+      const now = new Date();
+      if (!fields.TODAY) fields.TODAY = `${(now.getMonth() + 1).toString().padStart(2, "0")}/${now.getDate().toString().padStart(2, "0")}/${now.getFullYear()}`;
+      if (!fields.TODAY_LONG) fields.TODAY_LONG = now.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+      if (!fields.CURRENT_YEAR) fields.CURRENT_YEAR = now.getFullYear().toString();
+
+      const html = applyMergeFields(template.content, fields);
+      const usedFields = extractUsedFields(template.content);
+      return { html, usedFields, resolvedFields: fields };
+    }),
+
+  // ── Template Versions ─────────────────────────────────────────
+
+  listVersions: publicProcedure
+    .input(z.object({ templateId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.templateVersion.findMany({
+        where: { templateId: input.templateId },
+        orderBy: { versionNumber: "desc" },
+        take: 50,
+      });
+    }),
+
+  getVersion: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.templateVersion.findUniqueOrThrow({ where: { id: input.id } });
+    }),
+
+  saveVersion: publicProcedure
+    .input(z.object({ templateId: z.string(), changeNote: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const template = await ctx.db.documentTemplate.findUniqueOrThrow({ where: { id: input.templateId } });
+      const lastVersion = await ctx.db.templateVersion.findFirst({
+        where: { templateId: input.templateId },
+        orderBy: { versionNumber: "desc" },
+      });
+      return ctx.db.templateVersion.create({
+        data: {
+          templateId: input.templateId,
+          versionNumber: (lastVersion?.versionNumber || 0) + 1,
+          content: template.content,
+          variables: template.variables,
+          changeNote: input.changeNote,
+        },
+      });
+    }),
+
+  restoreVersion: publicProcedure
+    .input(z.object({ templateId: z.string(), versionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const version = await ctx.db.templateVersion.findUniqueOrThrow({ where: { id: input.versionId } });
+      await ctx.db.documentTemplate.update({
+        where: { id: input.templateId },
+        data: { content: version.content, variables: version.variables },
+      });
+      // Save a new version recording the restore
+      const lastVersion = await ctx.db.templateVersion.findFirst({
+        where: { templateId: input.templateId },
+        orderBy: { versionNumber: "desc" },
+      });
+      return ctx.db.templateVersion.create({
+        data: {
+          templateId: input.templateId,
+          versionNumber: (lastVersion?.versionNumber || 0) + 1,
+          content: version.content,
+          variables: version.variables,
+          changeNote: `Restored from version ${version.versionNumber}`,
+        },
+      });
     }),
 });

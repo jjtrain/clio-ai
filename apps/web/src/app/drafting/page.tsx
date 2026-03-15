@@ -30,6 +30,7 @@ import {
   Layers,
   ChevronDown,
   Search,
+  Pencil,
 } from "lucide-react";
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -239,6 +240,7 @@ export default function DraftingHub() {
                 ))}
               </SelectContent>
             </Select>
+            <Button asChild className="bg-rose-600 hover:bg-rose-700 text-white"><Link href="/drafting/builder"><Pencil className="h-4 w-4 mr-1" /> Template Builder</Link></Button>
             <Button variant="outline" asChild><Link href="/drafting/templates/new">Create Template</Link></Button>
             <Button variant="outline" asChild><Link href="/drafting/templates/new?ai=1"><Sparkles className="h-4 w-4 mr-1" /> AI Create</Link></Button>
           </div>
