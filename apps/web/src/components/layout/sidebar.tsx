@@ -30,6 +30,7 @@ import {
   Sparkles,
   BookOpen,
   FilePen,
+  ScanSearch,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -53,6 +54,7 @@ const mainNavigation = [
   { name: "AI Assistant", href: "/ai-assistant", icon: Sparkles },
   { name: "Legal Research", href: "/research", icon: BookOpen },
   { name: "Document Drafting", href: "/drafting", icon: FilePen },
+  { name: "Intake Screening", href: "/screening", icon: ScanSearch },
 ];
 
 const bottomNavigation = [

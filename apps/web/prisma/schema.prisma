@@ -664,6 +664,8 @@ model Lead {
   // Relations
   chatSession     ChatSession?    @relation
   activities      LeadActivity[]
+  qualification   LeadQualification?
+  followUpExecutions FollowUpExecution[]
 
   @@index([status])
   @@index([source])
@@ -1432,4 +1434,154 @@ enum DocumentSetStatus {
   READY
   SENT
   COMPLETED
+}
+
+// ============================================
+// INTAKE SCREENING & LEAD QUALIFICATION
+// ============================================
+
+model LeadQualification {
+  id                String        @id @default(cuid())
+  leadId            String        @unique
+  lead              Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  score             Int           // 0-100
+  grade             LeadGrade
+  aiAnalysis        String        @db.Text // HTML
+  practiceAreaMatch Boolean       @default(false)
+  urgencyLevel      UrgencyLevel
+  estimatedValue    Decimal?      @db.Decimal(10, 2)
+  redFlags          String?       @db.Text // JSON array
+  strengths         String?       @db.Text // JSON array
+  recommendedAction String?
+  autoScreened      Boolean       @default(false)
+  screenedAt        DateTime      @default(now())
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([leadId])
+  @@index([grade])
+  @@index([score])
+}
+
+model FollowUpSequence {
+  id                String            @id @default(cuid())
+  name              String
+  description       String?           @db.Text
+  triggerEvent      FollowUpTrigger
+  triggerCondition  String?           @db.Text // JSON
+  isActive          Boolean           @default(true)
+
+  steps             FollowUpStep[]
+  executions        FollowUpExecution[]
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([triggerEvent])
+  @@index([isActive])
+}
+
+model FollowUpStep {
+  id                  String            @id @default(cuid())
+  sequenceId          String
+  sequence            FollowUpSequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  stepNumber          Int
+  delayDays           Int
+  delayHours          Int               @default(0)
+  actionType          FollowUpActionType
+
+  emailSubject        String?
+  emailContent        String?           @db.Text // HTML with placeholders
+  taskTitle           String?
+  taskDescription     String?           @db.Text
+  newStatus           String?
+  notificationMessage String?
+
+  isActive            Boolean           @default(true)
+
+  executions          FollowUpExecution[]
+
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([sequenceId])
+  @@index([stepNumber])
+}
+
+model FollowUpExecution {
+  id            String              @id @default(cuid())
+  sequenceId    String
+  sequence      FollowUpSequence    @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  stepId        String
+  step          FollowUpStep        @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  leadId        String
+  lead          Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  status        FollowUpExecStatus  @default(SCHEDULED)
+  scheduledFor  DateTime
+  executedAt    DateTime?
+  errorMessage  String?
+
+  createdAt     DateTime            @default(now())
+
+  @@index([leadId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+model IntakeScreeningSettings {
+  id                          String    @id @default("default")
+  isEnabled                   Boolean   @default(true)
+  autoScreenNewLeads          Boolean   @default(true)
+  autoScreenIntakeSubmissions Boolean   @default(true)
+  minimumQualifyScore         Int       @default(50)
+  autoDeclineScore            Int       @default(20)
+  notifyOnHighValue           Boolean   @default(true)
+  screeningCriteria           String?   @db.Text // JSON
+  followUpEnabled             Boolean   @default(true)
+
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+}
+
+enum LeadGrade {
+  A
+  B
+  C
+  D
+  F
+}
+
+enum UrgencyLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FollowUpTrigger {
+  NEW_LEAD
+  LEAD_QUALIFIED
+  CONSULTATION_COMPLETED
+  NO_RESPONSE
+  INTAKE_SUBMITTED
+  CUSTOM
+}
+
+enum FollowUpActionType {
+  EMAIL
+  TASK
+  STATUS_CHANGE
+  NOTIFICATION
+}
+
+enum FollowUpExecStatus {
+  SCHEDULED
+  SENT
+  COMPLETED
+  FAILED
+  CANCELLED
 }

@@ -22,6 +22,7 @@ import { websiteRouter } from "./website";
 import { aiAssistantRouter } from "./aiAssistant";
 import { researchRouter } from "./research";
 import { documentDraftingRouter } from "./documentDrafting";
+import { screeningRouter } from "./screening";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -47,6 +48,7 @@ export const appRouter = router({
   aiAssistant: aiAssistantRouter,
   research: researchRouter,
   drafting: documentDraftingRouter,
+  screening: screeningRouter,
 });
 
 export type AppRouter = typeof appRouter;

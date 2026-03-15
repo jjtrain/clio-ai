@@ -2,5 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npx pnpm@8.14.0 build",
   "outputDirectory": "apps/web/.next",
-  "installCommand": "HUSKY=0 npx pnpm@8.14.0 install"
+  "installCommand": "HUSKY=0 npx pnpm@8.14.0 install",
+  "crons": [
+    {
+      "path": "/api/cron/followups",
+      "schedule": "*/15 * * * *"
+    }
+  ]
 }

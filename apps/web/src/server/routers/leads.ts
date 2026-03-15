@@ -102,6 +102,27 @@ export const leadsRouter = router({
         },
       });
 
+      // Auto-screen if enabled
+      try {
+        const settings = await ctx.db.intakeScreeningSettings.findUnique({ where: { id: "default" } });
+        if (settings?.isEnabled && settings?.autoScreenNewLeads) {
+          const { screeningRouter } = await import("./screening");
+          const caller = screeningRouter.createCaller(ctx);
+          await caller.screenLead({ leadId: lead.id });
+        }
+      } catch (err) {
+        console.error("[Leads] Auto-screen failed:", err);
+      }
+
+      // Trigger follow-up sequences for NEW_LEAD
+      try {
+        const { screeningRouter } = await import("./screening");
+        const caller = screeningRouter.createCaller(ctx);
+        await caller.checkAndTrigger({ event: "NEW_LEAD", leadId: lead.id });
+      } catch (err) {
+        console.error("[Leads] Follow-up trigger failed:", err);
+      }
+
       return lead;
     }),
 
@@ -150,6 +171,18 @@ export const leadsRouter = router({
           description: `Status changed to ${input.status}`,
         },
       });
+
+      // Trigger follow-up sequences for LEAD_QUALIFIED
+      if (input.status === "QUALIFIED") {
+        try {
+          const { screeningRouter } = await import("./screening");
+          const caller = screeningRouter.createCaller(ctx);
+          const qual = await ctx.db.leadQualification.findUnique({ where: { leadId: input.id } });
+          await caller.checkAndTrigger({ event: "LEAD_QUALIFIED", leadId: input.id, condition: qual ? { leadGrade: qual.grade } : undefined });
+        } catch (err) {
+          console.error("[Leads] Follow-up trigger failed:", err);
+        }
+      }
 
       // Fire campaign triggers for lead status change
       if (lead.email) {

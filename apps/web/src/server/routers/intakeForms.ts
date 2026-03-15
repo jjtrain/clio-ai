@@ -515,6 +515,27 @@ export const intakeFormsRouter = router({
         }
       }
 
+      // Auto-screen intake submission if enabled
+      try {
+        const screenSettings = await ctx.db.intakeScreeningSettings.findUnique({ where: { id: "default" } });
+        if (screenSettings?.isEnabled && screenSettings?.autoScreenIntakeSubmissions) {
+          const { screeningRouter } = await import("./screening");
+          const caller = screeningRouter.createCaller(ctx);
+          await caller.screenIntakeSubmission({ submissionId: submission.id });
+        }
+      } catch (err) {
+        console.error("[IntakeForms] Auto-screen failed:", err);
+      }
+
+      // Trigger follow-up sequences for INTAKE_SUBMITTED
+      try {
+        const { screeningRouter } = await import("./screening");
+        const caller = screeningRouter.createCaller(ctx);
+        await caller.checkAndTrigger({ event: "INTAKE_SUBMITTED", leadId: lead.id });
+      } catch (err) {
+        console.error("[IntakeForms] Follow-up trigger failed:", err);
+      }
+
       // TODO: Send email notification
       if (template.notifyEmail) {
         console.log("[IntakeForms] Notification would be sent to:", template.notifyEmail, {
