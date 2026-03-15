@@ -31,6 +31,11 @@ import {
   ChevronDown,
   Search,
   Pencil,
+  Zap,
+  Settings2,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -57,6 +62,15 @@ const SET_STATUS_COLORS: Record<string, string> = {
   READY: "bg-blue-100 text-blue-700",
   SENT: "bg-purple-100 text-purple-700",
   COMPLETED: "bg-green-100 text-green-700",
+};
+
+const GEN_STATUS_BADGES: Record<string, { icon: any; color: string; label: string }> = {
+  PENDING: { icon: Loader2, color: "text-gray-400", label: "Pending" },
+  GENERATING: { icon: Loader2, color: "text-blue-500", label: "Generating" },
+  COMPLETED: { icon: CheckCircle2, color: "text-green-500", label: "Generated" },
+  PARTIAL: { icon: AlertCircle, color: "text-amber-500", label: "Partial" },
+  FAILED: { icon: AlertCircle, color: "text-red-500", label: "Failed" },
+  APPROVED: { icon: CheckCircle2, color: "text-emerald-500", label: "Approved" },
 };
 
 export default function DraftingHub() {
@@ -293,6 +307,12 @@ export default function DraftingHub() {
         <>
           <div className="flex gap-3">
             <Button variant="outline" asChild><Link href="/drafting/sets/new"><Layers className="h-4 w-4 mr-2" /> New Document Set</Link></Button>
+            <Button className="bg-rose-600 hover:bg-rose-700 text-white" asChild>
+              <Link href="/drafting/sets/generate"><Zap className="h-4 w-4 mr-2" /> Generate Document Set</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/drafting/sets/templates"><Settings2 className="h-4 w-4 mr-2" /> Manage Set Templates</Link>
+            </Button>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -310,6 +330,8 @@ export default function DraftingHub() {
                   const complete = s.items.filter((i: any) => i.isComplete).length;
                   const total = s.items.length;
                   const pct = total > 0 ? Math.round((complete / total) * 100) : 0;
+                  const sGen = (s as any).generation;
+                  const genBadge = sGen ? GEN_STATUS_BADGES[sGen.status] : null;
                   return (
                     <Link key={s.id} href={`/drafting/sets/${s.id}`} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50">
                       <div className="flex-1 min-w-0">
@@ -318,6 +340,15 @@ export default function DraftingHub() {
                           {s.matter ? `${s.matter.matterNumber} - ${s.matter.name}` : "No linked matter"} · {total} items
                         </p>
                       </div>
+                      {genBadge && (
+                        <div className={`flex items-center gap-1 text-xs ${genBadge.color}`}>
+                          <genBadge.icon className={`h-3.5 w-3.5 ${sGen.status === "GENERATING" ? "animate-spin" : ""}`} />
+                          <span>{genBadge.label}</span>
+                          <span className="text-gray-400 text-[10px]">
+                            {sGen.completedDocuments}/{sGen.totalDocuments}
+                          </span>
+                        </div>
+                      )}
                       <div className="w-32">
                         <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                           <span>{complete}/{total}</span>

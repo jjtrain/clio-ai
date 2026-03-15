@@ -260,6 +260,102 @@ async function ensureSystemMergeFields(db: any) {
   }
 }
 
+const STARTER_SET_TEMPLATES = [
+  {
+    name: "New Client Onboarding Package",
+    description: "Essential documents for bringing on a new client regardless of practice area.",
+    practiceArea: null,
+    category: "Client Onboarding",
+    items: [
+      { title: "Engagement Letter", sortOrder: 1, isRequired: true, autoSendForSignature: true },
+      { title: "Fee Agreement", sortOrder: 2, isRequired: true, autoSendForSignature: true },
+      { title: "Client Information Sheet", sortOrder: 3, isRequired: true, autoSendForSignature: false },
+      { title: "Conflict Waiver", sortOrder: 4, isRequired: false, autoSendForSignature: true },
+    ],
+  },
+  {
+    name: "Family Law Starter Set",
+    description: "Complete document package for initiating a family law matter.",
+    practiceArea: "Family Law",
+    category: "Litigation",
+    items: [
+      { title: "Retainer Agreement", sortOrder: 1, isRequired: true, autoSendForSignature: true },
+      { title: "Client Intake Questionnaire", sortOrder: 2, isRequired: true, autoSendForSignature: false },
+      { title: "Financial Disclosure Form", sortOrder: 3, isRequired: true, autoSendForSignature: false },
+      { title: "Petition for Divorce/Custody", sortOrder: 4, isRequired: true, autoSendForSignature: false },
+      { title: "Summons", sortOrder: 5, isRequired: true, autoSendForSignature: false },
+      { title: "Certificate of Service", sortOrder: 6, isRequired: true, autoSendForSignature: false },
+    ],
+  },
+  {
+    name: "Litigation Startup Bundle",
+    description: "Standard set of documents to initiate a civil litigation matter.",
+    practiceArea: null,
+    category: "Litigation",
+    items: [
+      { title: "Engagement Letter", sortOrder: 1, isRequired: true, autoSendForSignature: true },
+      { title: "Retainer Agreement", sortOrder: 2, isRequired: true, autoSendForSignature: true },
+      { title: "Demand Letter", sortOrder: 3, isRequired: false, autoSendForSignature: false },
+      { title: "Complaint/Petition", sortOrder: 4, isRequired: true, autoSendForSignature: false },
+      { title: "Summons", sortOrder: 5, isRequired: true, autoSendForSignature: false },
+      { title: "Civil Cover Sheet", sortOrder: 6, isRequired: true, autoSendForSignature: false },
+      { title: "Certificate of Service", sortOrder: 7, isRequired: true, autoSendForSignature: false },
+    ],
+  },
+  {
+    name: "Business Formation Package",
+    description: "Documents needed to form and organize a new business entity.",
+    practiceArea: "Business Law",
+    category: "Transactional",
+    items: [
+      { title: "Engagement Letter", sortOrder: 1, isRequired: true, autoSendForSignature: true },
+      { title: "Articles of Incorporation/Organization", sortOrder: 2, isRequired: true, autoSendForSignature: false },
+      { title: "Bylaws/Operating Agreement", sortOrder: 3, isRequired: true, autoSendForSignature: true },
+      { title: "Organizational Resolution", sortOrder: 4, isRequired: true, autoSendForSignature: false },
+      { title: "EIN Application", sortOrder: 5, isRequired: true, autoSendForSignature: false },
+    ],
+  },
+  {
+    name: "Estate Planning Package",
+    description: "Comprehensive estate planning document set.",
+    practiceArea: "Estate Planning",
+    category: "Estate Planning",
+    items: [
+      { title: "Engagement Letter", sortOrder: 1, isRequired: true, autoSendForSignature: true },
+      { title: "Last Will and Testament", sortOrder: 2, isRequired: true, autoSendForSignature: true },
+      { title: "Revocable Living Trust", sortOrder: 3, isRequired: false, autoSendForSignature: true },
+      { title: "Durable Power of Attorney", sortOrder: 4, isRequired: true, autoSendForSignature: true },
+      { title: "Healthcare Proxy", sortOrder: 5, isRequired: true, autoSendForSignature: true },
+      { title: "HIPAA Authorization", sortOrder: 6, isRequired: true, autoSendForSignature: true },
+    ],
+  },
+];
+
+async function ensureStarterSetTemplates(db: any) {
+  const count = await db.documentSetTemplate.count();
+  if (count > 0) return;
+
+  // Try to match items to existing templates by name
+  const templates = await db.documentTemplate.findMany({ where: { isActive: true } });
+  const templateMap = new Map(templates.map((t: any) => [t.name, t.id]));
+
+  for (const st of STARTER_SET_TEMPLATES) {
+    const items = st.items.map((item: any) => ({
+      ...item,
+      templateId: templateMap.get(item.title) || null,
+    }));
+    await db.documentSetTemplate.create({
+      data: {
+        name: st.name,
+        description: st.description,
+        practiceArea: st.practiceArea,
+        category: st.category,
+        items: JSON.stringify(items),
+      },
+    });
+  }
+}
+
 export const documentDraftingRouter = router({
   // ── Templates ─────────────────────────────────────────
   listTemplates: publicProcedure
@@ -546,6 +642,7 @@ export const documentDraftingRouter = router({
           matter: { select: { id: true, name: true, matterNumber: true } },
           _count: { select: { items: true } },
           items: { select: { isComplete: true } },
+          generation: { select: { status: true, completedDocuments: true, totalDocuments: true } },
         },
         orderBy: { updatedAt: "desc" },
       });
@@ -560,11 +657,12 @@ export const documentDraftingRouter = router({
           matter: { select: { id: true, name: true, matterNumber: true, practiceArea: true } },
           items: {
             include: {
-              draftDocument: { select: { id: true, title: true, status: true } },
+              draftDocument: { select: { id: true, title: true, status: true, content: true } },
               signatureRequest: { select: { id: true, title: true, status: true } },
             },
             orderBy: { sortOrder: "asc" },
           },
+          generation: true,
         },
       });
     }),
@@ -745,5 +843,373 @@ export const documentDraftingRouter = router({
           changeNote: `Restored from version ${version.versionNumber}`,
         },
       });
+    }),
+
+  // ── Document Set Templates ────────────────────────────────────
+
+  listSetTemplates: publicProcedure
+    .input(z.object({ practiceArea: z.string().optional(), category: z.string().optional(), search: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      await ensureStarterSetTemplates(ctx.db);
+      const where: any = { isActive: true };
+      if (input?.practiceArea) where.practiceArea = input.practiceArea;
+      if (input?.category) where.category = input.category;
+      if (input?.search) where.name = { contains: input.search, mode: "insensitive" };
+      return ctx.db.documentSetTemplate.findMany({ where, orderBy: { updatedAt: "desc" } });
+    }),
+
+  getSetTemplate: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const st = await ctx.db.documentSetTemplate.findUniqueOrThrow({ where: { id: input.id } });
+      // Resolve template names
+      let items: any[] = [];
+      try { items = JSON.parse(st.items); } catch {}
+      const templateIds = items.map((i: any) => i.templateId).filter(Boolean);
+      const templates = templateIds.length > 0 ? await ctx.db.documentTemplate.findMany({ where: { id: { in: templateIds } }, select: { id: true, name: true, category: true } }) : [];
+      const tMap = new Map(templates.map((t: any) => [t.id, t]));
+      const resolvedItems = items.map((item: any) => ({ ...item, templateName: tMap.get(item.templateId)?.name || null, templateCategory: tMap.get(item.templateId)?.category || null }));
+      return { ...st, resolvedItems };
+    }),
+
+  createSetTemplate: publicProcedure
+    .input(z.object({ name: z.string().min(1), description: z.string().optional(), practiceArea: z.string().optional(), category: z.string().optional(), items: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.documentSetTemplate.create({ data: input });
+    }),
+
+  updateSetTemplate: publicProcedure
+    .input(z.object({ id: z.string(), name: z.string().optional(), description: z.string().optional(), practiceArea: z.string().optional(), category: z.string().optional(), items: z.string().optional(), isActive: z.boolean().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      return ctx.db.documentSetTemplate.update({ where: { id }, data });
+    }),
+
+  deleteSetTemplate: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.documentSetTemplate.update({ where: { id: input.id }, data: { isActive: false } });
+    }),
+
+  duplicateSetTemplate: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const st = await ctx.db.documentSetTemplate.findUniqueOrThrow({ where: { id: input.id } });
+      return ctx.db.documentSetTemplate.create({
+        data: { name: `Copy of ${st.name}`, description: st.description, practiceArea: st.practiceArea, category: st.category, items: st.items },
+      });
+    }),
+
+  aiSuggestSetTemplate: publicProcedure
+    .input(z.object({ practiceArea: z.string(), matterType: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await assembleDocumentSetSuggestion({ practiceArea: input.practiceArea, matterType: input.matterType });
+      return result;
+    }),
+
+  // ── Document Set Generation ───────────────────────────────────
+
+  generateDocumentSet: publicProcedure
+    .input(z.object({
+      setTemplateId: z.string().optional(),
+      items: z.array(z.object({ templateId: z.string().optional(), title: z.string(), sortOrder: z.number(), isRequired: z.boolean().default(true), autoSendForSignature: z.boolean().default(false) })).optional(),
+      matterId: z.string(),
+      clientId: z.string(),
+      name: z.string().optional(),
+      autoFillMergeFields: z.boolean().default(true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      let items: any[] = input.items || [];
+      let setTemplateName = input.name || "Generated Document Set";
+
+      // Load items from set template if provided
+      if (input.setTemplateId) {
+        const st = await ctx.db.documentSetTemplate.findUniqueOrThrow({ where: { id: input.setTemplateId } });
+        try { items = JSON.parse(st.items); } catch {}
+        setTemplateName = st.name;
+        await ctx.db.documentSetTemplate.update({ where: { id: input.setTemplateId }, data: { usageCount: { increment: 1 } } });
+      }
+
+      // Create document set
+      const docSet = await ctx.db.documentSet.create({
+        data: { name: setTemplateName, matterId: input.matterId, clientId: input.clientId, status: "ASSEMBLING" },
+      });
+
+      // Create generation record
+      const generation = await ctx.db.documentSetGeneration.create({
+        data: {
+          documentSetId: docSet.id,
+          documentSetTemplateId: input.setTemplateId || null,
+          matterId: input.matterId,
+          clientId: input.clientId,
+          status: "GENERATING",
+          totalDocuments: items.length,
+        },
+      });
+
+      // Resolve merge fields if needed
+      let mergeFields: Record<string, string> = {};
+      if (input.autoFillMergeFields) {
+        mergeFields = await resolveFields(ctx.db, input.matterId, input.clientId);
+      }
+
+      let completed = 0;
+      let failed = 0;
+      const errors: string[] = [];
+
+      for (const item of items) {
+        try {
+          let content = "<p>Document content pending</p>";
+          let templateId: string | null = item.templateId || null;
+
+          if (item.templateId) {
+            // Load template and apply merge fields
+            const tmpl = await ctx.db.documentTemplate.findUnique({ where: { id: item.templateId } });
+            if (tmpl) {
+              content = tmpl.content;
+              if (input.autoFillMergeFields) {
+                for (const [key, val] of Object.entries(mergeFields)) {
+                  content = content.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), val || `[${key}]`);
+                }
+              }
+              await ctx.db.documentTemplate.update({ where: { id: item.templateId }, data: { usageCount: { increment: 1 } } });
+            }
+          } else {
+            // Generate via AI for items without a template
+            try {
+              const matter = await ctx.db.matter.findUnique({ where: { id: input.matterId }, include: { client: true } });
+              const result = await generateDocumentFromPrompt({
+                prompt: `Generate a ${item.title} document for a ${matter?.practiceArea || "legal"} matter. Client: ${matter?.client?.name || "Client"}. Matter: ${matter?.name || "Legal Matter"}.`,
+                matterContext: matter ? { name: matter.name, description: matter.description ?? undefined, practiceArea: matter.practiceArea ?? undefined, clientName: matter.client?.name } : undefined,
+              });
+              content = result.content;
+            } catch {
+              content = `<h1>${item.title}</h1><p>[Content to be drafted]</p>`;
+            }
+          }
+
+          // Create draft document
+          const draft = await ctx.db.draftDocument.create({
+            data: {
+              title: item.title,
+              content,
+              matterId: input.matterId,
+              clientId: input.clientId,
+              templateId,
+              aiGenerated: !item.templateId,
+              status: "DRAFT",
+            },
+          });
+
+          // Create set item
+          await ctx.db.documentSetItem.create({
+            data: {
+              documentSetId: docSet.id,
+              draftDocumentId: draft.id,
+              title: item.title,
+              sortOrder: item.sortOrder || completed + 1,
+            },
+          });
+
+          completed++;
+        } catch (err: any) {
+          failed++;
+          errors.push(`${item.title}: ${err.message?.slice(0, 200)}`);
+          // Still create the set item without a draft
+          await ctx.db.documentSetItem.create({
+            data: { documentSetId: docSet.id, title: item.title, sortOrder: item.sortOrder || completed + failed },
+          });
+        }
+
+        // Update progress
+        await ctx.db.documentSetGeneration.update({
+          where: { id: generation.id },
+          data: { completedDocuments: completed, failedDocuments: failed },
+        });
+      }
+
+      // Finalize
+      await ctx.db.documentSetGeneration.update({
+        where: { id: generation.id },
+        data: {
+          status: failed === items.length ? "FAILED" : "REVIEWING",
+          generatedAt: new Date(),
+          errorLog: errors.length > 0 ? JSON.stringify(errors) : null,
+        },
+      });
+
+      return ctx.db.documentSet.findUnique({
+        where: { id: docSet.id },
+        include: { items: { include: { draftDocument: true }, orderBy: { sortOrder: "asc" } }, generation: true },
+      });
+    }),
+
+  generateWithAi: publicProcedure
+    .input(z.object({ matterId: z.string(), clientId: z.string(), prompt: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      // Ask AI what documents are needed
+      const matter = await ctx.db.matter.findUnique({ where: { id: input.matterId }, include: { client: true } });
+      const suggestions = await assembleDocumentSetSuggestion({
+        practiceArea: matter?.practiceArea || "General",
+        matterType: input.prompt,
+      });
+
+      // Map to items format
+      const items = suggestions.map((s: any, i: number) => ({
+        title: s.title,
+        sortOrder: s.order || i + 1,
+        isRequired: true,
+        autoSendForSignature: false,
+      }));
+
+      // Create document set
+      const docSet = await ctx.db.documentSet.create({
+        data: { name: `AI: ${input.prompt.slice(0, 60)}`, matterId: input.matterId, clientId: input.clientId, status: "ASSEMBLING" },
+      });
+
+      const generation = await ctx.db.documentSetGeneration.create({
+        data: {
+          documentSetId: docSet.id,
+          matterId: input.matterId,
+          clientId: input.clientId,
+          status: "GENERATING",
+          totalDocuments: items.length,
+        },
+      });
+
+      const mergeFields = await resolveFields(ctx.db, input.matterId, input.clientId);
+      let completed = 0;
+      let failed = 0;
+      const errors: string[] = [];
+
+      for (const item of items) {
+        try {
+          const result = await generateDocumentFromPrompt({
+            prompt: `Generate a ${item.title} document.`,
+            matterContext: matter ? { name: matter.name, description: matter.description ?? undefined, practiceArea: matter.practiceArea ?? undefined, clientName: matter.client?.name } : undefined,
+          });
+
+          let content = result.content;
+          for (const [key, val] of Object.entries(mergeFields)) {
+            content = content.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), val || `[${key}]`);
+          }
+
+          const draft = await ctx.db.draftDocument.create({
+            data: { title: item.title, content, matterId: input.matterId, clientId: input.clientId, aiGenerated: true, aiPrompt: input.prompt, status: "DRAFT" },
+          });
+
+          await ctx.db.documentSetItem.create({
+            data: { documentSetId: docSet.id, draftDocumentId: draft.id, title: item.title, sortOrder: item.sortOrder },
+          });
+          completed++;
+        } catch (err: any) {
+          failed++;
+          errors.push(`${item.title}: ${err.message?.slice(0, 200)}`);
+          await ctx.db.documentSetItem.create({ data: { documentSetId: docSet.id, title: item.title, sortOrder: item.sortOrder } });
+        }
+
+        await ctx.db.documentSetGeneration.update({
+          where: { id: generation.id },
+          data: { completedDocuments: completed, failedDocuments: failed },
+        });
+      }
+
+      await ctx.db.documentSetGeneration.update({
+        where: { id: generation.id },
+        data: { status: failed === items.length ? "FAILED" : "REVIEWING", generatedAt: new Date(), errorLog: errors.length > 0 ? JSON.stringify(errors) : null },
+      });
+
+      return ctx.db.documentSet.findUnique({
+        where: { id: docSet.id },
+        include: { items: { include: { draftDocument: true }, orderBy: { sortOrder: "asc" } }, generation: true },
+      });
+    }),
+
+  regenerateDocument: publicProcedure
+    .input(z.object({ documentSetItemId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const item = await ctx.db.documentSetItem.findUniqueOrThrow({
+        where: { id: input.documentSetItemId },
+        include: { documentSet: { include: { generation: true } }, draftDocument: { include: { template: true } } },
+      });
+
+      const gen = item.documentSet.generation;
+      if (!gen) throw new Error("No generation record found");
+
+      let content = "<p>Document content pending</p>";
+      if (item.draftDocument?.template) {
+        const mergeFields = await resolveFields(ctx.db, gen.matterId, gen.clientId);
+        content = item.draftDocument.template.content;
+        for (const [key, val] of Object.entries(mergeFields)) {
+          content = content.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), val || `[${key}]`);
+        }
+      } else {
+        const matter = await ctx.db.matter.findUnique({ where: { id: gen.matterId }, include: { client: true } });
+        const result = await generateDocumentFromPrompt({
+          prompt: `Generate a ${item.title} document.`,
+          matterContext: matter ? { name: matter.name, description: matter.description ?? undefined, practiceArea: matter.practiceArea ?? undefined, clientName: matter.client?.name } : undefined,
+        });
+        content = result.content;
+      }
+
+      if (item.draftDocumentId) {
+        await ctx.db.draftDocument.update({ where: { id: item.draftDocumentId }, data: { content, version: { increment: 1 } } });
+      } else {
+        const draft = await ctx.db.draftDocument.create({
+          data: { title: item.title, content, matterId: gen.matterId, clientId: gen.clientId, aiGenerated: true, status: "DRAFT" },
+        });
+        await ctx.db.documentSetItem.update({ where: { id: input.documentSetItemId }, data: { draftDocumentId: draft.id } });
+      }
+
+      return { success: true };
+    }),
+
+  approveSet: publicProcedure
+    .input(z.object({ documentSetId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const gen = await ctx.db.documentSetGeneration.findFirst({ where: { documentSetId: input.documentSetId } });
+      if (gen) {
+        await ctx.db.documentSetGeneration.update({ where: { id: gen.id }, data: { status: "APPROVED", approvedAt: new Date() } });
+      }
+      await ctx.db.documentSet.update({ where: { id: input.documentSetId }, data: { status: "READY" } });
+      return { success: true };
+    }),
+
+  sendSetForSignature: publicProcedure
+    .input(z.object({ documentSetId: z.string(), clientName: z.string(), clientEmail: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const docSet = await ctx.db.documentSet.findUniqueOrThrow({
+        where: { id: input.documentSetId },
+        include: { items: { include: { draftDocument: true } } },
+      });
+
+      let sent = 0;
+      for (const item of docSet.items) {
+        if (!item.draftDocument || !docSet.matterId) continue;
+        const sigReq = await ctx.db.signatureRequest.create({
+          data: {
+            matterId: docSet.matterId,
+            title: item.draftDocument.title,
+            documentContent: item.draftDocument.content,
+            clientName: input.clientName,
+            clientEmail: input.clientEmail,
+            signingToken: crypto.randomBytes(32).toString("hex"),
+            status: "PENDING_CLIENT",
+            sentAt: new Date(),
+          },
+        });
+        await ctx.db.documentSetItem.update({ where: { id: item.id }, data: { signatureRequestId: sigReq.id } });
+        await ctx.db.draftDocument.update({ where: { id: item.draftDocumentId! }, data: { status: "SENT" } });
+        sent++;
+      }
+
+      await ctx.db.documentSet.update({ where: { id: input.documentSetId }, data: { status: "SENT" } });
+      return { sent };
+    }),
+
+  getGenerationStatus: publicProcedure
+    .input(z.object({ generationId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.documentSetGeneration.findUniqueOrThrow({ where: { id: input.generationId } });
     }),
 });

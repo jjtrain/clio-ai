@@ -1406,16 +1406,17 @@ model DraftDocument {
 }
 
 model DocumentSet {
-  id          String            @id @default(cuid())
+  id          String             @id @default(cuid())
   name        String
-  description String?           @db.Text
+  description String?            @db.Text
   matterId    String?
-  matter      Matter?           @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  matter      Matter?            @relation(fields: [matterId], references: [id], onDelete: SetNull)
   clientId    String?
-  status      DocumentSetStatus @default(ASSEMBLING)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  status      DocumentSetStatus  @default(ASSEMBLING)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
   items       DocumentSetItem[]
+  generation  DocumentSetGeneration?
 
   @@index([matterId])
 }
@@ -1434,6 +1435,52 @@ model DocumentSetItem {
   createdAt          DateTime          @default(now())
 
   @@index([documentSetId])
+}
+
+model DocumentSetTemplate {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?  @db.Text
+  practiceArea String?
+  category     String?
+  items        String   @db.Text // JSON array of {templateId?, title, sortOrder, isRequired, autoSendForSignature}
+  isActive     Boolean  @default(true)
+  usageCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([practiceArea])
+  @@index([category])
+  @@index([isActive])
+}
+
+model DocumentSetGeneration {
+  id                    String           @id @default(cuid())
+  documentSetId         String           @unique
+  documentSet           DocumentSet      @relation(fields: [documentSetId], references: [id], onDelete: Cascade)
+  documentSetTemplateId String?
+  matterId              String
+  clientId              String
+  status                GenerationStatus @default(PENDING)
+  totalDocuments        Int              @default(0)
+  completedDocuments    Int              @default(0)
+  failedDocuments       Int              @default(0)
+  generatedAt           DateTime?
+  approvedAt            DateTime?
+  errorLog              String?          @db.Text
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([documentSetId])
+  @@index([status])
+}
+
+enum GenerationStatus {
+  PENDING
+  GENERATING
+  REVIEWING
+  APPROVED
+  FAILED
 }
 
 enum DocumentCategory {
