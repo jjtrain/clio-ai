@@ -120,10 +120,17 @@ export default function MatterDetailPage() {
     { matterId },
     { enabled: !!matterId }
   );
+  const { data: matterAlerts } = trpc.riskAlerts.list.useQuery(
+    { matterId, status: "NEW", limit: 10 },
+    { enabled: !!matterId }
+  );
   const [showAddParty, setShowAddParty] = useState(false);
   const utils = trpc.useUtils();
   const aiEstimate = trpc.forecasting.aiEstimate.useMutation({
     onSuccess: () => { toast({ title: "AI estimate generated" }); utils.forecasting.invalidate(); },
+  });
+  const assessRisk = trpc.riskAlerts.assessMatter.useMutation({
+    onSuccess: () => { toast({ title: "Risk assessment complete" }); utils.riskAlerts.invalidate(); },
   });
 
   const toggleComplete = trpc.tasks.toggleComplete.useMutation({
@@ -626,6 +633,38 @@ export default function MatterDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Risk Alerts */}
+      {matterAlerts && matterAlerts.alerts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-500" />
+                Risk Alerts
+                <Badge variant="destructive" className="ml-2">{matterAlerts.alerts.length}</Badge>
+              </CardTitle>
+              <Button variant="outline" size="sm" onClick={() => assessRisk.mutate({ matterId })} disabled={assessRisk.isPending}>
+                <Sparkles className="mr-1.5 h-3 w-3" />{assessRisk.isPending ? "Assessing..." : "AI Assessment"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {matterAlerts.alerts.slice(0, 5).map((alert: any) => (
+                <div key={alert.id} className={`p-3 rounded-lg border-l-4 ${alert.severity === "CRITICAL" ? "border-l-red-500 bg-red-50" : alert.severity === "HIGH" ? "border-l-orange-500 bg-orange-50" : "border-l-amber-500 bg-amber-50"}`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${alert.severity === "CRITICAL" ? "bg-red-100 text-red-700" : alert.severity === "HIGH" ? "bg-orange-100 text-orange-700" : "bg-amber-100 text-amber-700"}`}>{alert.severity}</span>
+                    <span className="text-sm font-medium text-gray-900">{alert.title}</span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">{alert.description}</p>
+                </div>
+              ))}
+              <Button variant="ghost" size="sm" asChild className="w-full text-blue-500"><a href="/risk">View all in Risk Monitor</a></Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Financial Summary */}
       <Card>
