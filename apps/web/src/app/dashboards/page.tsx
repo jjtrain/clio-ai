@@ -378,7 +378,7 @@ export default function DashboardsPage() {
                             <Cell key={i} fill={COLORS.palette[i % COLORS.palette.length]} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(v: number) => fmtCurrencyFull(v)} />
+                        <Tooltip formatter={(v: any) => fmtCurrencyFull(Number(v))} />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
