@@ -214,7 +214,7 @@ export const riskAlertsRouter = router({
     const days = settings.deadlineAlertDays;
     const upcoming = new Date(Date.now() + days * 86400000);
     const overdueTasks = await ctx.db.task.findMany({
-      where: { dueDate: { lt: new Date() }, isComplete: false },
+      where: { dueDate: { lt: new Date() }, completedAt: null },
       include: { matter: true },
     });
     for (const t of overdueTasks) {
@@ -349,7 +349,7 @@ export const riskAlertsRouter = router({
       name: matter.name, practiceArea: matter.practiceArea || undefined,
       daysOpen, lastActivity: new Date(lastAct).toISOString(),
       billing: billed, valuation: matter.valuation ? toNum(matter.valuation.estimatedValue) : 0,
-      deadlines: matter.tasks.filter((t: any) => !t.isComplete && t.dueDate).length,
+      deadlines: matter.tasks.filter((t: any) => !t.completedAt && t.dueDate).length,
       parties: matter.relatedParties.length,
     });
 

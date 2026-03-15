@@ -42,7 +42,7 @@ export async function GET() {
     }
 
     // Overdue tasks
-    const overdueTasks = await db.task.findMany({ where: { dueDate: { lt: new Date() }, isComplete: false }, include: { matter: true } });
+    const overdueTasks = await db.task.findMany({ where: { dueDate: { lt: new Date() }, completedAt: null }, include: { matter: true } });
     for (const t of overdueTasks) {
       const title = `Overdue task: ${t.title}`;
       const exists = await db.riskAlert.count({ where: { title, entityId: t.id, status: { in: ["NEW", "ACKNOWLEDGED", "INVESTIGATING"] } } });
