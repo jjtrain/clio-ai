@@ -28,6 +28,7 @@ import { clientPortalRouter } from "./clientPortal";
 import { messagingRouter } from "./messaging";
 import { billingRemindersRouter } from "./billingReminders";
 import { invoiceTemplatesRouter } from "./invoiceTemplates";
+import { reportsRouter } from "./reports";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -59,6 +60,7 @@ export const appRouter = router({
   messaging: messagingRouter,
   billingReminders: billingRemindersRouter,
   invoiceTemplates: invoiceTemplatesRouter,
+  reports: reportsRouter,
 });
 
 export type AppRouter = typeof appRouter;

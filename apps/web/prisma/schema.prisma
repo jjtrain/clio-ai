@@ -2152,3 +2152,60 @@ enum InvoiceFormat {
   FLAT_FEE
   CUSTOM
 }
+
+// ─── Reports ──────────────────────────────────────────────────────
+
+enum ReportType {
+  FINANCIAL
+  MATTERS
+  CLIENTS
+  TIME
+  LEADS
+  APPOINTMENTS
+  CUSTOM
+}
+
+model ReportDefinition {
+  id                 String             @id @default(cuid())
+  name               String
+  description        String?            @db.Text
+  reportType         ReportType
+  dataSource         String
+  columns            String             @db.Text
+  filters            String             @db.Text
+  groupBy            String?
+  sortBy             String?
+  sortDirection      String             @default("desc")
+  aggregations       String?            @db.Text
+  chartType          String?
+  chartConfig        String?            @db.Text
+  dateRange          String?            @db.Text
+  isScheduled        Boolean            @default(false)
+  scheduleFrequency  String?
+  scheduleRecipients String?            @db.Text
+  lastRunAt          DateTime?
+  isFavorite         Boolean            @default(false)
+  isSystem           Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  executions         ReportExecution[]
+
+  @@index([reportType])
+  @@index([isFavorite])
+  @@index([isSystem])
+}
+
+model ReportExecution {
+  id              String           @id @default(cuid())
+  reportId        String
+  report          ReportDefinition @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  resultData      String           @db.Text
+  rowCount        Int              @default(0)
+  executionTimeMs Int?
+  exportFormat    String?
+  createdAt       DateTime         @default(now())
+
+  @@index([reportId])
+  @@index([createdAt])
+}
