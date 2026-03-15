@@ -33,6 +33,7 @@ import {
   ScanSearch,
   Upload,
   UserCircle,
+  MessageSquare,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -59,6 +60,7 @@ const mainNavigation = [
   { name: "Intake Screening", href: "/screening", icon: ScanSearch },
   { name: "E-Filing", href: "/efiling", icon: Upload },
   { name: "Client Portal", href: "/client-portal", icon: UserCircle },
+  { name: "Text Messaging", href: "/messaging", icon: MessageSquare },
 ];
 
 const bottomNavigation = [

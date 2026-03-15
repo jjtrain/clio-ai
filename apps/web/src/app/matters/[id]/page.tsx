@@ -286,6 +286,14 @@ export default function MatterDetailPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {matter.client.phone && (
+            <Button variant="outline" asChild>
+              <Link href={`/messaging?clientId=${matter.client.id}&matterId=${matterId}`}>
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Text Client
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" asChild>
             <Link href={`/efiling/new?matterId=${matterId}`}>
               <Upload className="mr-2 h-4 w-4" />

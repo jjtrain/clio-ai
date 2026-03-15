@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Edit, MoreHorizontal, Plus, Archive } from "lucide-react";
+import { ArrowLeft, Edit, MoreHorizontal, Plus, Archive, MessageSquare } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
@@ -93,6 +93,14 @@ export default function ClientDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {client.phone && (
+            <Button variant="outline" asChild>
+              <Link href={"/messaging?clientId=" + clientId}>
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Send Text
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" asChild>
             <Link href={"/clients/" + clientId + "/edit"}>
               <Edit className="mr-2 h-4 w-4" />

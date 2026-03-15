@@ -37,10 +37,12 @@ model Client {
   status       ClientStatus  @default(ACTIVE)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  matters        Matter[]
-  trustLedgers   TrustLedger[]
-  draftDocuments DraftDocument[]
-  portalUsers    ClientPortalUser[]
+  matters            Matter[]
+  trustLedgers       TrustLedger[]
+  draftDocuments     DraftDocument[]
+  portalUsers        ClientPortalUser[]
+  textMessages       TextMessage[]
+  textConversations  TextConversation[]
 }
 
 model Matter {
@@ -72,6 +74,7 @@ model Matter {
   documentSets       DocumentSet[]
   efilings           EFilingSubmission[]
   portalMessages     ClientPortalMessage[]
+  textMessages       TextMessage[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -1865,4 +1868,110 @@ model ClientPortalSettings {
 enum PortalMessageDirection {
   CLIENT_TO_FIRM
   FIRM_TO_CLIENT
+}
+
+// ============================================
+// TWO-WAY TEXT MESSAGING
+// ============================================
+
+model TextMessage {
+  id              String            @id @default(cuid())
+  conversationId  String?
+  conversation    TextConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  matterId        String?
+  matter          Matter?           @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  clientId        String?
+  client          Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  direction       MessageDirection
+  fromNumber      String
+  toNumber        String
+  body            String            @db.Text
+  status          TextMessageStatus @default(QUEUED)
+  externalId      String?
+  errorMessage    String?
+  mediaUrl        String?
+  isRead          Boolean           @default(false)
+  readAt          DateTime?
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime          @default(now())
+
+  @@index([clientId])
+  @@index([matterId])
+  @@index([conversationId])
+  @@index([fromNumber])
+  @@index([toNumber])
+  @@index([status])
+  @@index([createdAt])
+  @@index([externalId])
+}
+
+model TextConversation {
+  id                 String        @id @default(cuid())
+  clientId           String
+  client             Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  matterId           String?
+  clientPhone        String
+  firmPhone          String
+  lastMessageAt      DateTime?
+  lastMessagePreview String?
+  unreadCount        Int           @default(0)
+  isArchived         Boolean       @default(false)
+  isOptedOut         Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  messages           TextMessage[]
+
+  @@unique([clientPhone, firmPhone])
+  @@index([clientId])
+  @@index([clientPhone])
+  @@index([lastMessageAt])
+}
+
+model TextTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  content     String   @db.Text
+  category    String?
+  shortcode   String?  @unique
+  isActive    Boolean  @default(true)
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([shortcode])
+}
+
+model TextMessageSettings {
+  id                    String   @id @default("default")
+  isEnabled             Boolean  @default(false)
+  provider              String   @default("twilio")
+  twilioAccountSid      String?
+  twilioAuthToken       String?  @db.Text
+  twilioPhoneNumber     String?
+  defaultSignature      String?
+  autoReplyEnabled      Boolean  @default(false)
+  autoReplyMessage      String?  @db.Text
+  autoReplyOutsideHours Boolean  @default(false)
+  businessHours         String?  @db.Text
+  messageRetentionDays  Int      @default(365)
+  consentMessage        String?  @db.Text
+  requireConsent        Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum TextMessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  RECEIVED
 }

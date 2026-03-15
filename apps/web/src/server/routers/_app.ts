@@ -25,6 +25,7 @@ import { documentDraftingRouter } from "./documentDrafting";
 import { screeningRouter } from "./screening";
 import { efilingRouter } from "./efiling";
 import { clientPortalRouter } from "./clientPortal";
+import { messagingRouter } from "./messaging";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -53,6 +54,7 @@ export const appRouter = router({
   screening: screeningRouter,
   efiling: efilingRouter,
   clientPortal: clientPortalRouter,
+  messaging: messagingRouter,
 });
 
 export type AppRouter = typeof appRouter;
