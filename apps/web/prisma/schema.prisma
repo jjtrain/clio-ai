@@ -40,6 +40,7 @@ model Client {
   matters        Matter[]
   trustLedgers   TrustLedger[]
   draftDocuments DraftDocument[]
+  portalUsers    ClientPortalUser[]
 }
 
 model Matter {
@@ -70,6 +71,7 @@ model Matter {
   draftDocuments     DraftDocument[]
   documentSets       DocumentSet[]
   efilings           EFilingSubmission[]
+  portalMessages     ClientPortalMessage[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -1799,4 +1801,68 @@ enum CourtType {
   BANKRUPTCY
   TAX
   OTHER
+}
+
+// ============================================
+// SECURE CLIENT PORTAL
+// ============================================
+
+model ClientPortalUser {
+  id               String    @id @default(cuid())
+  clientId         String
+  client           Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  email            String    @unique
+  passwordHash     String
+  name             String
+  isActive         Boolean   @default(true)
+  lastLoginAt      DateTime?
+  loginToken       String?
+  loginTokenExpiry DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  messages         ClientPortalMessage[]
+
+  @@index([clientId])
+  @@index([email])
+}
+
+model ClientPortalMessage {
+  id                 String                 @id @default(cuid())
+  clientPortalUserId String
+  portalUser         ClientPortalUser       @relation(fields: [clientPortalUserId], references: [id], onDelete: Cascade)
+  matterId           String?
+  matter             Matter?                @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  direction          PortalMessageDirection
+  subject            String?
+  content            String                 @db.Text
+  isRead             Boolean                @default(false)
+  readAt             DateTime?
+  createdAt          DateTime               @default(now())
+
+  @@index([clientPortalUserId])
+  @@index([matterId])
+  @@index([isRead])
+}
+
+model ClientPortalSettings {
+  id                      String   @id @default("default")
+  isEnabled               Boolean  @default(false)
+  firmName                String?
+  firmLogo                String?
+  primaryColor            String   @default("#1E40AF")
+  welcomeMessage          String?  @db.Text
+  allowMessaging          Boolean  @default(true)
+  allowDocumentView       Boolean  @default(true)
+  allowPayments           Boolean  @default(true)
+  allowAppointmentView    Boolean  @default(true)
+  requirePasswordChange   Boolean  @default(false)
+  sessionTimeoutMinutes   Int      @default(60)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+enum PortalMessageDirection {
+  CLIENT_TO_FIRM
+  FIRM_TO_CLIENT
 }

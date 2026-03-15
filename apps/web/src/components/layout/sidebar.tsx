@@ -32,6 +32,7 @@ import {
   FilePen,
   ScanSearch,
   Upload,
+  UserCircle,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -57,6 +58,7 @@ const mainNavigation = [
   { name: "Document Drafting", href: "/drafting", icon: FilePen },
   { name: "Intake Screening", href: "/screening", icon: ScanSearch },
   { name: "E-Filing", href: "/efiling", icon: Upload },
+  { name: "Client Portal", href: "/client-portal", icon: UserCircle },
 ];
 
 const bottomNavigation = [
