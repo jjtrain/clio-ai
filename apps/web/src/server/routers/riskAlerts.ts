@@ -264,7 +264,8 @@ export const riskAlertsRouter = router({
         clientOverdue.set(cid, existing);
       }
     }
-    for (const [cid, data] of clientOverdue) {
+    for (const cid of Array.from(clientOverdue.keys())) {
+      const data = clientOverdue.get(cid)!;
       const title = `Client with overdue invoices: ${data.name}`;
       if (!(await alertExists(ctx.db, title, cid))) {
         alerts.push({ category: "CLIENT", severity: data.total > 10000 ? "HIGH" : "MEDIUM", title, description: `${data.name} has ${data.count} invoices overdue >60 days, totaling $${data.total.toFixed(2)} outstanding.`, source: "billing_review", entityType: "Client", entityId: cid, clientId: cid });
