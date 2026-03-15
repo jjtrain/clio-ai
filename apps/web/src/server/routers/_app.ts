@@ -19,6 +19,7 @@ import { signaturesRouter } from "./signatures";
 import { analyticsRouter } from "./analytics";
 import { campaignsRouter } from "./campaigns";
 import { websiteRouter } from "./website";
+import { aiAssistantRouter } from "./aiAssistant";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -41,6 +42,7 @@ export const appRouter = router({
   analytics: analyticsRouter,
   campaigns: campaignsRouter,
   website: websiteRouter,
+  aiAssistant: aiAssistantRouter,
 });
 
 export type AppRouter = typeof appRouter;

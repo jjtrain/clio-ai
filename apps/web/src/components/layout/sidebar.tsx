@@ -27,6 +27,7 @@ import {
   BarChart3,
   Mail,
   Globe,
+  Sparkles,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -47,6 +48,7 @@ const mainNavigation = [
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Campaigns", href: "/campaigns", icon: Mail },
   { name: "Website", href: "/website", icon: Globe },
+  { name: "AI Assistant", href: "/ai-assistant", icon: Sparkles },
 ];
 
 const bottomNavigation = [

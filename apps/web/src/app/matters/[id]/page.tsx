@@ -37,6 +37,7 @@ import {
   FileText,
   UserPlus,
   MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -159,6 +160,23 @@ export default function MatterDetailPage() {
     },
   });
 
+  const aiDraftUpdate = trpc.aiAssistant.draftClientUpdate.useMutation({
+    onSuccess: () => toast({ title: "Client update drafted — check AI Assistant" }),
+    onError: (err) => toast({ title: "AI Error", description: err.message, variant: "destructive" }),
+  });
+  const aiGenerateInvoice = trpc.aiAssistant.generateInvoice.useMutation({
+    onSuccess: () => toast({ title: "Invoice draft generated — check AI Assistant" }),
+    onError: (err) => toast({ title: "AI Error", description: err.message, variant: "destructive" }),
+  });
+  const aiSummarize = trpc.aiAssistant.summarizeMatter.useMutation({
+    onSuccess: () => toast({ title: "Matter summary generated — check AI Assistant" }),
+    onError: (err) => toast({ title: "AI Error", description: err.message, variant: "destructive" }),
+  });
+  const aiSuggestTasks = trpc.aiAssistant.suggestTasks.useMutation({
+    onSuccess: () => toast({ title: "Tasks suggested — check AI Assistant" }),
+    onError: (err) => toast({ title: "AI Error", description: err.message, variant: "destructive" }),
+  });
+
   const isOverdue = (task: any) => {
     if (!task.dueDate || task.status === "COMPLETED") return false;
     const due = new Date(task.dueDate);
@@ -242,6 +260,32 @@ export default function MatterDetailPage() {
               ))}
             </SelectContent>
           </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50">
+                <Sparkles className="mr-2 h-4 w-4" />
+                AI Actions
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => aiDraftUpdate.mutate({ matterId })}>
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Draft Client Update
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => aiGenerateInvoice.mutate({ matterId })}>
+                <FileText className="mr-2 h-4 w-4" />
+                Generate Invoice
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => aiSummarize.mutate({ matterId })}>
+                <FileText className="mr-2 h-4 w-4" />
+                Summarize Matter
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => aiSuggestTasks.mutate({ matterId })}>
+                <CheckSquare className="mr-2 h-4 w-4" />
+                Suggest Tasks
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" asChild>
             <Link href={"/matters/" + matterId + "/edit"}>
               <Edit className="mr-2 h-4 w-4" />

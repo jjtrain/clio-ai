@@ -64,6 +64,7 @@ model Matter {
   activities         MatterActivity[]
   relatedParties     RelatedParty[]
   signatureRequests  SignatureRequest[]
+  aiActions          AiAction[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -1164,4 +1165,59 @@ enum WebsitePageType {
   TESTIMONIALS
   BLOG
   CUSTOM
+}
+
+// ============================================
+// AI PRACTICE MANAGEMENT ASSISTANT
+// ============================================
+
+model AiAction {
+  id            String         @id @default(cuid())
+  type          AiActionType
+  status        AiActionStatus @default(PENDING)
+  title         String
+  description   String?        @db.Text
+
+  sourceType    String?
+  sourceId      String?
+
+  matterId      String?
+  matter        Matter?        @relation(fields: [matterId], references: [id], onDelete: SetNull)
+
+  generatedData String?        @db.Text
+  reviewedAt    DateTime?
+  appliedAt     DateTime?
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([matterId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum AiActionType {
+  DEADLINE_EXTRACTION
+  CLIENT_UPDATE_DRAFT
+  TIME_TO_INVOICE
+  MATTER_SUMMARY
+  TASK_SUGGESTION
+}
+
+enum AiActionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  APPLIED
+}
+
+model AiAssistantSettings {
+  id                    String   @id @default("default")
+  isEnabled             Boolean  @default(true)
+  autoExtractDeadlines  Boolean  @default(false)
+  autoSuggestTasks      Boolean  @default(false)
+  aiModel               String   @default("claude-sonnet-4-20250514")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
