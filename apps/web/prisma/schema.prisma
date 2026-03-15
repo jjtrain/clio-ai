@@ -37,8 +37,9 @@ model Client {
   status       ClientStatus  @default(ACTIVE)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  matters      Matter[]
-  trustLedgers TrustLedger[]
+  matters        Matter[]
+  trustLedgers   TrustLedger[]
+  draftDocuments DraftDocument[]
 }
 
 model Matter {
@@ -66,6 +67,8 @@ model Matter {
   signatureRequests  SignatureRequest[]
   aiActions           AiAction[]
   researchSessions   ResearchSession[]
+  draftDocuments     DraftDocument[]
+  documentSets       DocumentSet[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -958,6 +961,8 @@ model SignatureRequest {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
+  setItems          DocumentSetItem[]
+
   @@index([matterId])
   @@index([documentId])
   @@index([signingToken])
@@ -1322,4 +1327,109 @@ model ResearchSettings {
   defaultModel          String   @default("claude-sonnet-4-20250514")
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+}
+
+// ============================================
+// AI DOCUMENT DRAFTING & TEMPLATES
+// ============================================
+
+model DocumentTemplate {
+  id           String           @id @default(cuid())
+  name         String
+  description  String?          @db.Text
+  category     DocumentCategory
+  practiceArea String?
+  content      String           @db.Text
+  variables    String           @db.Text
+  isActive     Boolean          @default(true)
+  usageCount   Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  drafts       DraftDocument[]
+
+  @@index([category])
+  @@index([practiceArea])
+  @@index([isActive])
+}
+
+model DraftDocument {
+  id             String            @id @default(cuid())
+  matterId       String?
+  matter         Matter?           @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  clientId       String?
+  client         Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  templateId     String?
+  template       DocumentTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  title          String
+  content        String            @db.Text
+  status         DraftStatus       @default(DRAFT)
+  variableValues String?           @db.Text
+  aiGenerated    Boolean           @default(false)
+  aiPrompt       String?           @db.Text
+  version        Int               @default(1)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  setItems       DocumentSetItem[]
+
+  @@index([matterId])
+  @@index([clientId])
+  @@index([status])
+  @@index([templateId])
+}
+
+model DocumentSet {
+  id          String            @id @default(cuid())
+  name        String
+  description String?           @db.Text
+  matterId    String?
+  matter      Matter?           @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  clientId    String?
+  status      DocumentSetStatus @default(ASSEMBLING)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  items       DocumentSetItem[]
+
+  @@index([matterId])
+}
+
+model DocumentSetItem {
+  id                 String            @id @default(cuid())
+  documentSetId      String
+  documentSet        DocumentSet       @relation(fields: [documentSetId], references: [id], onDelete: Cascade)
+  draftDocumentId    String?
+  draftDocument      DraftDocument?    @relation(fields: [draftDocumentId], references: [id], onDelete: SetNull)
+  signatureRequestId String?
+  signatureRequest   SignatureRequest? @relation(fields: [signatureRequestId], references: [id], onDelete: SetNull)
+  title              String
+  sortOrder          Int               @default(0)
+  isComplete         Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+
+  @@index([documentSetId])
+}
+
+enum DocumentCategory {
+  ENGAGEMENT
+  PLEADING
+  MOTION
+  LETTER
+  AGREEMENT
+  DISCOVERY
+  COURT_FORM
+  OTHER
+}
+
+enum DraftStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  SENT
+  SIGNED
+}
+
+enum DocumentSetStatus {
+  ASSEMBLING
+  READY
+  SENT
+  COMPLETED
 }
