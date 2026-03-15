@@ -215,6 +215,51 @@ export async function sendCampaignEmail(options: {
   });
 }
 
+// ─── Invoice Emails ───────────────────────────────────────────────
+
+interface SendInvoiceEmailData {
+  to: string;
+  clientName: string;
+  invoiceNumber: string;
+  amount: string;
+  dueDate: string;
+  firmName: string;
+  fromEmail: string;
+  invoiceHtml: string;
+  viewUrl?: string;
+}
+
+export async function sendInvoiceEmail(data: SendInvoiceEmailData) {
+  return sendEmail({
+    to: data.to,
+    from: data.fromEmail,
+    subject: `Invoice ${data.invoiceNumber} from ${data.firmName}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a1a1a;">Invoice ${data.invoiceNumber}</h2>
+        <p>Hello ${data.clientName},</p>
+        <p>Please find your invoice from ${data.firmName} below.</p>
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>Invoice:</strong> ${data.invoiceNumber}</p>
+          <p style="margin: 4px 0;"><strong>Amount Due:</strong> ${data.amount}</p>
+          <p style="margin: 4px 0;"><strong>Due Date:</strong> ${data.dueDate}</p>
+        </div>
+        ${data.viewUrl ? `
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${data.viewUrl}" style="display: inline-block; background: #3B82F6; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+            View & Pay Invoice
+          </a>
+        </div>
+        ` : ""}
+        <p>Please include the invoice number with your payment.</p>
+        <p style="color: #666; font-size: 14px;">${data.firmName}</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        ${data.invoiceHtml}
+      </div>
+    `,
+  });
+}
+
 export async function sendAppointmentCancellation(data: AppointmentEmailData & { reason?: string }) {
   return sendEmail({
     to: data.clientEmail,

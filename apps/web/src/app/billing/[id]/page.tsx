@@ -38,6 +38,8 @@ import {
   Bell,
   CalendarClock,
   Clock,
+  Eye,
+  Palette,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -69,6 +71,7 @@ export default function InvoiceDetailPage() {
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [paymentMethod, setPaymentMethod] = useState<string>("BANK_TRANSFER");
@@ -88,6 +91,11 @@ export default function InvoiceDetailPage() {
 
   const { data: firmInfo } = trpc.users.getFirmInfo.useQuery();
   const { data: helcimStatus } = trpc.invoices.helcimEnabled.useQuery();
+
+  const { data: renderedInvoice } = trpc.invoiceTemplates.renderInvoice.useQuery(
+    { invoiceId: params.id as string },
+    { enabled: !!params.id && previewDialogOpen }
+  );
   const { data: rateData } = trpc.users.getDefaultHourlyRate.useQuery();
 
   // Log helcim status for debugging
@@ -340,6 +348,10 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setPreviewDialogOpen(true)}>
+            <Eye className="mr-2 h-4 w-4" />
+            Preview
+          </Button>
           <Button variant="outline" onClick={handlePrint}>
             <Printer className="mr-2 h-4 w-4" />
             Print / PDF
@@ -468,6 +480,32 @@ export default function InvoiceDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Branded Preview Dialog */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
+          <DialogHeader className="px-6 pt-6 pb-3">
+            <DialogTitle className="flex items-center gap-2">
+              <Palette className="h-5 w-5 text-blue-500" />
+              Branded Invoice Preview
+            </DialogTitle>
+          </DialogHeader>
+          <div className="h-[75vh] overflow-auto px-6 pb-6">
+            {renderedInvoice?.html ? (
+              <iframe
+                srcDoc={renderedInvoice.html}
+                className="w-full h-full border rounded-lg"
+                title="Invoice Preview"
+                sandbox="allow-same-origin"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Invoice Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

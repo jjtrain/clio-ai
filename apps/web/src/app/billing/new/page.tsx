@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, FileText, Clock, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Clock, Plus, Trash2, Palette } from "lucide-react";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -56,10 +56,12 @@ function NewInvoiceForm() {
   const [taxRate, setTaxRate] = useState("0");
   const [defaultRate, setDefaultRate] = useState("");
   const [notes, setNotes] = useState("");
+  const [templateId, setTemplateId] = useState("");
   const [manualLineItems, setManualLineItems] = useState<ManualLineItem[]>([]);
 
   const { data: mattersData } = trpc.matters.list.useQuery({});
   const { data: rateData } = trpc.users.getDefaultHourlyRate.useQuery();
+  const { data: invoiceTemplates } = trpc.invoiceTemplates.list.useQuery();
 
   // Set default rate from settings when loaded
   useEffect(() => {
@@ -248,6 +250,25 @@ function NewInvoiceForm() {
                 max="100"
                 step="0.01"
               />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label className="flex items-center gap-1.5">
+                <Palette className="h-3.5 w-3.5" />
+                Invoice Template
+              </Label>
+              <Select value={templateId} onValueChange={setTemplateId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Use default template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Default Template</SelectItem>
+                  {invoiceTemplates?.map((tmpl) => (
+                    <SelectItem key={tmpl.id} value={tmpl.id}>
+                      {tmpl.name} ({tmpl.format})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="mt-4 space-y-2">

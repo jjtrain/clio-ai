@@ -208,6 +208,8 @@ model Invoice {
   paidAt        DateTime?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+  templateId    String?
+  template      InvoiceTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
   lineItems     InvoiceLineItem[]
   payments      Payment[]
   reminders     BillingReminder[]
@@ -215,6 +217,7 @@ model Invoice {
 
   @@index([matterId])
   @@index([status])
+  @@index([templateId])
 }
 
 model InvoiceLineItem {
@@ -2114,4 +2117,38 @@ enum InstallmentStatus {
   PAID
   LATE
   MISSED
+}
+
+// ============================================
+// INVOICE TEMPLATES
+// ============================================
+
+model InvoiceTemplate {
+  id            String         @id @default(cuid())
+  name          String
+  description   String?
+  format        InvoiceFormat  @default(SUMMARY)
+  isDefault     Boolean        @default(false)
+  isActive      Boolean        @default(true)
+  branding      String         @db.Text
+  layout        String         @db.Text
+  headerHtml    String?        @db.Text
+  footerHtml    String?        @db.Text
+  cssOverrides  String?        @db.Text
+  usageCount    Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  invoices      Invoice[]
+
+  @@index([format])
+  @@index([isDefault])
+}
+
+enum InvoiceFormat {
+  SUMMARY
+  DETAILED
+  TIMEKEEPER
+  FLAT_FEE
+  CUSTOM
 }

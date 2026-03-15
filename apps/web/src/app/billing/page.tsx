@@ -37,6 +37,7 @@ import {
   Send,
   Bell,
   CreditCard,
+  Palette,
 } from "lucide-react";
 import { useState } from "react";
 import { formatDate } from "@/lib/utils";
@@ -119,6 +120,12 @@ export default function BillingPage() {
           <p className="text-gray-500 mt-1 text-sm">Manage invoices and track payments</p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button variant="outline" asChild className="flex-1 sm:flex-initial">
+            <Link href="/billing/templates">
+              <Palette className="mr-2 h-4 w-4" />
+              Templates
+            </Link>
+          </Button>
           <Button variant="outline" asChild className="flex-1 sm:flex-initial">
             <Link href="/billing/reminders">
               <Bell className="mr-2 h-4 w-4" />
