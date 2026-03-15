@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { User, Building2, Phone, MapPin, Mail, Lock, Save, AlertCircle, Calendar, ChevronRight } from "lucide-react";
+import { User, Building2, Phone, MapPin, Mail, Lock, Save, AlertCircle, Calendar, ChevronRight, PenTool } from "lucide-react";
 import Link from "next/link";
 
 export default function SettingsPage() {
@@ -281,6 +281,24 @@ export default function SettingsPage() {
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Appointment Scheduler</h2>
                 <p className="text-sm text-gray-500">Configure online booking for client consultations</p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-gray-400" />
+          </div>
+        </div>
+      </Link>
+
+      {/* HelloSign Settings Link */}
+      <Link href="/settings/hellosign">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-indigo-50">
+                <PenTool className="h-5 w-5 text-indigo-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">HelloSign Integration</h2>
+                <p className="text-sm text-gray-500">Connect Dropbox Sign for legally binding e-signatures</p>
               </div>
             </div>
             <ChevronRight className="h-5 w-5 text-gray-400" />

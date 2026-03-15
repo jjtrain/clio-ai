@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Save, Send, FileText } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, PenTool, Loader2 } from "lucide-react";
 
 // ─── Document Templates ─────────────────────────────────────────────
 
@@ -169,12 +169,15 @@ export default function NewSignaturePage() {
   const [attorneyName, setAttorneyName] = useState("");
   const [documentContent, setDocumentContent] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [attorneyEmail, setAttorneyEmail] = useState("");
 
   const { data: matters } = trpc.matters.list.useQuery({});
   const { data: firmInfo } = trpc.users.getFirmInfo.useQuery();
+  const { data: hsSettings } = trpc.signatures.getHelloSignSettings.useQuery();
 
   const createSignature = trpc.signatures.create.useMutation();
   const sendSignature = trpc.signatures.send.useMutation();
+  const sendViaHelloSign = trpc.signatures.sendViaHelloSign.useMutation();
 
   // Auto-fill client info when matter is selected
   const handleMatterChange = (id: string) => {
@@ -320,6 +323,17 @@ export default function NewSignaturePage() {
               onChange={(e) => setExpiresAt(e.target.value)}
             />
           </div>
+          {hsSettings?.isEnabled && attorneyName && (
+            <div className="space-y-2">
+              <Label>Attorney Email <span className="text-xs text-gray-400">(for HelloSign countersigning)</span></Label>
+              <Input
+                type="email"
+                value={attorneyEmail}
+                onChange={(e) => setAttorneyEmail(e.target.value)}
+                placeholder="attorney@firm.com"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -381,8 +395,44 @@ export default function NewSignaturePage() {
           className="bg-blue-500 hover:bg-blue-600"
         >
           <Send className="h-4 w-4 mr-2" />
-          Save & Send
+          Save & Send (Built-in)
         </Button>
+        {hsSettings?.isEnabled && (
+          <Button
+            onClick={async () => {
+              if (!matterId || !title || !clientName || !clientEmail || !documentContent) {
+                toast({ title: "Missing required fields", description: "Please fill in all required fields", variant: "destructive" });
+                return;
+              }
+              try {
+                const result = await sendViaHelloSign.mutateAsync({
+                  matterId,
+                  title,
+                  clientName,
+                  clientEmail,
+                  documentContent,
+                  attorneyName: attorneyName || undefined,
+                  attorneyEmail: attorneyEmail || undefined,
+                  description: undefined,
+                  expiresAt: expiresAt || undefined,
+                });
+                toast({ title: "Sent via HelloSign!" });
+                router.push(`/signatures/${result.id}`);
+              } catch (err: any) {
+                toast({ title: "HelloSign Error", description: err.message, variant: "destructive" });
+              }
+            }}
+            disabled={sendViaHelloSign.isPending}
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
+            {sendViaHelloSign.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <PenTool className="h-4 w-4 mr-2" />
+            )}
+            Send via HelloSign
+          </Button>
+        )}
       </div>
     </div>
   );

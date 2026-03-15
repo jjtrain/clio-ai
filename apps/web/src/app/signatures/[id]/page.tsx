@@ -18,6 +18,10 @@ import {
   Clock,
   CheckCircle2,
   FileText,
+  RefreshCw,
+  Bell,
+  ExternalLink,
+  Download,
 } from "lucide-react";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -113,6 +117,17 @@ export default function SignatureDetailPage() {
       utils.signatures.getById.invalidate({ id });
     },
   });
+  const hsRemind = trpc.signatures.helloSignRemind.useMutation({
+    onSuccess: () => toast({ title: "Reminder sent via HelloSign" }),
+    onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+  const hsRefresh = trpc.signatures.helloSignRefreshStatus.useMutation({
+    onSuccess: () => {
+      toast({ title: "Status refreshed from HelloSign" });
+      utils.signatures.getById.invalidate({ id });
+    },
+    onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
 
   const handleCopyLink = () => {
     if (!request) return;
@@ -204,13 +219,58 @@ export default function SignatureDetailPage() {
             Cancel
           </Button>
         )}
-        {request.status !== "DRAFT" && (
+        {request.status !== "DRAFT" && !(request as any).helloSignRequestId && (
           <Button variant="outline" onClick={handleCopyLink}>
             {linkCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
             {linkCopied ? "Copied!" : "Copy Signing Link"}
           </Button>
         )}
+        {(request as any).helloSignRequestId && (
+          <>
+            <Button
+              variant="outline"
+              onClick={() => hsRefresh.mutate({ id })}
+              disabled={hsRefresh.isPending}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${hsRefresh.isPending ? "animate-spin" : ""}`} />
+              Refresh Status
+            </Button>
+            {canResend && (
+              <Button
+                variant="outline"
+                onClick={() => hsRemind.mutate({ id })}
+                disabled={hsRemind.isPending}
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                Send Reminder
+              </Button>
+            )}
+            {(request as any).helloSignFileUrl && (
+              <a href={(request as any).helloSignFileUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline">
+                  <Download className="h-4 w-4 mr-2" /> Download Signed PDF
+                </Button>
+              </a>
+            )}
+          </>
+        )}
       </div>
+
+      {/* HelloSign Provider Badge */}
+      {(request as any).signingProvider === "hellosign" && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
+            <PenTool className="h-4 w-4 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-blue-800">Sent via HelloSign (Dropbox Sign)</p>
+            <p className="text-xs text-blue-600">Signers will receive an email from HelloSign with a secure signing link</p>
+          </div>
+          {(request as any).helloSignRequestId && (
+            <span className="text-[10px] font-mono text-blue-400">ID: {(request as any).helloSignRequestId.slice(0, 12)}...</span>
+          )}
+        </div>
+      )}
 
       {/* Document Preview */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">

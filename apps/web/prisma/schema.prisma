@@ -957,6 +957,13 @@ model SignatureRequest {
   // Signing link
   signingToken      String          @unique
 
+  // HelloSign integration
+  helloSignRequestId  String?       @unique
+  helloSignSignatureId String?
+  signingProvider     String        @default("builtin") // "builtin" or "hellosign"
+  helloSignFileUrl    String?       @db.Text
+  helloSignStatusData String?       @db.Text // JSON
+
   // Lifecycle
   expiresAt         DateTime?
   sentAt            DateTime?
@@ -970,6 +977,19 @@ model SignatureRequest {
   @@index([documentId])
   @@index([signingToken])
   @@index([status])
+  @@index([helloSignRequestId])
+}
+
+model HelloSignSettings {
+  id              String   @id @default("default")
+  isEnabled       Boolean  @default(false)
+  apiKey          String?  @db.Text
+  clientId        String?
+  testMode        Boolean  @default(true)
+  callbackUrl     String?
+  brandId         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 enum SignatureStatus {
