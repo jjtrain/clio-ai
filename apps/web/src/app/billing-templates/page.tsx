@@ -99,7 +99,7 @@ export default function TemplateManagerPage() {
           </div>
         </div>
         <Button asChild className="bg-blue-500 hover:bg-blue-600 shadow-sm">
-          <Link href="/billing/templates/new">
+          <Link href="/billing-templates/new">
             <Plus className="mr-2 h-4 w-4" />
             New Template
           </Link>
@@ -125,7 +125,7 @@ export default function TemplateManagerPage() {
           <Palette className="h-12 w-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">No templates found</p>
           <Button asChild className="mt-4" variant="outline" size="sm">
-            <Link href="/billing/templates/new">
+            <Link href="/billing-templates/new">
               <Plus className="mr-2 h-4 w-4" />
               Create Template
             </Link>
@@ -166,13 +166,13 @@ export default function TemplateManagerPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <Link href={`/billing/templates/${template.id}`}>
+                          <Link href={`/billing-templates/${template.id}`}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link href={`/billing/templates/${template.id}?preview=true`}>
+                          <Link href={`/billing-templates/${template.id}?preview=true`}>
                             <Eye className="mr-2 h-4 w-4" />
                             Preview
                           </Link>
@@ -232,7 +232,7 @@ export default function TemplateManagerPage() {
                     </div>
                     <div className="flex-1" />
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/billing/templates/${template.id}`}>
+                      <Link href={`/billing-templates/${template.id}`}>
                         <Pencil className="mr-1.5 h-3 w-3" />
                         Edit
                       </Link>

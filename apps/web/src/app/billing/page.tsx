@@ -121,7 +121,7 @@ export default function BillingPage() {
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button variant="outline" asChild className="flex-1 sm:flex-initial">
-            <Link href="/billing/templates">
+            <Link href="/billing-templates">
               <Palette className="mr-2 h-4 w-4" />
               Templates
             </Link>

@@ -82,7 +82,7 @@ export default function NewTemplatePage() {
   const createMutation = trpc.invoiceTemplates.create.useMutation({
     onSuccess: (tmpl) => {
       toast({ title: "Template created" });
-      router.push(`/billing/templates/${tmpl.id}`);
+      router.push(`/billing-templates/${tmpl.id}`);
     },
     onError: (error) => {
       toast({ title: "Error creating template", description: error.message, variant: "destructive" });
@@ -92,7 +92,7 @@ export default function NewTemplatePage() {
   const duplicateMutation = trpc.invoiceTemplates.duplicate.useMutation({
     onSuccess: (tmpl) => {
       toast({ title: "Template duplicated" });
-      router.push(`/billing/templates/${tmpl.id}`);
+      router.push(`/billing-templates/${tmpl.id}`);
     },
   });
 
@@ -124,7 +124,7 @@ export default function NewTemplatePage() {
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/billing/templates">
+          <Link href="/billing-templates">
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
