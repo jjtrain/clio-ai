@@ -199,7 +199,7 @@ export const marketingRoiRouter = router({
 
       // Get revenue from converted leads' clients
       const convertedLeads = leads.filter((l) => l.status === "CONVERTED" && l.clientId);
-      const clientIds = [...new Set(convertedLeads.map((l) => l.clientId!).filter(Boolean))];
+      const clientIds = Array.from(new Set(convertedLeads.map((l) => l.clientId!).filter(Boolean)));
       let invoicesByClient: Record<string, number> = {};
       if (clientIds.length > 0) {
         const invoices = await ctx.db.invoice.findMany({
@@ -250,7 +250,7 @@ export const marketingRoiRouter = router({
       const spendRecords = await ctx.db.marketingSpend.findMany({ where: { period: { gte: sp, lte: ep } } });
       const leads = await ctx.db.lead.findMany({ where: { createdAt: { gte: start, lte: end } } });
       const convertedLeads = leads.filter((l) => l.status === "CONVERTED" && l.clientId);
-      const clientIds = [...new Set(convertedLeads.map((l) => l.clientId!).filter(Boolean))];
+      const clientIds = Array.from(new Set(convertedLeads.map((l) => l.clientId!).filter(Boolean)));
 
       let invoicesByClient: Record<string, number> = {};
       if (clientIds.length > 0) {
@@ -396,7 +396,7 @@ export const marketingRoiRouter = router({
     let invoicesByClient: Record<string, number> = {};
     if (convertedClientIds.length > 0) {
       const invoices = await ctx.db.invoice.findMany({
-        where: { status: { in: ["SENT", "PAID", "OVERDUE"] }, matter: { clientId: { in: [...new Set(convertedClientIds)] } } },
+        where: { status: { in: ["SENT", "PAID", "OVERDUE"] }, matter: { clientId: { in: Array.from(new Set(convertedClientIds)) } } },
         include: { matter: { select: { clientId: true } } },
       });
       for (const inv of invoices) {
@@ -562,7 +562,7 @@ export const marketingRoiRouter = router({
 
     const leads = await ctx.db.lead.findMany({ where: { createdAt: { gte: threeMonthsAgo } } });
     const convertedWithClient = leads.filter((l) => l.status === "CONVERTED" && l.clientId);
-    const cIds = [...new Set(convertedWithClient.map((l) => l.clientId!))];
+    const cIds = Array.from(new Set(convertedWithClient.map((l) => l.clientId!)));
     let invByClient: Record<string, number> = {};
     if (cIds.length > 0) {
       const invs = await ctx.db.invoice.findMany({
