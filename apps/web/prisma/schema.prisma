@@ -64,7 +64,8 @@ model Matter {
   activities         MatterActivity[]
   relatedParties     RelatedParty[]
   signatureRequests  SignatureRequest[]
-  aiActions          AiAction[]
+  aiActions           AiAction[]
+  researchSessions   ResearchSession[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -1218,6 +1219,107 @@ model AiAssistantSettings {
   autoExtractDeadlines  Boolean  @default(false)
   autoSuggestTasks      Boolean  @default(false)
   aiModel               String   @default("claude-sonnet-4-20250514")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// ============================================
+// AI LEGAL RESEARCH WORKSPACE
+// ============================================
+
+model ResearchSession {
+  id          String          @id @default(cuid())
+  matterId    String?
+  matter      Matter?         @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  title       String
+  description String?         @db.Text
+  status      ResearchStatus  @default(ACTIVE)
+
+  messages    ResearchMessage[]
+  notes       ResearchNote[]
+  sources     ResearchSource[]
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([matterId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ResearchMessage {
+  id        String       @id @default(cuid())
+  sessionId String
+  session   ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      ResearchRole
+  content   String       @db.Text
+  metadata  String?      @db.Text
+
+  createdAt DateTime     @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model ResearchNote {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  title     String
+  content   String          @db.Text
+  tags      String?         @db.Text
+  isPinned  Boolean         @default(false)
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([sessionId])
+}
+
+model ResearchSource {
+  id             String             @id @default(cuid())
+  sessionId      String
+  session        ResearchSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  title          String
+  citation       String?
+  url            String?
+  sourceType     ResearchSourceType
+  summary        String?            @db.Text
+  relevanceScore Int?
+  content        String?            @db.Text
+
+  createdAt      DateTime           @default(now())
+
+  @@index([sessionId])
+}
+
+enum ResearchStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum ResearchRole {
+  USER
+  AI
+  SYSTEM
+}
+
+enum ResearchSourceType {
+  CASE_LAW
+  STATUTE
+  REGULATION
+  SECONDARY
+  WEB
+  MANUAL
+}
+
+model ResearchSettings {
+  id                    String   @id @default("default")
+  vlexApiKey            String?
+  vlexEnabled           Boolean  @default(false)
+  defaultJurisdiction   String   @default("Federal")
+  defaultModel          String   @default("claude-sonnet-4-20250514")
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

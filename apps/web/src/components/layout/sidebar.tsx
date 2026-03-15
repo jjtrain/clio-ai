@@ -28,6 +28,7 @@ import {
   Mail,
   Globe,
   Sparkles,
+  BookOpen,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -49,6 +50,7 @@ const mainNavigation = [
   { name: "Campaigns", href: "/campaigns", icon: Mail },
   { name: "Website", href: "/website", icon: Globe },
   { name: "AI Assistant", href: "/ai-assistant", icon: Sparkles },
+  { name: "Legal Research", href: "/research", icon: BookOpen },
 ];
 
 const bottomNavigation = [
