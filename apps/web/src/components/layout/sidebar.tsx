@@ -31,6 +31,7 @@ import {
   BookOpen,
   FilePen,
   ScanSearch,
+  Upload,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -55,6 +56,7 @@ const mainNavigation = [
   { name: "Legal Research", href: "/research", icon: BookOpen },
   { name: "Document Drafting", href: "/drafting", icon: FilePen },
   { name: "Intake Screening", href: "/screening", icon: ScanSearch },
+  { name: "E-Filing", href: "/efiling", icon: Upload },
 ];
 
 const bottomNavigation = [

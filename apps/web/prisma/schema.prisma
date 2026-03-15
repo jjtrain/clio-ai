@@ -69,6 +69,7 @@ model Matter {
   researchSessions   ResearchSession[]
   draftDocuments     DraftDocument[]
   documentSets       DocumentSet[]
+  efilings           EFilingSubmission[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -1657,4 +1658,117 @@ enum FollowUpExecStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+// ============================================
+// COURT E-FILING
+// ============================================
+
+model Court {
+  id              String              @id @default(cuid())
+  name            String
+  state           String
+  county          String?
+  courtType       CourtType
+  efilingUrl      String?
+  efilingProvider String?
+  filingRules     String?             @db.Text // JSON
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  submissions     EFilingSubmission[]
+  templates       EFilingTemplate[]
+
+  @@index([state])
+  @@index([courtType])
+}
+
+model EFilingSubmission {
+  id                 String          @id @default(cuid())
+  matterId           String
+  matter             Matter          @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  courtId            String
+  court              Court           @relation(fields: [courtId], references: [id])
+  caseNumber         String?
+  filingType         FilingType
+  title              String
+  description        String?         @db.Text
+  status             EFilingStatus   @default(DRAFT)
+  documents          String          @db.Text // JSON array
+  filerName          String
+  filerEmail         String
+  filingFee          Decimal?        @db.Decimal(10, 2)
+  feeWaived          Boolean         @default(false)
+  serviceList        String?         @db.Text // JSON array
+  rejectionReason    String?         @db.Text
+  confirmationNumber String?
+  filedAt            DateTime?
+  acceptedAt         DateTime?
+  rejectedAt         DateTime?
+  envelopeId         String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  activities         EFilingActivity[]
+
+  @@index([matterId])
+  @@index([courtId])
+  @@index([status])
+  @@index([caseNumber])
+}
+
+model EFilingTemplate {
+  id            String     @id @default(cuid())
+  name          String
+  courtId       String?
+  court         Court?     @relation(fields: [courtId], references: [id], onDelete: SetNull)
+  filingType    FilingType
+  documentTypes String     @db.Text // JSON array
+  instructions  String?    @db.Text
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([courtId])
+}
+
+model EFilingActivity {
+  id           String            @id @default(cuid())
+  submissionId String
+  submission   EFilingSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  action       String
+  description  String            @db.Text
+  metadata     String?           @db.Text // JSON
+  createdAt    DateTime          @default(now())
+
+  @@index([submissionId])
+}
+
+enum FilingType {
+  INITIAL
+  SUBSEQUENT
+  SERVICE
+}
+
+enum EFilingStatus {
+  DRAFT
+  VALIDATING
+  READY
+  SUBMITTING
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  FAILED
+}
+
+enum CourtType {
+  FEDERAL_DISTRICT
+  FEDERAL_APPELLATE
+  FEDERAL_SUPREME
+  STATE_TRIAL
+  STATE_APPELLATE
+  STATE_SUPREME
+  FAMILY
+  BANKRUPTCY
+  TAX
+  OTHER
 }

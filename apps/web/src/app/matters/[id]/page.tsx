@@ -43,7 +43,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
-import { Trash2 } from "lucide-react";
+import { Trash2, Upload } from "lucide-react";
 
 const PARTY_ROLES = [
   { value: "OPPOSING_PARTY", label: "Opposing Party" },
@@ -286,6 +286,12 @@ export default function MatterDetailPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button variant="outline" asChild>
+            <Link href={`/efiling/new?matterId=${matterId}`}>
+              <Upload className="mr-2 h-4 w-4" />
+              E-File
+            </Link>
+          </Button>
           <Button variant="outline" asChild>
             <Link href={"/matters/" + matterId + "/edit"}>
               <Edit className="mr-2 h-4 w-4" />
