@@ -383,7 +383,7 @@ export const marketingRoiRouter = router({
 
   campaignRoi: publicProcedure.query(async ({ ctx }) => {
     const campaigns = await ctx.db.emailCampaign.findMany({
-      where: { status: { in: ["SENT", "COMPLETED"] } },
+      where: { status: "SENT" },
       orderBy: { sentAt: "desc" },
       take: 50,
     });
