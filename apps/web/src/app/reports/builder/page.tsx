@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
@@ -108,6 +108,14 @@ interface Aggregation {
 }
 
 export default function ReportBuilderPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[400px]"><div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" /></div>}>
+      <ReportBuilderContent />
+    </Suspense>
+  );
+}
+
+function ReportBuilderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const reportId = searchParams.get("reportId");
