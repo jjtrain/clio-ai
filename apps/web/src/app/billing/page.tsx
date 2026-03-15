@@ -35,6 +35,8 @@ import {
   AlertCircle,
   CheckCircle,
   Send,
+  Bell,
+  CreditCard,
 } from "lucide-react";
 import { useState } from "react";
 import { formatDate } from "@/lib/utils";
@@ -116,12 +118,20 @@ export default function BillingPage() {
           <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Billing & Invoicing</h1>
           <p className="text-gray-500 mt-1 text-sm">Manage invoices and track payments</p>
         </div>
-        <Button asChild className="bg-blue-500 hover:bg-blue-600 shadow-sm w-full sm:w-auto">
-          <Link href="/billing/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Invoice
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button variant="outline" asChild className="flex-1 sm:flex-initial">
+            <Link href="/billing/reminders">
+              <Bell className="mr-2 h-4 w-4" />
+              Reminders
+            </Link>
+          </Button>
+          <Button asChild className="bg-blue-500 hover:bg-blue-600 shadow-sm flex-1 sm:flex-initial">
+            <Link href="/billing/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Invoice
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Metric Cards - 2x2 on mobile */}
@@ -269,7 +279,15 @@ export default function BillingPage() {
                         {formatDate(invoice.issueDate)}
                       </TableCell>
                       <TableCell className="text-gray-600 text-sm hidden md:table-cell whitespace-nowrap">
-                        {formatDate(invoice.dueDate)}
+                        <span>{formatDate(invoice.dueDate)}</span>
+                        {invoice.status === "OVERDUE" && (() => {
+                          const due = new Date(invoice.dueDate);
+                          const now = new Date();
+                          const days = Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+                          return days > 0 ? (
+                            <span className="ml-1 text-xs text-red-600 font-medium">({days}d)</span>
+                          ) : null;
+                        })()}
                       </TableCell>
                       <TableCell>
                         <div>

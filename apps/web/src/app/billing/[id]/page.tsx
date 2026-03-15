@@ -35,6 +35,9 @@ import {
   MapPin,
   Trash2,
   Pencil,
+  Bell,
+  CalendarClock,
+  Clock,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -773,6 +776,30 @@ export default function InvoiceDetailPage() {
                 <CheckCircle className="h-5 w-5 text-emerald-500" />
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reminder & Payment Plan Actions - Hidden on print */}
+      {(invoice.status === "SENT" || invoice.status === "OVERDUE") && balance > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 print:hidden">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Bell className="h-5 w-5 text-gray-400" />
+            Reminders & Payment Plans
+          </h3>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" asChild>
+              <Link href={`/billing/reminders?invoiceId=${invoice.id}`}>
+                <Clock className="mr-2 h-4 w-4" />
+                View Reminders
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/billing/reminders/plans/new">
+                <CalendarClock className="mr-2 h-4 w-4" />
+                Set Up Payment Plan
+              </Link>
+            </Button>
           </div>
         </div>
       )}

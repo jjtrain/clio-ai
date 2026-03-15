@@ -26,6 +26,7 @@ import { screeningRouter } from "./screening";
 import { efilingRouter } from "./efiling";
 import { clientPortalRouter } from "./clientPortal";
 import { messagingRouter } from "./messaging";
+import { billingRemindersRouter } from "./billingReminders";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -55,6 +56,7 @@ export const appRouter = router({
   efiling: efilingRouter,
   clientPortal: clientPortalRouter,
   messaging: messagingRouter,
+  billingReminders: billingRemindersRouter,
 });
 
 export type AppRouter = typeof appRouter;

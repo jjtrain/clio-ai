@@ -43,6 +43,7 @@ model Client {
   portalUsers        ClientPortalUser[]
   textMessages       TextMessage[]
   textConversations  TextConversation[]
+  paymentPlans       PaymentPlan[]
 }
 
 model Matter {
@@ -209,6 +210,8 @@ model Invoice {
   updatedAt     DateTime          @updatedAt
   lineItems     InvoiceLineItem[]
   payments      Payment[]
+  reminders     BillingReminder[]
+  paymentPlan   PaymentPlan?
 
   @@index([matterId])
   @@index([status])
@@ -1974,4 +1977,141 @@ enum TextMessageStatus {
   DELIVERED
   FAILED
   RECEIVED
+}
+
+// ============================================
+// BILLING REMINDERS & PAYMENT PLANS
+// ============================================
+
+model BillingReminder {
+  id            String         @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  type          ReminderType
+  method        ReminderMethod @default(EMAIL)
+  status        ReminderStatus @default(SCHEDULED)
+  scheduledFor  DateTime
+  sentAt        DateTime?
+  emailSubject  String?
+  emailContent  String?        @db.Text
+  textContent   String?
+  errorMessage  String?
+  createdAt     DateTime       @default(now())
+
+  @@index([invoiceId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+model PaymentPlan {
+  id                String            @id @default(cuid())
+  invoiceId         String            @unique
+  invoice           Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  totalAmount       Decimal           @db.Decimal(10, 2)
+  installmentAmount Decimal           @db.Decimal(10, 2)
+  frequency         PaymentFrequency
+  startDate         DateTime
+  nextDueDate       DateTime?
+  installmentCount  Int
+  installmentsPaid  Int               @default(0)
+  status            PaymentPlanStatus @default(ACTIVE)
+  notes             String?           @db.Text
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  payments          PaymentPlanPayment[]
+
+  @@index([invoiceId])
+  @@index([clientId])
+  @@index([status])
+  @@index([nextDueDate])
+}
+
+model PaymentPlanPayment {
+  id              String           @id @default(cuid())
+  paymentPlanId   String
+  paymentPlan     PaymentPlan      @relation(fields: [paymentPlanId], references: [id], onDelete: Cascade)
+  amount          Decimal          @db.Decimal(10, 2)
+  dueDate         DateTime
+  paidDate        DateTime?
+  status          InstallmentStatus @default(UPCOMING)
+  paymentId       String?
+  reminderSentAt  DateTime?
+  createdAt       DateTime         @default(now())
+
+  @@index([paymentPlanId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model BillingReminderSettings {
+  id                       String   @id @default("default")
+  isEnabled                Boolean  @default(true)
+  sendUpcomingReminder     Boolean  @default(true)
+  sendDueDayReminder       Boolean  @default(true)
+  sendPastDueReminders     Boolean  @default(true)
+  pastDueSchedule          String   @default("3,7,14,30,60,90")
+  defaultMethod            String   @default("EMAIL")
+  escalateToPhone          Boolean  @default(false)
+  includePaymentLink       Boolean  @default(true)
+  includeLateFeesNotice    Boolean  @default(false)
+  lateFeePercentage        Decimal? @db.Decimal(5, 2)
+  fromName                 String?
+  fromEmail                String?
+  emailTemplateUpcoming    String?  @db.Text
+  emailTemplateDueToday    String?  @db.Text
+  emailTemplatePastDue     String?  @db.Text
+  textTemplateUpcoming     String?
+  textTemplateDueToday     String?
+  textTemplatePastDue      String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+enum ReminderType {
+  UPCOMING_DUE
+  DUE_TODAY
+  PAST_DUE_3
+  PAST_DUE_7
+  PAST_DUE_14
+  PAST_DUE_30
+  PAST_DUE_60
+  PAST_DUE_90
+  CUSTOM
+}
+
+enum ReminderMethod {
+  EMAIL
+  TEXT
+  BOTH
+}
+
+enum ReminderStatus {
+  SCHEDULED
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum PaymentFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum PaymentPlanStatus {
+  ACTIVE
+  COMPLETED
+  DEFAULTED
+  CANCELLED
+}
+
+enum InstallmentStatus {
+  UPCOMING
+  DUE
+  PAID
+  LATE
+  MISSED
 }
