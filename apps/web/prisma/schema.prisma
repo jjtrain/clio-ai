@@ -1069,3 +1069,99 @@ enum RecipientStatus {
   FAILED
   BOUNCED
 }
+
+// ============================================
+// LAW FIRM WEBSITE BUILDER
+// ============================================
+
+model WebsiteSettings {
+  id               String    @id @default("default")
+  isPublished      Boolean   @default(false)
+  siteSlug         String    @unique @default("my-firm")
+
+  // Branding
+  firmName         String?
+  tagline          String?
+  logoUrl          String?
+  primaryColor     String    @default("#1E40AF")
+  secondaryColor   String    @default("#3B82F6")
+  fontFamily       String    @default("Inter")
+
+  // Contact
+  phone            String?
+  email            String?
+  address          String?
+  city             String?
+  state            String?
+  zip              String?
+
+  // Social
+  linkedinUrl      String?
+  facebookUrl      String?
+  twitterUrl       String?
+  googleReviewsUrl String?
+
+  // SEO
+  metaTitle        String?
+  metaDescription  String?   @db.Text
+
+  // Footer
+  footerText       String?   @db.Text
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model WebsitePage {
+  id              String          @id @default(cuid())
+  slug            String
+  title           String
+  pageType        WebsitePageType
+  content         String          @db.Text
+  isPublished     Boolean         @default(true)
+  sortOrder       Int             @default(0)
+  metaTitle       String?
+  metaDescription String?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([slug])
+}
+
+model WebsiteTestimonial {
+  id           String   @id @default(cuid())
+  clientName   String
+  content      String   @db.Text
+  rating       Int?
+  practiceArea String?
+  isPublished  Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model WebsiteBlogPost {
+  id             String    @id @default(cuid())
+  title          String
+  slug           String    @unique
+  content        String    @db.Text
+  excerpt        String?   @db.Text
+  author         String?
+  coverImageUrl  String?
+  isPublished    Boolean   @default(false)
+  publishedAt    DateTime?
+  tags           String?   @db.Text
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+enum WebsitePageType {
+  HOME
+  ABOUT
+  PRACTICE_AREAS
+  CONTACT
+  TESTIMONIALS
+  BLOG
+  CUSTOM
+}

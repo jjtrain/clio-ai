@@ -26,6 +26,7 @@ import {
   PenTool,
   BarChart3,
   Mail,
+  Globe,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -45,6 +46,7 @@ const mainNavigation = [
   { name: "E-Signatures", href: "/signatures", icon: PenTool },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Campaigns", href: "/campaigns", icon: Mail },
+  { name: "Website", href: "/website", icon: Globe },
 ];
 
 const bottomNavigation = [

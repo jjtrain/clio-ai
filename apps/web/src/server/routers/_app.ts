@@ -18,6 +18,7 @@ import { relatedPartiesRouter } from "./relatedParties";
 import { signaturesRouter } from "./signatures";
 import { analyticsRouter } from "./analytics";
 import { campaignsRouter } from "./campaigns";
+import { websiteRouter } from "./website";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -39,6 +40,7 @@ export const appRouter = router({
   signatures: signaturesRouter,
   analytics: analyticsRouter,
   campaigns: campaignsRouter,
+  website: websiteRouter,
 });
 
 export type AppRouter = typeof appRouter;
