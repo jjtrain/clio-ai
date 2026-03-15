@@ -958,11 +958,16 @@ model SignatureRequest {
   signingToken      String          @unique
 
   // HelloSign integration
-  helloSignRequestId  String?       @unique
-  helloSignSignatureId String?
-  signingProvider     String        @default("builtin") // "builtin" or "hellosign"
-  helloSignFileUrl    String?       @db.Text
-  helloSignStatusData String?       @db.Text // JSON
+  helloSignRequestId     String?       @unique
+  helloSignSignatureId   String?
+  signingProvider        String        @default("builtin") // "builtin" or "hellosign"
+  helloSignFileUrl       String?       @db.Text
+  helloSignStatusData    String?       @db.Text // JSON
+  hellosignStatus        String?       // awaiting_signature, signed, declined, etc.
+  hellosignSignUrl       String?       @db.Text
+  hellosignAttorneySignUrl String?     @db.Text
+  hellosignDocumentUrl   String?       @db.Text
+  attorneyEmail          String?
 
   // Lifecycle
   expiresAt         DateTime?
@@ -981,15 +986,18 @@ model SignatureRequest {
 }
 
 model HelloSignSettings {
-  id              String   @id @default("default")
-  isEnabled       Boolean  @default(false)
-  apiKey          String?  @db.Text
-  clientId        String?
-  testMode        Boolean  @default(true)
-  callbackUrl     String?
-  brandId         String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default("default")
+  isEnabled        Boolean  @default(false)
+  apiKey           String?  @db.Text
+  clientId         String?
+  testMode         Boolean  @default(true)
+  callbackUrl      String?
+  brandId          String?
+  webhookSecret    String?
+  defaultFromName  String?
+  defaultFromEmail String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 enum SignatureStatus {

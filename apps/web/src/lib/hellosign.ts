@@ -26,6 +26,7 @@ interface CreateSignatureRequestParams {
   clientId?: string;
   metadata?: Record<string, string>;
   callbackUrl?: string;
+  useEmbeddedSigning?: boolean;
 }
 
 interface HelloSignResponse {
@@ -95,7 +96,12 @@ export async function createSignatureRequest(
     formData.append("file_url[0]", params.fileUrl);
   }
 
-  const response = await fetch(`${HELLOSIGN_API_URL}/signature_request/send`, {
+  // Use embedded endpoint if client ID is available and embedded signing requested
+  const endpoint = params.useEmbeddedSigning && (params.clientId || config.clientId)
+    ? `${HELLOSIGN_API_URL}/signature_request/create_embedded`
+    : `${HELLOSIGN_API_URL}/signature_request/send`;
+
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       Authorization: getAuthHeader(config.apiKey),
@@ -189,6 +195,39 @@ export async function getFileUrl(
   return data.file_url;
 }
 
+export async function getEmbeddedSignUrl(
+  config: HelloSignConfig,
+  signatureId: string
+): Promise<{ sign_url: string; expires_at: number }> {
+  const response = await fetch(
+    `${HELLOSIGN_API_URL}/embedded/sign_url/${signatureId}`,
+    {
+      headers: { Authorization: getAuthHeader(config.apiKey) },
+    }
+  );
+
+  const data = await response.json();
+  if (!response.ok || data.error) {
+    throw new Error(data.error?.error_msg || `HelloSign embedded URL error: ${response.status}`);
+  }
+  return data.embedded;
+}
+
+export async function testConnection(apiKey: string): Promise<{ success: boolean; account?: any; error?: string }> {
+  try {
+    const response = await fetch(`${HELLOSIGN_API_URL}/account`, {
+      headers: { Authorization: getAuthHeader(apiKey) },
+    });
+    const data = await response.json();
+    if (!response.ok || data.error) {
+      return { success: false, error: data.error?.error_msg || `HTTP ${response.status}` };
+    }
+    return { success: true, account: data.account };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 // Parse HelloSign webhook event
 export interface HelloSignEvent {
   event: {
@@ -205,11 +244,21 @@ export interface HelloSignEvent {
   account?: any;
 }
 
-export function verifyWebhookHash(eventHash: string, apiKey: string): boolean {
-  // HelloSign uses HMAC-SHA256 for webhook verification
-  // In production, verify the hash with: HMAC(apiKey, event_time + event_type)
-  // For now, we accept all events (test mode)
-  return true;
+export function verifyWebhookHash(eventHash: string, apiKey: string, eventTime: string, eventType: string): boolean {
+  const crypto = require("crypto");
+  const expectedHash = crypto
+    .createHmac("sha256", apiKey)
+    .update(eventTime + eventType)
+    .digest("hex");
+  return expectedHash === eventHash;
+}
+
+export function computeEventHash(apiKey: string, eventTime: string, eventType: string): string {
+  const crypto = require("crypto");
+  return crypto
+    .createHmac("sha256", apiKey)
+    .update(eventTime + eventType)
+    .digest("hex");
 }
 
 export function mapHelloSignStatus(statusCode: string): string {

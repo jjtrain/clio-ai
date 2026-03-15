@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
+  Wifi,
+  Loader2,
 } from "lucide-react";
 
 export default function HelloSignSettingsPage() {
@@ -24,12 +26,16 @@ export default function HelloSignSettingsPage() {
     onSuccess: () => toast({ title: "Settings saved" }),
     onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
+  const testConnection = trpc.signatures.testHellosignConnection.useMutation();
 
   const [isEnabled, setIsEnabled] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [clientId, setClientId] = useState("");
   const [testMode, setTestMode] = useState(true);
   const [callbackUrl, setCallbackUrl] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [defaultFromName, setDefaultFromName] = useState("");
+  const [defaultFromEmail, setDefaultFromEmail] = useState("");
 
   useEffect(() => {
     if (settings) {
@@ -38,6 +44,9 @@ export default function HelloSignSettingsPage() {
       setClientId(settings.clientId || "");
       setTestMode(settings.testMode);
       setCallbackUrl(settings.callbackUrl || "");
+      setWebhookSecret(settings.webhookSecret || "");
+      setDefaultFromName(settings.defaultFromName || "");
+      setDefaultFromEmail(settings.defaultFromEmail || "");
     }
   }, [settings]);
 
@@ -48,7 +57,23 @@ export default function HelloSignSettingsPage() {
       clientId: clientId || undefined,
       testMode,
       callbackUrl: callbackUrl || undefined,
+      webhookSecret: webhookSecret || undefined,
+      defaultFromName: defaultFromName || undefined,
+      defaultFromEmail: defaultFromEmail || undefined,
     });
+  };
+
+  const handleTestConnection = async () => {
+    try {
+      const result = await testConnection.mutateAsync();
+      if (result.success) {
+        toast({ title: "Connection successful", description: `Connected as ${result.account?.email_address || "your account"}` });
+      } else {
+        toast({ title: "Connection failed", description: result.error, variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Connection failed", description: err.message, variant: "destructive" });
+    }
   };
 
   if (isLoading) return <div className="py-20 text-center text-gray-400">Loading...</div>;
@@ -103,17 +128,32 @@ export default function HelloSignSettingsPage() {
         <div className="space-y-4">
           <div className="space-y-1">
             <Label>API Key</Label>
-            <Input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your HelloSign API key"
-            />
+            <div className="flex gap-2">
+              <Input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter your HelloSign API key"
+                className="flex-1"
+              />
+              <Button
+                variant="outline"
+                onClick={handleTestConnection}
+                disabled={testConnection.isPending || !apiKey || apiKey.startsWith("••")}
+              >
+                {testConnection.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Wifi className="h-4 w-4 mr-2" />
+                )}
+                Test
+              </Button>
+            </div>
             <p className="text-xs text-gray-400">Your API key is stored encrypted and never exposed to the client</p>
           </div>
 
           <div className="space-y-1">
-            <Label>Client ID <span className="text-xs text-gray-400">(optional)</span></Label>
+            <Label>Client ID <span className="text-xs text-gray-400">(for embedded signing)</span></Label>
             <Input
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
@@ -125,11 +165,22 @@ export default function HelloSignSettingsPage() {
           <div className="space-y-1">
             <Label>Webhook Callback URL <span className="text-xs text-gray-400">(auto-configured)</span></Label>
             <Input
-              value={callbackUrl || `${typeof window !== "undefined" ? window.location.origin : ""}/api/webhooks/hellosign`}
+              value={callbackUrl || `${typeof window !== "undefined" ? window.location.origin : ""}/api/hellosign/webhook`}
               onChange={(e) => setCallbackUrl(e.target.value)}
-              placeholder="https://your-domain.com/api/webhooks/hellosign"
+              placeholder="https://your-domain.com/api/hellosign/webhook"
             />
             <p className="text-xs text-gray-400">HelloSign will send signature events to this URL. Set this in your HelloSign account settings too</p>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Webhook Secret <span className="text-xs text-gray-400">(optional)</span></Label>
+            <Input
+              type="password"
+              value={webhookSecret}
+              onChange={(e) => setWebhookSecret(e.target.value)}
+              placeholder="Used for HMAC verification of webhook events"
+            />
+            <p className="text-xs text-gray-400">If set, webhook events will be verified using HMAC-SHA256</p>
           </div>
 
           <label className="flex items-center gap-2 text-sm">
@@ -141,6 +192,31 @@ export default function HelloSignSettingsPage() {
             />
             Test Mode <span className="text-xs text-gray-400">(signatures are not legally binding)</span>
           </label>
+        </div>
+      </div>
+
+      {/* Sender Defaults */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-4">
+        <h2 className="font-semibold">Sender Defaults</h2>
+        <p className="text-sm text-gray-500">Default sender information for HelloSign signature requests</p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-1">
+            <Label>Default From Name</Label>
+            <Input
+              value={defaultFromName}
+              onChange={(e) => setDefaultFromName(e.target.value)}
+              placeholder="Your Firm Name"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Default From Email</Label>
+            <Input
+              type="email"
+              value={defaultFromEmail}
+              onChange={(e) => setDefaultFromEmail(e.target.value)}
+              placeholder="signing@yourfirm.com"
+            />
+          </div>
         </div>
       </div>
 
@@ -178,7 +254,7 @@ export default function HelloSignSettingsPage() {
         <h2 className="font-semibold mb-3">How It Works</h2>
         <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
           <li>Create a signature request from the E-Signatures section</li>
-          <li>Choose "Send via HelloSign" instead of the built-in signing</li>
+          <li>Choose &quot;Send via HelloSign&quot; instead of the built-in signing</li>
           <li>HelloSign sends the signer a secure email with a signing link</li>
           <li>The signer reviews and signs the document in the HelloSign interface</li>
           <li>HelloSign notifies us via webhook when the document is signed</li>

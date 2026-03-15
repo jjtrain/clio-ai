@@ -12,6 +12,8 @@ import {
   cancelSignatureRequest as hsCancelRequest,
   sendReminder as hsSendReminder,
   getFileUrl as hsGetFileUrl,
+  getEmbeddedSignUrl as hsGetEmbeddedSignUrl,
+  testConnection as hsTestConnection,
 } from "@/lib/hellosign";
 
 async function getHelloSignConfig(db: any) {
@@ -105,6 +107,7 @@ export const signaturesRouter = router({
         documentContent: z.string().min(1),
         expiresAt: z.string().optional(),
         attorneyName: z.string().optional(),
+        attorneyEmail: z.string().email().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -118,6 +121,7 @@ export const signaturesRouter = router({
           clientEmail: input.clientEmail,
           documentContent: input.documentContent,
           attorneyName: input.attorneyName || null,
+          attorneyEmail: input.attorneyEmail || null,
           expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
           signingToken: randomUUID(),
           status: "DRAFT",
@@ -364,6 +368,7 @@ export const signaturesRouter = router({
     return {
       ...settings,
       apiKey: settings.apiKey ? "••••••••" + settings.apiKey.slice(-4) : null,
+      webhookSecret: settings.webhookSecret ? "••••••••" : null,
     };
   }),
 
@@ -375,6 +380,9 @@ export const signaturesRouter = router({
       testMode: z.boolean().optional(),
       callbackUrl: z.string().optional(),
       brandId: z.string().optional(),
+      webhookSecret: z.string().optional(),
+      defaultFromName: z.string().optional(),
+      defaultFromEmail: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const data: any = {};
@@ -384,6 +392,9 @@ export const signaturesRouter = router({
       if (input.testMode !== undefined) data.testMode = input.testMode;
       if (input.callbackUrl !== undefined) data.callbackUrl = input.callbackUrl;
       if (input.brandId !== undefined) data.brandId = input.brandId;
+      if (input.webhookSecret !== undefined) data.webhookSecret = input.webhookSecret;
+      if (input.defaultFromName !== undefined) data.defaultFromName = input.defaultFromName;
+      if (input.defaultFromEmail !== undefined) data.defaultFromEmail = input.defaultFromEmail;
 
       return ctx.db.helloSignSettings.upsert({
         where: { id: "default" },
@@ -427,7 +438,7 @@ export const signaturesRouter = router({
         fileContent: input.documentContent,
         testMode: hsConfig.testMode,
         clientId: hsConfig.clientId,
-        callbackUrl: hsConfig.callbackUrl || `${baseUrl}/api/webhooks/hellosign`,
+        callbackUrl: hsConfig.callbackUrl || `${baseUrl}/api/hellosign/webhook`,
         metadata: { matterId: input.matterId },
       });
 
@@ -450,6 +461,8 @@ export const signaturesRouter = router({
           signingProvider: "hellosign",
           helloSignRequestId: sigReq.signature_request_id,
           helloSignSignatureId: sigReq.signatures?.[0]?.signature_id || null,
+          hellosignStatus: "awaiting_signature",
+          attorneyEmail: input.attorneyEmail || null,
           status: "PENDING_CLIENT",
           sentAt: new Date(),
         },
@@ -555,5 +568,140 @@ export const signaturesRouter = router({
         data: { helloSignFileUrl: url },
       });
       return { url };
+    }),
+
+  testHellosignConnection: publicProcedure
+    .mutation(async ({ ctx }) => {
+      const settings = await ctx.db.helloSignSettings.findUnique({ where: { id: "default" } });
+      if (!settings?.apiKey) throw new Error("No API key configured");
+      const result = await hsTestConnection(settings.apiKey);
+      return result;
+    }),
+
+  createHellosignRequest: publicProcedure
+    .input(z.object({
+      signatureRequestId: z.string(),
+      useEmbeddedSigning: z.boolean().default(false),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const request = await ctx.db.signatureRequest.findUniqueOrThrow({
+        where: { id: input.signatureRequestId },
+      });
+      if (request.helloSignRequestId) throw new Error("Already sent to HelloSign");
+
+      const hsConfig = await getHelloSignConfig(ctx.db);
+      if (!hsConfig) throw new Error("HelloSign is not configured");
+
+      const signers: Array<{ name: string; emailAddress: string; order?: number }> = [
+        { name: request.clientName, emailAddress: request.clientEmail, order: 0 },
+      ];
+      if (request.attorneyName && request.attorneyEmail) {
+        signers.push({ name: request.attorneyName, emailAddress: request.attorneyEmail, order: 1 });
+      }
+
+      const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_URL || "";
+      const hsResult = await hsCreateRequest(hsConfig, {
+        title: request.title,
+        subject: request.title,
+        message: request.description || `Please review and sign: ${request.title}`,
+        signers,
+        fileContent: request.documentContent || undefined,
+        testMode: hsConfig.testMode,
+        clientId: hsConfig.clientId,
+        callbackUrl: hsConfig.callbackUrl || `${baseUrl}/api/hellosign/webhook`,
+        metadata: { matterId: request.matterId, signatureRequestId: request.id },
+        useEmbeddedSigning: input.useEmbeddedSigning,
+      });
+
+      const sigReq = hsResult.signature_request;
+      if (!sigReq) throw new Error("Failed to create HelloSign signature request");
+
+      // Find signature IDs for each signer
+      const clientSig = sigReq.signatures?.find(s => s.signer_email_address === request.clientEmail);
+      const attorneySig = request.attorneyEmail
+        ? sigReq.signatures?.find(s => s.signer_email_address === request.attorneyEmail)
+        : null;
+
+      const updated = await ctx.db.signatureRequest.update({
+        where: { id: request.id },
+        data: {
+          signingProvider: "hellosign",
+          helloSignRequestId: sigReq.signature_request_id,
+          helloSignSignatureId: clientSig?.signature_id || null,
+          hellosignStatus: "awaiting_signature",
+          status: "PENDING_CLIENT",
+          sentAt: new Date(),
+          helloSignStatusData: JSON.stringify(sigReq),
+        },
+      });
+
+      return updated;
+    }),
+
+  getHellosignSignUrl: publicProcedure
+    .input(z.object({
+      id: z.string(),
+      signer: z.enum(["client", "attorney"]),
+    }))
+    .query(async ({ ctx, input }) => {
+      const request = await ctx.db.signatureRequest.findUniqueOrThrow({ where: { id: input.id } });
+      if (!request.helloSignRequestId) throw new Error("Not a HelloSign request");
+
+      const hsConfig = await getHelloSignConfig(ctx.db);
+      if (!hsConfig) throw new Error("HelloSign is not configured");
+
+      // Get current signatures from HelloSign to find the right signature_id
+      const hsResult = await hsGetRequest(hsConfig, request.helloSignRequestId);
+      const sigReq = hsResult.signature_request;
+      if (!sigReq) throw new Error("Failed to get HelloSign request");
+
+      let targetEmail = input.signer === "client" ? request.clientEmail : request.attorneyEmail;
+      if (!targetEmail) throw new Error(`No email for ${input.signer}`);
+
+      const sig = sigReq.signatures?.find(s => s.signer_email_address === targetEmail);
+      if (!sig) throw new Error(`Signer not found on HelloSign request`);
+
+      if (sig.status_code === "signed") {
+        return { signUrl: null, alreadySigned: true };
+      }
+
+      const embedded = await hsGetEmbeddedSignUrl(hsConfig, sig.signature_id);
+      return { signUrl: embedded.sign_url, expiresAt: embedded.expires_at, alreadySigned: false };
+    }),
+
+  downloadHellosignDocument: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const request = await ctx.db.signatureRequest.findUniqueOrThrow({ where: { id: input.id } });
+      if (!request.helloSignRequestId) throw new Error("Not a HelloSign request");
+
+      const hsConfig = await getHelloSignConfig(ctx.db);
+      if (!hsConfig) throw new Error("HelloSign is not configured");
+
+      const url = await hsGetFileUrl(hsConfig, request.helloSignRequestId);
+      await ctx.db.signatureRequest.update({
+        where: { id: input.id },
+        data: { helloSignFileUrl: url, hellosignDocumentUrl: url },
+      });
+      return { url };
+    }),
+
+  sendHellosignReminder: publicProcedure
+    .input(z.object({
+      id: z.string(),
+      signer: z.enum(["client", "attorney"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const request = await ctx.db.signatureRequest.findUniqueOrThrow({ where: { id: input.id } });
+      if (!request.helloSignRequestId) throw new Error("Not a HelloSign request");
+
+      const hsConfig = await getHelloSignConfig(ctx.db);
+      if (!hsConfig) throw new Error("HelloSign is not configured");
+
+      const email = input.signer === "client" ? request.clientEmail : request.attorneyEmail;
+      if (!email) throw new Error(`No email for ${input.signer}`);
+
+      await hsSendReminder(hsConfig, request.helloSignRequestId, email);
+      return { success: true };
     }),
 });

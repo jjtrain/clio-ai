@@ -79,6 +79,7 @@ export default function SignaturesPage() {
               <TableHead>Title</TableHead>
               <TableHead>Client</TableHead>
               <TableHead>Matter</TableHead>
+              <TableHead>Provider</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Sent</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
@@ -87,13 +88,13 @@ export default function SignaturesPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : data?.requests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8">
                   <div className="flex flex-col items-center gap-2">
                     <PenTool className="h-8 w-8 text-gray-300" />
                     <p className="text-gray-500">No signature requests found</p>
@@ -106,6 +107,7 @@ export default function SignaturesPage() {
             ) : (
               data?.requests.map((req) => {
                 const config = statusConfig[req.status] || statusConfig.DRAFT;
+                const isHelloSign = (req as any).signingProvider === "hellosign";
                 return (
                   <TableRow key={req.id}>
                     <TableCell>
@@ -124,6 +126,19 @@ export default function SignaturesPage() {
                         </Link>
                       ) : (
                         <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isHelloSign ? (
+                        <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px]">
+                          <PenTool className="h-2.5 w-2.5 mr-1" />
+                          HelloSign
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px]">
+                          <Send className="h-2.5 w-2.5 mr-1" />
+                          Built-in
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell>

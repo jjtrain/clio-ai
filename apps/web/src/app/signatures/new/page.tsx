@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Save, Send, FileText, PenTool, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Send, FileText, PenTool, Loader2, CheckCircle2 } from "lucide-react";
 
 // ─── Document Templates ─────────────────────────────────────────────
 
@@ -167,9 +167,10 @@ export default function NewSignaturePage() {
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [attorneyName, setAttorneyName] = useState("");
+  const [attorneyEmail, setAttorneyEmail] = useState("");
   const [documentContent, setDocumentContent] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
-  const [attorneyEmail, setAttorneyEmail] = useState("");
+  const [signingMethod, setSigningMethod] = useState<"builtin" | "hellosign">("builtin");
 
   const { data: matters } = trpc.matters.list.useQuery({});
   const { data: firmInfo } = trpc.users.getFirmInfo.useQuery();
@@ -178,6 +179,8 @@ export default function NewSignaturePage() {
   const createSignature = trpc.signatures.create.useMutation();
   const sendSignature = trpc.signatures.send.useMutation();
   const sendViaHelloSign = trpc.signatures.sendViaHelloSign.useMutation();
+
+  const hsEnabled = hsSettings?.isEnabled && hsSettings?.apiKey;
 
   // Auto-fill client info when matter is selected
   const handleMatterChange = (id: string) => {
@@ -216,24 +219,43 @@ export default function NewSignaturePage() {
     }
 
     try {
-      const result = await createSignature.mutateAsync({
-        matterId,
-        title,
-        clientName,
-        clientEmail,
-        documentContent,
-        attorneyName: attorneyName || undefined,
-        expiresAt: expiresAt || undefined,
-      });
-
-      if (sendAfterCreate) {
-        await sendSignature.mutateAsync({ id: result.id });
-        toast({ title: "Signature request sent to client" });
+      if (signingMethod === "hellosign" && sendAfterCreate) {
+        // Send directly via HelloSign
+        const result = await sendViaHelloSign.mutateAsync({
+          matterId,
+          title,
+          clientName,
+          clientEmail,
+          documentContent,
+          attorneyName: attorneyName || undefined,
+          attorneyEmail: attorneyEmail || undefined,
+          description: undefined,
+          expiresAt: expiresAt || undefined,
+        });
+        toast({ title: "Sent via HelloSign!" });
+        router.push(`/signatures/${result.id}`);
       } else {
-        toast({ title: "Signature request saved as draft" });
-      }
+        // Built-in flow
+        const result = await createSignature.mutateAsync({
+          matterId,
+          title,
+          clientName,
+          clientEmail,
+          documentContent,
+          attorneyName: attorneyName || undefined,
+          attorneyEmail: attorneyEmail || undefined,
+          expiresAt: expiresAt || undefined,
+        });
 
-      router.push(`/signatures/${result.id}`);
+        if (sendAfterCreate) {
+          await sendSignature.mutateAsync({ id: result.id });
+          toast({ title: "Signature request sent to client" });
+        } else {
+          toast({ title: "Signature request saved as draft" });
+        }
+
+        router.push(`/signatures/${result.id}`);
+      }
     } catch (err: any) {
       toast({
         title: "Error",
@@ -242,6 +264,8 @@ export default function NewSignaturePage() {
       });
     }
   };
+
+  const isSending = createSignature.isPending || sendSignature.isPending || sendViaHelloSign.isPending;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -256,6 +280,49 @@ export default function NewSignaturePage() {
           <p className="text-gray-500">Create a document for electronic signing</p>
         </div>
       </div>
+
+      {/* Signing Method Selector */}
+      {hsEnabled && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+          <h2 className="text-lg font-semibold mb-3">Signing Method</h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            <button
+              onClick={() => setSigningMethod("builtin")}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${
+                signingMethod === "builtin"
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`p-2 rounded-lg ${signingMethod === "builtin" ? "bg-blue-100" : "bg-gray-100"}`}>
+                  <Send className={`h-4 w-4 ${signingMethod === "builtin" ? "text-blue-600" : "text-gray-500"}`} />
+                </div>
+                <span className="font-medium">Built-in Signing</span>
+                {signingMethod === "builtin" && <CheckCircle2 className="h-4 w-4 text-blue-500 ml-auto" />}
+              </div>
+              <p className="text-sm text-gray-500">Send a signing link via email. Client signs in the browser with a drawn signature.</p>
+            </button>
+            <button
+              onClick={() => setSigningMethod("hellosign")}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${
+                signingMethod === "hellosign"
+                  ? "border-indigo-500 bg-indigo-50"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`p-2 rounded-lg ${signingMethod === "hellosign" ? "bg-indigo-100" : "bg-gray-100"}`}>
+                  <PenTool className={`h-4 w-4 ${signingMethod === "hellosign" ? "text-indigo-600" : "text-gray-500"}`} />
+                </div>
+                <span className="font-medium">HelloSign (Dropbox Sign)</span>
+                {signingMethod === "hellosign" && <CheckCircle2 className="h-4 w-4 text-indigo-500 ml-auto" />}
+              </div>
+              <p className="text-sm text-gray-500">Legally binding e-signatures via HelloSign. Automatic reminders and audit trail.</p>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Matter & Client Info */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-4">
@@ -323,15 +390,19 @@ export default function NewSignaturePage() {
               onChange={(e) => setExpiresAt(e.target.value)}
             />
           </div>
-          {hsSettings?.isEnabled && attorneyName && (
+
+          {attorneyName && (
             <div className="space-y-2">
-              <Label>Attorney Email <span className="text-xs text-gray-400">(for HelloSign countersigning)</span></Label>
+              <Label>Attorney Email {signingMethod === "hellosign" && <span className="text-red-500">*</span>}</Label>
               <Input
                 type="email"
                 value={attorneyEmail}
                 onChange={(e) => setAttorneyEmail(e.target.value)}
                 placeholder="attorney@firm.com"
               />
+              {signingMethod === "hellosign" && (
+                <p className="text-xs text-gray-400">Required for HelloSign countersigning</p>
+              )}
             </div>
           )}
         </div>
@@ -384,55 +455,29 @@ export default function NewSignaturePage() {
         <Button
           variant="outline"
           onClick={() => handleSubmit(false)}
-          disabled={createSignature.isPending}
+          disabled={isSending}
         >
           <Save className="h-4 w-4 mr-2" />
           Save as Draft
         </Button>
         <Button
           onClick={() => handleSubmit(true)}
-          disabled={createSignature.isPending || sendSignature.isPending}
-          className="bg-blue-500 hover:bg-blue-600"
+          disabled={isSending}
+          className={signingMethod === "hellosign" ? "bg-indigo-600 hover:bg-indigo-700" : "bg-blue-500 hover:bg-blue-600"}
         >
-          <Send className="h-4 w-4 mr-2" />
-          Save & Send (Built-in)
+          {isSending ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : signingMethod === "hellosign" ? (
+            <PenTool className="h-4 w-4 mr-2" />
+          ) : (
+            <Send className="h-4 w-4 mr-2" />
+          )}
+          {isSending
+            ? "Sending..."
+            : signingMethod === "hellosign"
+              ? "Send via HelloSign"
+              : "Save & Send"}
         </Button>
-        {hsSettings?.isEnabled && (
-          <Button
-            onClick={async () => {
-              if (!matterId || !title || !clientName || !clientEmail || !documentContent) {
-                toast({ title: "Missing required fields", description: "Please fill in all required fields", variant: "destructive" });
-                return;
-              }
-              try {
-                const result = await sendViaHelloSign.mutateAsync({
-                  matterId,
-                  title,
-                  clientName,
-                  clientEmail,
-                  documentContent,
-                  attorneyName: attorneyName || undefined,
-                  attorneyEmail: attorneyEmail || undefined,
-                  description: undefined,
-                  expiresAt: expiresAt || undefined,
-                });
-                toast({ title: "Sent via HelloSign!" });
-                router.push(`/signatures/${result.id}`);
-              } catch (err: any) {
-                toast({ title: "HelloSign Error", description: err.message, variant: "destructive" });
-              }
-            }}
-            disabled={sendViaHelloSign.isPending}
-            className="bg-indigo-600 hover:bg-indigo-700"
-          >
-            {sendViaHelloSign.isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <PenTool className="h-4 w-4 mr-2" />
-            )}
-            Send via HelloSign
-          </Button>
-        )}
       </div>
     </div>
   );

@@ -117,13 +117,28 @@ export default function SignatureDetailPage() {
       utils.signatures.getById.invalidate({ id });
     },
   });
-  const hsRemind = trpc.signatures.helloSignRemind.useMutation({
+
+  // HelloSign mutations
+  const hsRemind = trpc.signatures.sendHellosignReminder.useMutation({
     onSuccess: () => toast({ title: "Reminder sent via HelloSign" }),
     onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
   const hsRefresh = trpc.signatures.helloSignRefreshStatus.useMutation({
     onSuccess: () => {
       toast({ title: "Status refreshed from HelloSign" });
+      utils.signatures.getById.invalidate({ id });
+    },
+    onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+  const hsDownload = trpc.signatures.downloadHellosignDocument.useMutation({
+    onSuccess: (data) => {
+      if (data.url) window.open(data.url, "_blank");
+    },
+    onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+  const createHsRequest = trpc.signatures.createHellosignRequest.useMutation({
+    onSuccess: () => {
+      toast({ title: "Sent to HelloSign" });
       utils.signatures.getById.invalidate({ id });
     },
     onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -162,6 +177,8 @@ export default function SignatureDetailPage() {
   const canResend = request.status === "PENDING_CLIENT";
   const canCancel = !["COMPLETED", "CANCELLED"].includes(request.status);
   const needsAttorneySign = request.status === "PENDING_ATTORNEY" || request.status === "CLIENT_SIGNED";
+  const isHelloSign = (request as any).signingProvider === "hellosign";
+  const hasHsRequestId = !!(request as any).helloSignRequestId;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -178,7 +195,15 @@ export default function SignatureDetailPage() {
             {request.matter?.name} &middot; {request.clientName}
           </p>
         </div>
-        <Badge className={config.className}>{config.label}</Badge>
+        <div className="flex items-center gap-2">
+          {isHelloSign && (
+            <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200">
+              <PenTool className="h-3 w-3 mr-1" />
+              HelloSign
+            </Badge>
+          )}
+          <Badge className={config.className}>{config.label}</Badge>
+        </div>
       </div>
 
       {/* Status Timeline */}
@@ -188,7 +213,7 @@ export default function SignatureDetailPage() {
 
       {/* Actions */}
       <div className="flex items-center gap-3 flex-wrap">
-        {canSend && (
+        {canSend && !hasHsRequestId && (
           <Button
             onClick={() => sendRequest.mutate({ id })}
             disabled={sendRequest.isPending}
@@ -198,7 +223,18 @@ export default function SignatureDetailPage() {
             Send to Client
           </Button>
         )}
-        {canResend && (
+        {canSend && !hasHsRequestId && (
+          <Button
+            variant="outline"
+            onClick={() => createHsRequest.mutate({ signatureRequestId: id })}
+            disabled={createHsRequest.isPending}
+            className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+          >
+            <PenTool className="h-4 w-4 mr-2" />
+            {createHsRequest.isPending ? "Sending..." : "Send via HelloSign"}
+          </Button>
+        )}
+        {canResend && !hasHsRequestId && (
           <Button
             variant="outline"
             onClick={() => resendRequest.mutate({ id })}
@@ -219,13 +255,15 @@ export default function SignatureDetailPage() {
             Cancel
           </Button>
         )}
-        {request.status !== "DRAFT" && !(request as any).helloSignRequestId && (
+        {request.status !== "DRAFT" && !hasHsRequestId && (
           <Button variant="outline" onClick={handleCopyLink}>
             {linkCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
             {linkCopied ? "Copied!" : "Copy Signing Link"}
           </Button>
         )}
-        {(request as any).helloSignRequestId && (
+
+        {/* HelloSign-specific actions */}
+        {hasHsRequestId && (
           <>
             <Button
               variant="outline"
@@ -238,26 +276,39 @@ export default function SignatureDetailPage() {
             {canResend && (
               <Button
                 variant="outline"
-                onClick={() => hsRemind.mutate({ id })}
+                onClick={() => hsRemind.mutate({ id, signer: "client" })}
                 disabled={hsRemind.isPending}
               >
                 <Bell className="h-4 w-4 mr-2" />
-                Send Reminder
+                Remind Client
               </Button>
             )}
-            {(request as any).helloSignFileUrl && (
-              <a href={(request as any).helloSignFileUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline">
-                  <Download className="h-4 w-4 mr-2" /> Download Signed PDF
-                </Button>
-              </a>
+            {needsAttorneySign && (request as any).attorneyEmail && (
+              <Button
+                variant="outline"
+                onClick={() => hsRemind.mutate({ id, signer: "attorney" })}
+                disabled={hsRemind.isPending}
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                Remind Attorney
+              </Button>
+            )}
+            {request.status === "COMPLETED" && (
+              <Button
+                variant="outline"
+                onClick={() => hsDownload.mutate({ id })}
+                disabled={hsDownload.isPending}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Signed PDF
+              </Button>
             )}
           </>
         )}
       </div>
 
       {/* HelloSign Provider Badge */}
-      {(request as any).signingProvider === "hellosign" && (
+      {isHelloSign && (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
             <PenTool className="h-4 w-4 text-white" />
@@ -266,9 +317,32 @@ export default function SignatureDetailPage() {
             <p className="text-sm font-medium text-blue-800">Sent via HelloSign (Dropbox Sign)</p>
             <p className="text-xs text-blue-600">Signers will receive an email from HelloSign with a secure signing link</p>
           </div>
-          {(request as any).helloSignRequestId && (
-            <span className="text-[10px] font-mono text-blue-400">ID: {(request as any).helloSignRequestId.slice(0, 12)}...</span>
-          )}
+          <div className="flex items-center gap-3">
+            {(request as any).hellosignStatus && (
+              <Badge className="bg-blue-100 text-blue-700 text-[10px]">
+                {(request as any).hellosignStatus}
+              </Badge>
+            )}
+            {(request as any).helloSignRequestId && (
+              <span className="text-[10px] font-mono text-blue-400">ID: {(request as any).helloSignRequestId.slice(0, 12)}...</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* HelloSign File URL */}
+      {(request as any).helloSignFileUrl && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+          <Download className="h-5 w-5 text-green-600" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-green-800">Signed document available</p>
+            <p className="text-xs text-green-600">Download the completed, signed PDF</p>
+          </div>
+          <a href={(request as any).helloSignFileUrl} target="_blank" rel="noopener noreferrer">
+            <Button size="sm" variant="outline" className="text-green-700 border-green-300">
+              <ExternalLink className="h-3 w-3 mr-1" /> Open PDF
+            </Button>
+          </a>
         </div>
       )}
 
@@ -303,6 +377,14 @@ export default function SignatureDetailPage() {
                 Signed: {request.clientSignedAt && new Date(request.clientSignedAt).toLocaleString()}
               </p>
             </div>
+          ) : request.clientSignedAt ? (
+            <div className="border rounded-lg p-4 bg-green-50 text-center">
+              <CheckCircle2 className="h-6 w-6 mx-auto mb-2 text-green-500" />
+              <p className="text-sm text-green-700">Signed via HelloSign</p>
+              <p className="text-xs text-green-500 mt-1">
+                {new Date(request.clientSignedAt).toLocaleString()}
+              </p>
+            </div>
           ) : (
             <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center text-gray-400">
               <Clock className="h-6 w-6 mx-auto mb-2" />
@@ -328,7 +410,15 @@ export default function SignatureDetailPage() {
                 Signed: {request.attorneySignedAt && new Date(request.attorneySignedAt).toLocaleString()}
               </p>
             </div>
-          ) : needsAttorneySign ? (
+          ) : request.attorneySignedAt ? (
+            <div className="border rounded-lg p-4 bg-green-50 text-center">
+              <CheckCircle2 className="h-6 w-6 mx-auto mb-2 text-green-500" />
+              <p className="text-sm text-green-700">Signed via HelloSign</p>
+              <p className="text-xs text-green-500 mt-1">
+                {new Date(request.attorneySignedAt).toLocaleString()}
+              </p>
+            </div>
+          ) : needsAttorneySign && !isHelloSign ? (
             <div className="space-y-4">
               <SignatureCanvas onChange={setAttorneySignature} />
               <Button
@@ -339,6 +429,12 @@ export default function SignatureDetailPage() {
                 <PenTool className="h-4 w-4 mr-2" />
                 {attorneySign.isPending ? "Signing..." : "Countersign Document"}
               </Button>
+            </div>
+          ) : needsAttorneySign && isHelloSign ? (
+            <div className="border-2 border-dashed border-indigo-200 rounded-lg p-8 text-center text-indigo-400">
+              <PenTool className="h-6 w-6 mx-auto mb-2" />
+              <p className="text-sm">Awaiting signature via HelloSign</p>
+              <p className="text-xs mt-1">Attorney will receive an email from HelloSign</p>
             </div>
           ) : (
             <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center text-gray-400">
