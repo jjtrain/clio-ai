@@ -311,6 +311,7 @@ export default function PIcaseManagementPage() {
           <TabsTrigger value="details">Case Details</TabsTrigger>
           <TabsTrigger value="records">Medical Records</TabsTrigger>
           <TabsTrigger value="liens">Liens</TabsTrigger>
+          <TabsTrigger value="damages" onClick={() => router.push(`/damages/${matterId}`)}>Damages</TabsTrigger>
           <TabsTrigger value="settlement">Settlement</TabsTrigger>
           <TabsTrigger value="demand">Demand</TabsTrigger>
         </TabsList>

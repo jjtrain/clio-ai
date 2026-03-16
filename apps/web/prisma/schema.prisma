@@ -84,6 +84,9 @@ model Matter {
   liens              MedicalLien[]
   injuryCaseDetails  InjuryCaseDetails?
   settlementDistributions SettlementDistribution[]
+  damageItems        DamageItem[]
+  damageSummary      DamageSummary?
+  damageTimeline     DamageTimeline[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -2613,4 +2616,106 @@ enum DistributionStatus {
   DRAFT
   APPROVED
   DISTRIBUTED
+}
+
+// ============================================
+// DAMAGES TRACKING
+// ============================================
+
+model DamageItem {
+  id                  String             @id @default(cuid())
+  matterId            String
+  matter              Matter             @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  category            DamageCategory
+  type                DamageType
+  description         String             @db.Text
+  amount              Decimal            @db.Decimal(12, 2)
+  isProjected         Boolean            @default(false)
+  startDate           DateTime?
+  endDate             DateTime?
+  isOngoing           Boolean            @default(false)
+  frequency           String?
+  recurringAmount     Decimal?           @db.Decimal(12, 2)
+  duration            Int?
+  supportingEvidence  String?            @db.Text
+  verificationStatus  VerificationStatus @default(UNVERIFIED)
+  notes               String?            @db.Text
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([matterId])
+  @@index([category])
+  @@index([type])
+  @@index([verificationStatus])
+}
+
+model DamageSummary {
+  id                String    @id @default(cuid())
+  matterId          String    @unique
+  matter            Matter    @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  totalEconomic     Decimal   @default(0) @db.Decimal(12, 2)
+  totalNonEconomic  Decimal   @default(0) @db.Decimal(12, 2)
+  totalPunitive     Decimal   @default(0) @db.Decimal(12, 2)
+  totalStatutory    Decimal   @default(0) @db.Decimal(12, 2)
+  grandTotal        Decimal   @default(0) @db.Decimal(12, 2)
+  totalProjected    Decimal   @default(0) @db.Decimal(12, 2)
+  totalDocumented   Decimal   @default(0) @db.Decimal(12, 2)
+  multiplier        Decimal?  @db.Decimal(5, 2)
+  perDiem           Decimal?  @db.Decimal(10, 2)
+  perDiemDays       Int?
+  aiValuation       Decimal?  @db.Decimal(12, 2)
+  aiAnalysis        String?   @db.Text
+  lastCalculatedAt  DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([matterId])
+}
+
+model DamageTimeline {
+  id            String   @id @default(cuid())
+  matterId      String
+  matter        Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  date          DateTime
+  event         String
+  damageImpact  String?  @db.Text
+  damageItemId  String?
+  category      String?
+  createdAt     DateTime @default(now())
+
+  @@index([matterId])
+  @@index([date])
+}
+
+enum DamageCategory {
+  ECONOMIC
+  NON_ECONOMIC
+  PUNITIVE
+  STATUTORY
+}
+
+enum DamageType {
+  MEDICAL_EXPENSES
+  LOST_WAGES
+  FUTURE_MEDICAL
+  FUTURE_LOST_EARNINGS
+  PROPERTY_DAMAGE
+  OUT_OF_POCKET
+  LOSS_OF_CONSORTIUM
+  PAIN_AND_SUFFERING
+  EMOTIONAL_DISTRESS
+  LOSS_OF_ENJOYMENT
+  DISFIGUREMENT
+  DISABILITY
+  WRONGFUL_DEATH
+  PUNITIVE
+  STATUTORY_PENALTY
+  OTHER
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  DOCUMENTED
+  EXPERT_VERIFIED
+  DISPUTED
 }

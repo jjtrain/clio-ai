@@ -34,6 +34,7 @@ import { marketingRoiRouter } from "./marketingRoi";
 import { forecastingRouter } from "./forecasting";
 import { riskAlertsRouter } from "./riskAlerts";
 import { medicalRecordsRouter } from "./medicalRecords";
+import { damagesRouter } from "./damages";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -71,6 +72,7 @@ export const appRouter = router({
   forecasting: forecastingRouter,
   riskAlerts: riskAlertsRouter,
   medicalRecords: medicalRecordsRouter,
+  damages: damagesRouter,
 });
 
 export type AppRouter = typeof appRouter;

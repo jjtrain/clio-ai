@@ -348,6 +348,10 @@ export default function MatterDetailPage() {
                   Manage PI Case
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={() => router.push(`/damages/${matterId}`)}>
+                <DollarSign className="mr-2 h-4 w-4" />
+                Track Damages
+              </DropdownMenuItem>
               {matter.status === "OPEN" || matter.status === "PENDING" ? (
                 <DropdownMenuItem onClick={() => closeMatter.mutate({ id: matterId })}>
                   <CheckCircle className="mr-2 h-4 w-4" />
