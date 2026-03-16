@@ -99,6 +99,7 @@ model Matter {
   trademarkDockets   TrademarkDocket[]
   externalResearchResults ExternalResearchResult[]
   docketAlerts       DocketAlert[]
+  familyCase         FamilyCase?
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -3751,4 +3752,165 @@ enum DocketAlertType {
   RULING
   STATUS_CHANGE
   CUSTOM
+}
+
+// ============================================
+// FAMILY LAW & OURFAMILYWIZARD
+// ============================================
+
+model FamilyCase {
+  id                String          @id @default(cuid())
+  matterId          String          @unique
+  matter            Matter          @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  caseType          String?
+  opposingPartyName String?
+  childrenNames     String?         @db.Text
+  courtOrderDate    DateTime?
+  custodySplitClient   Int?
+  custodySplitOpposing Int?
+  supportAmount     Decimal?        @db.Decimal(10, 2)
+  supportType       String?
+  notes             String?         @db.Text
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  ofwConnection     OFWConnection?
+
+  @@index([matterId])
+}
+
+model OFWSettings {
+  id               String   @id @default("default")
+  isEnabled        Boolean  @default(false)
+  apiKey           String?
+  apiSecret        String?
+  baseUrl          String?  @default("https://api.ourfamilywizard.com/v1")
+  accountId        String?
+  autoSyncEnabled  Boolean  @default(false)
+  syncFrequency    String   @default("daily")
+  lastSyncAt       DateTime?
+  lastSyncStatus   String?
+  lastSyncError    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model OFWConnection {
+  id               String              @id @default(cuid())
+  familyCaseId     String              @unique
+  familyCase       FamilyCase          @relation(fields: [familyCaseId], references: [id], onDelete: Cascade)
+  matterId         String
+  clientId         String?
+  ofwFamilyId      String?
+  ofwParent1Id     String?
+  ofwParent2Id     String?
+  connectionStatus OFWConnectionStatus @default(PENDING)
+  lastDataPull     DateTime?
+  notes            String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  expenses         OFWExpenseRecord[]
+  messages         OFWMessage[]
+  scheduleEvents   OFWScheduleEvent[]
+  journalEntries   OFWJournalEntry[]
+
+  @@index([matterId])
+  @@index([connectionStatus])
+}
+
+model OFWExpenseRecord {
+  id                   String                  @id @default(cuid())
+  connectionId         String
+  connection           OFWConnection           @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  familyCaseId         String
+  ofwExpenseId         String?
+  category             String
+  description          String
+  amount               Decimal                 @db.Decimal(10, 2)
+  paidBy               OFWParty
+  dateIncurred         DateTime
+  reimbursementStatus  OFWReimbursementStatus  @default(PENDING)
+  reimbursementAmount  Decimal?                @db.Decimal(10, 2)
+  receiptUrl           String?
+  ofwNotes             String?                 @db.Text
+  importedAt           DateTime                @default(now())
+  createdAt            DateTime                @default(now())
+}
+
+model OFWMessage {
+  id               String     @id @default(cuid())
+  connectionId     String
+  connection       OFWConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  familyCaseId     String
+  ofwMessageId     String?
+  fromParent       OFWParty
+  toParent         OFWParty
+  subject          String?
+  body             String     @db.Text
+  sentAt           DateTime
+  isRead           Boolean    @default(false)
+  hasAttachments   Boolean    @default(false)
+  attachmentUrls   String?    @db.Text
+  flagged          Boolean    @default(false)
+  flagReason       String?
+  importedAt       DateTime   @default(now())
+  createdAt        DateTime   @default(now())
+}
+
+model OFWScheduleEvent {
+  id               String     @id @default(cuid())
+  connectionId     String
+  connection       OFWConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  familyCaseId     String
+  ofwEventId       String?
+  title            String
+  startDate        DateTime
+  endDate          DateTime
+  assignedParent   OFWParty
+  eventType        String
+  location         String?
+  isOvernight      Boolean    @default(false)
+  notes            String?
+  wasModified      Boolean    @default(false)
+  modificationReason String?
+  importedAt       DateTime   @default(now())
+  createdAt        DateTime   @default(now())
+}
+
+model OFWJournalEntry {
+  id               String     @id @default(cuid())
+  connectionId     String
+  connection       OFWConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  familyCaseId     String
+  ofwJournalId     String?
+  author           OFWParty
+  entryDate        DateTime
+  content          String     @db.Text
+  category         String?
+  attachmentUrls   String?    @db.Text
+  flagged          Boolean    @default(false)
+  flagReason       String?
+  importedAt       DateTime   @default(now())
+  createdAt        DateTime   @default(now())
+}
+
+enum OFWConnectionStatus {
+  PENDING
+  ACTIVE
+  DISCONNECTED
+  ERROR
+}
+
+enum OFWParty {
+  PARENT1
+  PARENT2
+}
+
+enum OFWReimbursementStatus {
+  PENDING
+  APPROVED
+  DENIED
+  PAID
+  DISPUTED
 }
