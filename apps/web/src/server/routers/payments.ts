@@ -47,7 +47,7 @@ export const paymentsRouter = router({
         where: { token: input.token },
       });
       if (!link) throw new Error("Payment link not found");
-      if (link.status !== "ACTIVE") return { ...link, expired: link.status !== "ACTIVE" };
+      if (link.status !== "ACTIVE") return { ...link, expired: true };
       if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
         await ctx.db.paymentLink.update({ where: { id: link.id }, data: { status: "EXPIRED" } });
         return { ...link, status: "EXPIRED" as const, expired: true };
