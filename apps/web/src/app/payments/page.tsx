@@ -236,10 +236,10 @@ export default function PaymentsDashboardPage() {
         {/* Payment Links Tab */}
         <TabsContent value="links" className="space-y-4">
           <div className="flex gap-2">
-            <Select value={linkStatusFilter} onValueChange={setLinkStatusFilter}>
+            <Select value={linkStatusFilter || "__all__"} onValueChange={(v) => setLinkStatusFilter(v === "__all__" ? "" : v)}>
               <SelectTrigger className="w-40"><SelectValue placeholder="All statuses" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All</SelectItem>
+                <SelectItem value="__all__">All</SelectItem>
                 {["ACTIVE", "PAID", "EXPIRED", "CANCELLED"].map((s) => <SelectItem key={s} value={s}>{fmt(s)}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -311,17 +311,17 @@ export default function PaymentsDashboardPage() {
         {/* Transactions Tab */}
         <TabsContent value="transactions" className="space-y-4">
           <div className="flex gap-2">
-            <Select value={txMethodFilter} onValueChange={setTxMethodFilter}>
+            <Select value={txMethodFilter || "__all__"} onValueChange={(v) => setTxMethodFilter(v === "__all__" ? "" : v)}>
               <SelectTrigger className="w-40"><SelectValue placeholder="All methods" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All</SelectItem>
+                <SelectItem value="__all__">All</SelectItem>
                 {["CREDIT_CARD", "DEBIT_CARD", "ECHECK", "ACH", "APPLE_PAY", "GOOGLE_PAY"].map((m) => <SelectItem key={m} value={m}>{fmt(m)}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={txStatusFilter} onValueChange={setTxStatusFilter}>
+            <Select value={txStatusFilter || "__all__"} onValueChange={(v) => setTxStatusFilter(v === "__all__" ? "" : v)}>
               <SelectTrigger className="w-40"><SelectValue placeholder="All statuses" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All</SelectItem>
+                <SelectItem value="__all__">All</SelectItem>
                 {["COMPLETED", "PENDING", "FAILED", "REFUNDED"].map((s) => <SelectItem key={s} value={s}>{fmt(s)}</SelectItem>)}
               </SelectContent>
             </Select>

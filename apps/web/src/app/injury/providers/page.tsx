@@ -82,10 +82,10 @@ export default function ProvidersPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input placeholder="Search providers..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
+        <Select value={typeFilter || "__all__"} onValueChange={(v) => setTypeFilter(v === "__all__" ? "" : v)}>
           <SelectTrigger className="w-48"><SelectValue placeholder="All types" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Types</SelectItem>
+            <SelectItem value="__all__">All Types</SelectItem>
             {PROVIDER_TYPES.map((t) => <SelectItem key={t} value={t}>{fmt(t)}</SelectItem>)}
           </SelectContent>
         </Select>
