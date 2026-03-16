@@ -347,6 +347,14 @@ export default function BillingPage() {
                                 Mark as Paid
                               </DropdownMenuItem>
                             )}
+                            {(invoice.status === "SENT" || invoice.status === "OVERDUE") && (
+                              <DropdownMenuItem asChild>
+                                <Link href={`/payments?createForInvoice=${invoice.id}`}>
+                                  <CreditCard className="mr-2 h-4 w-4" />
+                                  Send Payment Link
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

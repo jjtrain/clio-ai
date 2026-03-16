@@ -260,6 +260,78 @@ export async function sendInvoiceEmail(data: SendInvoiceEmailData) {
   });
 }
 
+// ─── Payment Emails ──────────────────────────────────────────────
+
+export async function sendPaymentLinkEmail(params: {
+  to: string;
+  name: string;
+  amount: number;
+  paymentUrl: string;
+  title: string;
+  firmName: string;
+  fromEmail: string;
+}) {
+  const amountStr = "$" + params.amount.toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return sendEmail({
+    to: params.to,
+    from: params.fromEmail,
+    subject: `Payment Request: ${params.title} - ${amountStr}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a1a1a;">Payment Request</h2>
+        <p>Hello ${params.name},</p>
+        <p>${params.firmName} has sent you a payment request.</p>
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>Description:</strong> ${params.title}</p>
+          <p style="margin: 4px 0; font-size: 24px; font-weight: bold; color: #1E40AF;">${amountStr}</p>
+        </div>
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${params.paymentUrl}" style="display: inline-block; background: #3B82F6; color: white; padding: 14px 40px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+            Pay Now
+          </a>
+        </div>
+        <p style="color: #666; font-size: 13px;">If the button doesn't work, copy and paste this link: ${params.paymentUrl}</p>
+        <p style="color: #666; font-size: 12px;">This payment is securely processed. Your payment information is encrypted.</p>
+        <p style="color: #666; font-size: 14px;">${params.firmName}</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendPaymentReceipt(params: {
+  to: string;
+  name: string;
+  amount: number;
+  method: string;
+  last4?: string;
+  transactionId: string;
+  firmName: string;
+  fromEmail: string;
+}) {
+  const amountStr = "$" + params.amount.toLocaleString("en-US", { minimumFractionDigits: 2 });
+  const methodDisplay = params.method.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return sendEmail({
+    to: params.to,
+    from: params.fromEmail,
+    subject: `Payment Receipt - ${amountStr} - ${params.firmName}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #16a34a;">Payment Successful</h2>
+        <p>Hello ${params.name},</p>
+        <p>Your payment has been received. Thank you!</p>
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>Amount:</strong> ${amountStr}</p>
+          <p style="margin: 4px 0;"><strong>Method:</strong> ${methodDisplay}${params.last4 ? ` ending in ${params.last4}` : ""}</p>
+          <p style="margin: 4px 0;"><strong>Transaction ID:</strong> ${params.transactionId}</p>
+          <p style="margin: 4px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+        </div>
+        <p>Please keep this email for your records.</p>
+        <p style="color: #666; font-size: 14px;">${params.firmName}</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendAppointmentCancellation(data: AppointmentEmailData & { reason?: string }) {
   return sendEmail({
     to: data.clientEmail,

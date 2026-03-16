@@ -40,6 +40,7 @@ import {
   UserCircle,
   MessageSquare,
   HeartPulse,
+  CreditCard,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -63,6 +64,7 @@ const mainNavigation = [
   { name: "Forecasting", href: "/forecasting", icon: LineChart },
   { name: "Risk Monitor", href: "/risk", icon: ShieldCheck },
   { name: "Injury Cases", href: "/injury", icon: HeartPulse },
+  { name: "Payments", href: "/payments", icon: CreditCard },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Campaigns", href: "/campaigns", icon: Mail },
   { name: "Website", href: "/website", icon: Globe },

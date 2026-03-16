@@ -45,6 +45,8 @@ model Client {
   textConversations  TextConversation[]
   paymentPlans       PaymentPlan[]
   riskAlerts         RiskAlert[]
+  paymentLinks       PaymentLink[]
+  paymentTransactions PaymentTransaction[]
 }
 
 model Matter {
@@ -87,6 +89,7 @@ model Matter {
   damageItems        DamageItem[]
   damageSummary      DamageSummary?
   damageTimeline     DamageTimeline[]
+  paymentLinks       PaymentLink[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -225,6 +228,8 @@ model Invoice {
   payments      Payment[]
   reminders     BillingReminder[]
   paymentPlan   PaymentPlan?
+  paymentLinks  PaymentLink[]
+  paymentTransactions PaymentTransaction[]
 
   @@index([matterId])
   @@index([status])
@@ -2718,4 +2723,126 @@ enum VerificationStatus {
   DOCUMENTED
   EXPERT_VERIFIED
   DISPUTED
+}
+
+// ============================================
+// PAYMENTS
+// ============================================
+
+model PaymentLink {
+  id                  String            @id @default(cuid())
+  invoiceId           String?
+  invoice             Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  matterId            String?
+  matter              Matter?           @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  clientId            String?
+  client              Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  token               String            @unique
+  title               String
+  description         String?
+  amount              Decimal           @db.Decimal(10, 2)
+  status              PaymentLinkStatus @default(ACTIVE)
+  paymentMethod       String?
+  paidAt              DateTime?
+  paidAmount          Decimal?          @db.Decimal(10, 2)
+  expiresAt           DateTime?
+  allowPartialPayment Boolean           @default(false)
+  minimumPayment      Decimal?          @db.Decimal(10, 2)
+  recipientEmail      String?
+  recipientPhone      String?
+  sentVia             String?
+  sentAt              DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  transactions        PaymentTransaction[]
+
+  @@index([token])
+  @@index([invoiceId])
+  @@index([status])
+}
+
+model PaymentTransaction {
+  id                  String            @id @default(cuid())
+  paymentLinkId       String?
+  paymentLink         PaymentLink?      @relation(fields: [paymentLinkId], references: [id], onDelete: SetNull)
+  invoiceId           String?
+  invoice             Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  clientId            String?
+  client              Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  amount              Decimal           @db.Decimal(10, 2)
+  method              PaymentMethodType
+  status              TransactionStatus @default(PENDING)
+  processorId         String?
+  processorResponse   String?           @db.Text
+  cardLast4           String?
+  cardBrand           String?
+  bankName            String?
+  errorMessage        String?
+  refundedAmount      Decimal?          @db.Decimal(10, 2)
+  refundedAt          DateTime?
+  ipAddress           String?
+  userAgent           String?
+  createdAt           DateTime          @default(now())
+
+  @@index([paymentLinkId])
+  @@index([invoiceId])
+  @@index([clientId])
+  @@index([status])
+  @@index([method])
+  @@index([createdAt])
+}
+
+model PaymentSettings {
+  id                      String   @id @default("default")
+  isEnabled               Boolean  @default(false)
+  processor               String   @default("helcim")
+  helcimApiToken          String?
+  helcimAccountId         String?
+  stripePublishableKey    String?
+  stripeSecretKey         String?
+  acceptCreditCard        Boolean  @default(true)
+  acceptDebitCard         Boolean  @default(true)
+  acceptEcheck            Boolean  @default(true)
+  acceptApplePay          Boolean  @default(false)
+  acceptGooglePay         Boolean  @default(false)
+  surchargeEnabled        Boolean  @default(false)
+  surchargePercentage     Decimal? @db.Decimal(5, 2)
+  convenienceFeeEnabled   Boolean  @default(false)
+  convenienceFeeAmount    Decimal? @db.Decimal(10, 2)
+  paymentLinkDefaultExpiry Int     @default(30)
+  autoApplyToInvoice      Boolean  @default(true)
+  sendReceiptEmail        Boolean  @default(true)
+  trustAccountPayments    Boolean  @default(true)
+  firmName                String?
+  firmEmail               String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+enum PaymentLinkStatus {
+  ACTIVE
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentMethodType {
+  CREDIT_CARD
+  DEBIT_CARD
+  ECHECK
+  ACH
+  TAP_TO_PAY
+  APPLE_PAY
+  GOOGLE_PAY
+  OTHER
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  VOIDED
 }
