@@ -505,7 +505,7 @@ export default function DamagesTrackerPage() {
           <TimelineDialog
             open={addTimelineOpen}
             onClose={() => setAddTimelineOpen(false)}
-            onSubmit={(data) => addTimeline.mutate({ matterId, ...data })}
+            onSubmit={(data: any) => addTimeline.mutate({ matterId, ...data })}
             isLoading={addTimeline.isLoading}
           />
         </TabsContent>
