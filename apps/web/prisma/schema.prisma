@@ -3424,3 +3424,94 @@ enum ReconciliationStatus {
   COMPLETED
   ABANDONED
 }
+
+// ============================================
+// ACCOUNTING INTEGRATIONS (QB / XERO)
+// ============================================
+
+model AccountingIntegration {
+  id                String                @id @default(cuid())
+  provider          AccountingProvider    @unique
+  isEnabled         Boolean               @default(false)
+  isConnected       Boolean               @default(false)
+  accessToken       String?               @db.Text
+  refreshToken      String?               @db.Text
+  tokenExpiresAt    DateTime?
+  realmId           String?
+  tenantId          String?
+  companyName       String?
+  lastSyncAt        DateTime?
+  syncStatus        IntegrationSyncStatus @default(IDLE)
+  syncError         String?
+  syncDirection     SyncDirection         @default(BIDIRECTIONAL)
+  autoSyncEnabled   Boolean               @default(false)
+  autoSyncFrequency String                @default("daily")
+  accountMapping    String?               @db.Text
+  settings          String?               @db.Text
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  syncLogs          SyncLog[]
+  mappings          ExternalIdMapping[]
+
+  @@index([provider])
+  @@index([isConnected])
+}
+
+model SyncLog {
+  id              String               @id @default(cuid())
+  integrationId   String
+  integration     AccountingIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  direction       String
+  entityType      String
+  entityId        String?
+  externalId      String?
+  action          SyncAction
+  errorMessage    String?
+  data            String?              @db.Text
+  createdAt       DateTime             @default(now())
+
+  @@index([integrationId])
+  @@index([entityType])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model ExternalIdMapping {
+  id              String               @id @default(cuid())
+  integrationId   String
+  integration     AccountingIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  entityType      String
+  internalId      String
+  externalId      String
+  lastSyncedAt    DateTime
+  createdAt       DateTime             @default(now())
+
+  @@unique([integrationId, entityType, internalId])
+  @@index([integrationId])
+  @@index([externalId])
+}
+
+enum AccountingProvider {
+  QUICKBOOKS
+  XERO
+}
+
+enum IntegrationSyncStatus {
+  IDLE
+  SYNCING
+  ERROR
+}
+
+enum SyncDirection {
+  TO_EXTERNAL
+  FROM_EXTERNAL
+  BIDIRECTIONAL
+}
+
+enum SyncAction {
+  CREATED
+  UPDATED
+  SKIPPED
+  FAILED
+}
