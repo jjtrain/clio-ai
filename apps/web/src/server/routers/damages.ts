@@ -495,7 +495,7 @@ export const damagesRouter = router({
     }),
 });
 
-function mapDamageType(aiType: string): string {
+function mapDamageType(aiType: string): any {
   const mapping: Record<string, string> = {
     medical_expenses: "MEDICAL_EXPENSES",
     lost_wages: "LOST_WAGES",
