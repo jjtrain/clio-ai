@@ -93,8 +93,8 @@ export default function PaymentsDashboardPage() {
       status: txStatusFilter ? txStatusFilter as any : undefined,
     } : undefined
   );
-  const { data: clients } = trpc.clients.list.useQuery();
-  const { data: invoices } = trpc.invoices.list.useQuery({ status: "SENT" });
+  const { data: clientsData } = trpc.clients.list.useQuery();
+  const { data: invoicesData } = trpc.invoices.list.useQuery({ status: "SENT" });
 
   const cancelLink = trpc.payments.cancelLink.useMutation({
     onSuccess: () => { utils.payments.listLinks.invalidate(); toast({ title: "Link cancelled" }); },
@@ -375,8 +375,8 @@ export default function PaymentsDashboardPage() {
       <CreatePaymentLinkDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        clients={clients || []}
-        invoices={invoices?.invoices || invoices || []}
+        clients={clientsData?.clients || []}
+        invoices={invoicesData?.invoices || []}
         onSubmit={(data: any) => createLink.mutate(data)}
         isLoading={createLink.isLoading}
       />
@@ -392,12 +392,14 @@ function CreatePaymentLinkDialog({ open, onClose, clients, invoices, onSubmit, i
   });
 
   const selectedClient = form.clientId ? clients.find((c: any) => c.id === form.clientId) : null;
+  const invoiceList = Array.isArray(invoices) ? invoices : [];
+  const clientList = Array.isArray(clients) ? clients : [];
   const clientInvoices = form.clientId
-    ? (Array.isArray(invoices) ? invoices : []).filter((i: any) => i.matter?.clientId === form.clientId && i.status !== "PAID")
+    ? invoiceList.filter((i: any) => i.matter?.clientId === form.clientId && i.status !== "PAID")
     : [];
 
   const handleInvoiceSelect = (invoiceId: string) => {
-    const inv = (Array.isArray(invoices) ? invoices : []).find((i: any) => i.id === invoiceId);
+    const inv = invoiceList.find((i: any) => i.id === invoiceId);
     if (inv) {
       const outstanding = Number(inv.total) - Number(inv.amountPaid);
       setForm({
@@ -418,11 +420,11 @@ function CreatePaymentLinkDialog({ open, onClose, clients, invoices, onSubmit, i
           <div className="space-y-2">
             <Label>Client</Label>
             <Select value={form.clientId} onValueChange={(v) => {
-              const c = clients.find((x: any) => x.id === v);
+              const c = clientList.find((x: any) => x.id === v);
               setForm({ ...form, clientId: v, recipientEmail: c?.email || "", recipientPhone: c?.phone || "" });
             }}>
               <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
-              <SelectContent>{clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+              <SelectContent>{clientList.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
 
