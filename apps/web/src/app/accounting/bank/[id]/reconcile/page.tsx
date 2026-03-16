@@ -43,6 +43,9 @@ export default function ReconcilePage() {
       <div className="flex items-center gap-4">
         <Link href={`/accounting/bank/${id}`}><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4" /></Button></Link>
         <h1 className="text-2xl font-bold">Bank Reconciliation</h1>
+        <Button variant="outline" size="sm" className="ml-auto" asChild>
+          <Link href={`/accounting/reconcile/${id}`}>Use Smart Reconciliation</Link>
+        </Button>
       </div>
 
       <Card>

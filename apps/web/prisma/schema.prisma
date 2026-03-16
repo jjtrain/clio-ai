@@ -3196,6 +3196,7 @@ model BankAccount {
 
   transactions    BankTransaction[]
   reconciliations ReconciliationSession[]
+  feed            BankFeed?
 }
 
 model BankTransaction {
@@ -3213,6 +3214,8 @@ model BankTransaction {
   category        String?
   payee           String?
   createdAt       DateTime            @default(now())
+
+  reconciliationMatches ReconciliationMatch[]
 
   @@index([bankAccountId])
   @@index([date])
@@ -3233,7 +3236,83 @@ model ReconciliationSession {
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
 
+  matches           ReconciliationMatch[]
+
   @@index([bankAccountId])
+}
+
+model ReconciliationRule {
+  id              String    @id @default(cuid())
+  name            String
+  matchType       MatchType
+  matchValue      String
+  tolerance       Decimal?  @db.Decimal(10, 2)
+  targetAccountId String?
+  targetCategory  String?
+  isActive        Boolean   @default(true)
+  timesMatched    Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([matchType])
+  @@index([isActive])
+}
+
+model BankFeed {
+  id               String     @id @default(cuid())
+  bankAccountId    String     @unique
+  bankAccount      BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  provider         String     @default("manual")
+  lastSyncAt       DateTime?
+  syncStatus       SyncStatus @default(IDLE)
+  errorMessage     String?
+  plaidAccessToken String?
+  plaidItemId      String?
+  csvFormat        String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@index([bankAccountId])
+}
+
+model ReconciliationMatch {
+  id                  String               @id @default(cuid())
+  sessionId           String
+  session             ReconciliationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  bankTransactionId   String
+  bankTransaction     BankTransaction      @relation(fields: [bankTransactionId], references: [id], onDelete: Cascade)
+  matchedEntityType   String?
+  matchedEntityId     String?
+  matchType           AutoMatchType
+  confidence          Decimal?             @db.Decimal(5, 2)
+  isConfirmed         Boolean              @default(false)
+  createdAt           DateTime             @default(now())
+
+  @@index([sessionId])
+  @@index([bankTransactionId])
+  @@index([matchType])
+}
+
+enum MatchType {
+  EXACT_AMOUNT
+  AMOUNT_RANGE
+  DESCRIPTION_CONTAINS
+  VENDOR_MATCH
+  REGEX
+}
+
+enum SyncStatus {
+  IDLE
+  SYNCING
+  ERROR
+}
+
+enum AutoMatchType {
+  AUTO_EXACT
+  AUTO_FUZZY
+  AUTO_RULE
+  MANUAL
+  UNMATCHED
 }
 
 model VendorContact {
