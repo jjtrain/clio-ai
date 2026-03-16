@@ -48,6 +48,7 @@ model Client {
   paymentLinks       PaymentLink[]
   paymentTransactions PaymentTransaction[]
   financingApplications FinancingApplication[]
+  journalLines          JournalLine[]
 }
 
 model Matter {
@@ -91,6 +92,8 @@ model Matter {
   damageSummary      DamageSummary?
   damageTimeline     DamageTimeline[]
   paymentLinks       PaymentLink[]
+  expenses           Expense[]
+  journalLines       JournalLine[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -3065,4 +3068,280 @@ enum ApprovalActionType {
   ESCALATED
   COMMENTED
   AUTO_APPROVED
+}
+
+// ============================================
+// FULL LEGAL ACCOUNTING
+// ============================================
+
+model ChartOfAccounts {
+  id             String           @id @default(cuid())
+  accountNumber  String           @unique
+  name           String
+  type           AccountType
+  subType        String?
+  description    String?
+  parentId       String?
+  parent         ChartOfAccounts? @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children       ChartOfAccounts[] @relation("AccountHierarchy")
+  isActive       Boolean          @default(true)
+  isSystem       Boolean          @default(false)
+  normalBalance  BalanceDirection
+  currentBalance Decimal          @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  journalLines   JournalLine[]
+  expenses       Expense[]
+  budgets        BudgetItem[]
+  bankAccount    BankAccount?
+
+  @@index([accountNumber])
+  @@index([type])
+  @@index([parentId])
+  @@index([isActive])
+}
+
+model JournalEntry {
+  id          String        @id @default(cuid())
+  entryNumber String        @unique
+  date        DateTime
+  description String
+  memo        String?       @db.Text
+  source      JournalSource
+  sourceId    String?
+  status      JournalStatus @default(DRAFT)
+  isAdjusting Boolean       @default(false)
+  isClosing   Boolean       @default(false)
+  postedAt    DateTime?
+  postedBy    String?
+  voidedAt    DateTime?
+  voidedBy    String?
+  voidReason  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  lines       JournalLine[]
+
+  @@index([date])
+  @@index([source])
+  @@index([status])
+  @@index([entryNumber])
+}
+
+model JournalLine {
+  id          String          @id @default(cuid())
+  entryId     String
+  entry       JournalEntry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  accountId   String
+  account     ChartOfAccounts @relation(fields: [accountId], references: [id])
+  debit       Decimal         @default(0) @db.Decimal(14, 2)
+  credit      Decimal         @default(0) @db.Decimal(14, 2)
+  description String?
+  matterId    String?
+  matter      Matter?         @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  clientId    String?
+  client      Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdAt   DateTime        @default(now())
+
+  @@index([entryId])
+  @@index([accountId])
+  @@index([matterId])
+}
+
+model Expense {
+  id                String          @id @default(cuid())
+  matterId          String?
+  matter            Matter?         @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  clientId          String?
+  vendorName        String
+  category          ExpenseCategory
+  description       String          @db.Text
+  amount            Decimal         @db.Decimal(10, 2)
+  date              DateTime
+  isBillable        Boolean         @default(false)
+  isReimbursable    Boolean         @default(false)
+  isPaid            Boolean         @default(false)
+  paidDate          DateTime?
+  paidMethod        String?
+  receiptUrl        String?
+  invoiceLineItemId String?
+  accountId         String?
+  account           ChartOfAccounts? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  journalEntryId    String?
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([matterId])
+  @@index([clientId])
+  @@index([category])
+  @@index([date])
+  @@index([isBillable])
+}
+
+model BankAccount {
+  id              String          @id @default(cuid())
+  name            String
+  accountType     BankAccountType
+  bankName        String?
+  lastFour        String?
+  routingNumber   String?
+  chartAccountId  String?         @unique
+  chartAccount    ChartOfAccounts? @relation(fields: [chartAccountId], references: [id], onDelete: SetNull)
+  currentBalance  Decimal         @default(0) @db.Decimal(14, 2)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  transactions    BankTransaction[]
+  reconciliations ReconciliationSession[]
+}
+
+model BankTransaction {
+  id              String              @id @default(cuid())
+  bankAccountId   String
+  bankAccount     BankAccount         @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  date            DateTime
+  description     String
+  amount          Decimal             @db.Decimal(14, 2)
+  type            BankTransactionType
+  reference       String?
+  isReconciled    Boolean             @default(false)
+  reconciledAt    DateTime?
+  journalEntryId  String?
+  category        String?
+  payee           String?
+  createdAt       DateTime            @default(now())
+
+  @@index([bankAccountId])
+  @@index([date])
+  @@index([isReconciled])
+}
+
+model ReconciliationSession {
+  id                String               @id @default(cuid())
+  bankAccountId     String
+  bankAccount       BankAccount          @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  statementDate     DateTime
+  statementBalance  Decimal              @db.Decimal(14, 2)
+  reconciledBalance Decimal?             @db.Decimal(14, 2)
+  difference        Decimal?             @db.Decimal(14, 2)
+  status            ReconciliationStatus @default(IN_PROGRESS)
+  completedAt       DateTime?
+  transactionCount  Int                  @default(0)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([bankAccountId])
+}
+
+model VendorContact {
+  id              String   @id @default(cuid())
+  name            String
+  company         String?
+  email           String?
+  phone           String?
+  address         String?
+  category        String?
+  taxId           String?
+  is1099Eligible  Boolean  @default(false)
+  totalPaid       Decimal  @default(0) @db.Decimal(12, 2)
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([name])
+  @@index([category])
+}
+
+model BudgetItem {
+  id             String          @id @default(cuid())
+  accountId      String
+  account        ChartOfAccounts @relation(fields: [accountId], references: [id])
+  period         String
+  budgetedAmount Decimal         @db.Decimal(12, 2)
+  actualAmount   Decimal?        @db.Decimal(12, 2)
+  variance       Decimal?        @db.Decimal(12, 2)
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([accountId, period])
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum BalanceDirection {
+  DEBIT
+  CREDIT
+}
+
+enum JournalSource {
+  MANUAL
+  INVOICE
+  PAYMENT
+  TRUST
+  EXPENSE
+  TIME
+  ADJUSTMENT
+  OPENING_BALANCE
+}
+
+enum JournalStatus {
+  DRAFT
+  POSTED
+  VOIDED
+}
+
+enum ExpenseCategory {
+  FILING_FEE
+  COURT_COST
+  EXPERT_WITNESS
+  DEPOSITION
+  TRAVEL
+  POSTAGE
+  COPYING
+  RESEARCH
+  SERVICE_OF_PROCESS
+  MEDIATION
+  OFFICE_SUPPLY
+  SOFTWARE
+  INSURANCE
+  RENT
+  UTILITIES
+  MARKETING
+  OTHER
+}
+
+enum BankAccountType {
+  CHECKING
+  SAVINGS
+  CREDIT_CARD
+  MONEY_MARKET
+  OTHER
+}
+
+enum BankTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+  FEE
+  INTEREST
+  CHECK
+  ACH
+  CARD
+}
+
+enum ReconciliationStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
 }
