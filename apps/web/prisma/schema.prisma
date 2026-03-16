@@ -97,6 +97,8 @@ model Matter {
   deadlines          Deadline[]
   courtCases         CourtCase[]
   trademarkDockets   TrademarkDocket[]
+  externalResearchResults ExternalResearchResult[]
+  docketAlerts       DocketAlert[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -3657,4 +3659,96 @@ enum DeadlineStatus {
   DISMISSED
   MISSED
   OVERRIDDEN
+}
+
+// ============================================
+// LEGAL TOOL INTEGRATIONS
+// ============================================
+
+model LegalToolIntegration {
+  id              String            @id @default(cuid())
+  provider        LegalToolProvider @unique
+  isEnabled       Boolean           @default(false)
+  displayName     String
+  apiKey          String?
+  apiSecret       String?
+  baseUrl         String?
+  accountId       String?
+  webhookUrl      String?
+  webhookSecret   String?
+  settings        String?           @db.Text
+  lastSyncAt      DateTime?
+  lastSyncStatus  String?
+  lastSyncError   String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([provider])
+}
+
+model ExternalResearchResult {
+  id                 String            @id @default(cuid())
+  provider           LegalToolProvider
+  matterId           String?
+  matter             Matter?           @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  researchSessionId  String?
+  externalId         String?
+  query              String            @db.Text
+  resultType         String
+  title              String
+  content            String            @db.Text
+  citations          String?           @db.Text
+  metadata           String?           @db.Text
+  savedToMatter      Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+
+  @@index([provider])
+  @@index([matterId])
+  @@index([researchSessionId])
+  @@index([resultType])
+}
+
+model DocketAlert {
+  id                  String            @id @default(cuid())
+  provider            LegalToolProvider
+  matterId            String
+  matter              Matter            @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  externalCaseId      String?
+  alertType           DocketAlertType
+  title               String
+  description         String?           @db.Text
+  courtName           String?
+  caseNumber          String?
+  dueDate             DateTime?
+  priority            String            @default("MEDIUM")
+  isProcessed         Boolean           @default(false)
+  linkedDocketEntryId String?
+  rawPayload          String?           @db.Text
+  receivedAt          DateTime          @default(now())
+  createdAt           DateTime          @default(now())
+
+  @@index([provider])
+  @@index([matterId])
+  @@index([alertType])
+  @@index([isProcessed])
+  @@index([dueDate])
+}
+
+enum LegalToolProvider {
+  CASETEXT
+  DOCKET_ALARM
+  FASTCASE
+  VERA
+  BRIEFPOINT
+  CUSTOM
+}
+
+enum DocketAlertType {
+  NEW_FILING
+  DEADLINE
+  HEARING
+  ORDER
+  RULING
+  STATUS_CHANGE
+  CUSTOM
 }

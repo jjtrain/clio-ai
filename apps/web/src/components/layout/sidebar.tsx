@@ -46,6 +46,7 @@ import {
   Calculator,
   Plug,
   Gavel,
+  FileQuestion,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -75,6 +76,7 @@ const mainNavigation = [
   { name: "Accounting", href: "/accounting", icon: Calculator },
   { name: "Integrations", href: "/integrations", icon: Plug },
   { name: "Docketing", href: "/docketing", icon: Gavel },
+  { name: "Discovery", href: "/discovery", icon: FileQuestion },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Campaigns", href: "/campaigns", icon: Mail },
   { name: "Website", href: "/website", icon: Globe },
