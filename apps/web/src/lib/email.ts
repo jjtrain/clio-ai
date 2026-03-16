@@ -393,6 +393,66 @@ export async function sendDiscountApplied(params: {
   });
 }
 
+// ─── Approval Emails ─────────────────────────────────────────────
+
+export async function sendApprovalRequest(params: {
+  to: string; approverName: string; invoiceNumber: string; amount: number; clientName: string;
+  submitterName: string; approvalUrl: string; firmName: string; fromEmail: string;
+}) {
+  const amt = "$" + params.amount.toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return sendEmail({
+    to: params.to, from: params.fromEmail,
+    subject: `Approval Needed: Invoice ${params.invoiceNumber} (${amt})`,
+    html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <h2 style="color:#1a1a1a;">Invoice Needs Your Approval</h2>
+      <p>Hello ${params.approverName},</p>
+      <p>${params.submitterName} has submitted invoice <strong>${params.invoiceNumber}</strong> for your approval.</p>
+      <div style="background:#f8f9fa;border-radius:8px;padding:16px;margin:16px 0;">
+        <p style="margin:4px 0;"><strong>Invoice:</strong> ${params.invoiceNumber}</p>
+        <p style="margin:4px 0;font-size:24px;font-weight:bold;">${amt}</p>
+        <p style="margin:4px 0;"><strong>Client:</strong> ${params.clientName}</p>
+      </div>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${params.approvalUrl}" style="display:inline-block;background:#3B82F6;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;">Review & Approve</a>
+      </div>
+      <p style="color:#666;font-size:14px;">${params.firmName}</p></div>`,
+  });
+}
+
+export async function sendApprovalResult(params: {
+  to: string; submitterName: string; invoiceNumber: string; amount: number; status: string;
+  approverName: string; comment?: string; firmName: string; fromEmail: string;
+}) {
+  const amt = "$" + params.amount.toLocaleString("en-US", { minimumFractionDigits: 2 });
+  const approved = params.status === "APPROVED" || params.status === "AUTO_APPROVED";
+  return sendEmail({
+    to: params.to, from: params.fromEmail,
+    subject: `Invoice ${params.invoiceNumber} ${approved ? "Approved" : "Rejected"}`,
+    html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <h2 style="color:${approved ? "#16a34a" : "#dc2626"};">Invoice ${approved ? "Approved" : "Rejected"}</h2>
+      <p>Hello ${params.submitterName},</p>
+      <p>Invoice <strong>${params.invoiceNumber}</strong> (${amt}) has been <strong>${params.status.toLowerCase().replace("_", "-")}</strong> by ${params.approverName}.</p>
+      ${params.comment ? `<div style="background:#f8f9fa;border-radius:8px;padding:16px;margin:16px 0;"><p style="margin:4px 0;"><strong>Comment:</strong> ${params.comment}</p></div>` : ""}
+      <p style="color:#666;font-size:14px;">${params.firmName}</p></div>`,
+  });
+}
+
+export async function sendEscalationNotice(params: {
+  to: string; name: string; invoiceNumber: string; amount: number; daysWaiting: number;
+  firmName: string; fromEmail: string;
+}) {
+  const amt = "$" + params.amount.toLocaleString("en-US", { minimumFractionDigits: 2 });
+  return sendEmail({
+    to: params.to, from: params.fromEmail,
+    subject: `Escalation: Invoice ${params.invoiceNumber} Approval Overdue (${params.daysWaiting} days)`,
+    html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <h2 style="color:#d97706;">Approval Escalation</h2>
+      <p>Hello ${params.name},</p>
+      <p>Invoice <strong>${params.invoiceNumber}</strong> (${amt}) has been waiting for approval for <strong>${params.daysWaiting} days</strong> and requires attention.</p>
+      <p style="color:#666;font-size:14px;">${params.firmName}</p></div>`,
+  });
+}
+
 export async function sendAppointmentCancellation(data: AppointmentEmailData & { reason?: string }) {
   return sendEmail({
     to: data.clientEmail,

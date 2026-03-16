@@ -233,6 +233,7 @@ model Invoice {
   paymentTransactions PaymentTransaction[]
   financingApplications FinancingApplication[]
   interestCharges       InterestCharge[]
+  approvalRequests      ApprovalRequest[]
 
   @@index([matterId])
   @@index([status])
@@ -2976,4 +2977,92 @@ enum LateInterestType {
   FLAT_FEE
   PERCENTAGE
   DAILY_RATE
+}
+
+// ============================================
+// INVOICE APPROVAL WORKFLOWS
+// ============================================
+
+model ApprovalWorkflow {
+  id                    String          @id @default(cuid())
+  name                  String
+  description           String?         @db.Text
+  triggerType            ApprovalTrigger
+  triggerCondition       String?         @db.Text
+  steps                 String          @db.Text
+  isActive              Boolean         @default(true)
+  requireAllApprovers   Boolean         @default(false)
+  autoApproveEnabled    Boolean         @default(false)
+  autoApproveAfterDays  Int?
+  escalationEnabled     Boolean         @default(false)
+  escalationAfterDays   Int?
+  escalationEmail       String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  requests              ApprovalRequest[]
+
+  @@index([triggerType])
+  @@index([isActive])
+}
+
+model ApprovalRequest {
+  id            String          @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  workflowId    String
+  workflow      ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  currentStep   Int             @default(1)
+  status        ApprovalStatus  @default(PENDING)
+  submittedBy   String?
+  submittedAt   DateTime        @default(now())
+  completedAt   DateTime?
+  notes         String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  actions       ApprovalAction[]
+
+  @@index([invoiceId])
+  @@index([workflowId])
+  @@index([status])
+}
+
+model ApprovalAction {
+  id            String             @id @default(cuid())
+  requestId     String
+  request       ApprovalRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  stepNumber    Int
+  approverName  String
+  action        ApprovalActionType
+  comment       String?            @db.Text
+  actedAt       DateTime           @default(now())
+  createdAt     DateTime           @default(now())
+
+  @@index([requestId])
+}
+
+enum ApprovalTrigger {
+  ALL_INVOICES
+  AMOUNT_THRESHOLD
+  PRACTICE_AREA
+  CLIENT
+  MATTER_TYPE
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ESCALATED
+  AUTO_APPROVED
+  CANCELLED
+}
+
+enum ApprovalActionType {
+  APPROVED
+  REJECTED
+  ESCALATED
+  COMMENTED
+  AUTO_APPROVED
 }

@@ -138,6 +138,12 @@ export default function BillingPage() {
               Interest
             </Link>
           </Button>
+          <Button variant="outline" asChild className="flex-1 sm:flex-initial">
+            <Link href="/approvals">
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Approvals
+            </Link>
+          </Button>
           <Button asChild className="bg-blue-500 hover:bg-blue-600 shadow-sm flex-1 sm:flex-initial">
             <Link href="/billing/new">
               <Plus className="mr-2 h-4 w-4" />
