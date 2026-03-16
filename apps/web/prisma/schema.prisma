@@ -232,6 +232,7 @@ model Invoice {
   paymentLinks  PaymentLink[]
   paymentTransactions PaymentTransaction[]
   financingApplications FinancingApplication[]
+  interestCharges       InterestCharge[]
 
   @@index([matterId])
   @@index([status])
@@ -2911,4 +2912,68 @@ enum FinancingStatus {
   COMPLETED
   CANCELLED
   EXPIRED
+}
+
+// ============================================
+// INTEREST & EARLY PAYMENT DISCOUNTS
+// ============================================
+
+model InterestCharge {
+  id            String       @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  type          InterestType
+  amount        Decimal      @db.Decimal(10, 2)
+  rate          Decimal?     @db.Decimal(5, 4)
+  daysLate      Int?
+  daysEarly     Int?
+  appliedDate   DateTime     @default(now())
+  description   String
+  isWaived      Boolean      @default(false)
+  waivedAt      DateTime?
+  waivedBy      String?
+  waiveReason   String?
+  createdAt     DateTime     @default(now())
+
+  @@index([invoiceId])
+  @@index([type])
+  @@index([appliedDate])
+}
+
+model InterestSettings {
+  id                            String   @id @default("default")
+  isEnabled                     Boolean  @default(true)
+  lateInterestEnabled           Boolean  @default(true)
+  lateInterestType              LateInterestType @default(PERCENTAGE)
+  flatFeeAmount                 Decimal? @db.Decimal(10, 2)
+  percentageRate                Decimal? @db.Decimal(5, 4)
+  dailyRate                     Decimal? @db.Decimal(7, 6)
+  gracePeriodDays               Int      @default(0)
+  compoundFrequency             String   @default("monthly")
+  maxInterestPercentage         Decimal? @db.Decimal(5, 2)
+  applyFlatFeeOnce              Boolean  @default(true)
+  earlyPaymentEnabled           Boolean  @default(false)
+  earlyPaymentDiscountPercentage Decimal? @db.Decimal(5, 2)
+  earlyPaymentDays              Int      @default(10)
+  earlyPaymentTerms             String?
+  includeInterestOnStatements   Boolean  @default(true)
+  autoApply                     Boolean  @default(true)
+  notifyClientOnInterest        Boolean  @default(true)
+  notifyClientOnDiscount        Boolean  @default(true)
+  legalDisclosure               String?  @db.Text
+  usuryRateCap                  Decimal? @db.Decimal(5, 2)
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+}
+
+enum InterestType {
+  LATE_FEE
+  INTEREST
+  EARLY_PAYMENT_DISCOUNT
+}
+
+enum LateInterestType {
+  FLAT_FEE
+  PERCENTAGE
+  DAILY_RATE
 }

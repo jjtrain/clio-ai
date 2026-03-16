@@ -799,6 +799,9 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
+      {/* Interest & Fees */}
+      <InterestSection invoiceId={invoice.id} invoiceStatus={invoice.status} />
+
       {/* Payment History - Hidden on print */}
       {invoice.payments.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 print:hidden">
@@ -847,6 +850,72 @@ export default function InvoiceDetailPage() {
             </Button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function InterestSection({ invoiceId, invoiceStatus }: { invoiceId: string; invoiceStatus: string }) {
+  const { toast } = useToast();
+  const utils = trpc.useUtils();
+  const { data: charges } = trpc.interest.listCharges.useQuery({ invoiceId });
+  const { data: discount } = trpc.interest.calculateEarlyDiscount.useQuery({ invoiceId });
+  const { data: projection } = trpc.interest.getProjection.useQuery({ invoiceId, days: 30 });
+  const applyInterest = trpc.interest.applyInterest.useMutation({
+    onSuccess: (d) => { utils.interest.listCharges.invalidate(); toast({ title: d ? "Interest applied" : "No interest to apply" }); },
+  });
+  const waiveCharge = trpc.interest.waiveCharge.useMutation({
+    onSuccess: () => { utils.interest.listCharges.invalidate(); toast({ title: "Charge waived" }); },
+  });
+
+  const interestCharges = (charges || []).filter((c: any) => !c.isWaived && c.type !== "EARLY_PAYMENT_DISCOUNT");
+  const totalInterest = interestCharges.reduce((s: number, c: any) => s + Number(c.amount), 0);
+  const isPaid = invoiceStatus === "PAID";
+
+  if (isPaid && !interestCharges.length && !discount) return null;
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 print:hidden space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">Interest & Fees</h3>
+        {!isPaid && (
+          <Button variant="outline" size="sm" onClick={() => applyInterest.mutate({ invoiceId })} disabled={applyInterest.isLoading}>
+            {applyInterest.isLoading ? "Applying..." : "Apply Interest"}
+          </Button>
+        )}
+      </div>
+
+      {discount && !isPaid && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+          <p className="font-medium">Early Payment Discount Available!</p>
+          <p>Save ${Math.abs(discount.discountAmount).toFixed(2)} ({discount.discountPercentage}%) if paid by {new Date(discount.deadline).toLocaleDateString()} ({discount.daysEarly} days left)</p>
+        </div>
+      )}
+
+      {interestCharges.length > 0 && (
+        <div className="space-y-2">
+          {interestCharges.map((c: any) => (
+            <div key={c.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-red-800">{c.description}</p>
+                <p className="text-xs text-red-600">{new Date(c.appliedDate).toLocaleDateString()}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-red-700">${Number(c.amount).toFixed(2)}</span>
+                <Button variant="ghost" size="sm" className="text-xs" onClick={() => waiveCharge.mutate({ id: c.id, reason: "Waived from invoice detail" })}>
+                  Waive
+                </Button>
+              </div>
+            </div>
+          ))}
+          <p className="text-sm font-medium text-right">Total Interest: <span className="text-red-700">${totalInterest.toFixed(2)}</span></p>
+        </div>
+      )}
+
+      {!isPaid && projection && projection.length > 0 && (
+        <p className="text-xs text-slate-500">
+          If unpaid, an additional ${projection[projection.length - 1]?.accruedInterest?.toFixed(2) || "0.00"} in interest will accrue over the next 30 days.
+        </p>
       )}
     </div>
   );

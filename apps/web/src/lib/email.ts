@@ -332,6 +332,67 @@ export async function sendPaymentReceipt(params: {
   });
 }
 
+// ─── Interest & Discount Emails ──────────────────────────────────
+
+export async function sendInterestNotice(params: {
+  to: string; clientName: string; invoiceNumber: string; interestAmount: number;
+  totalNowDue: number; daysLate: number; firmName: string; fromEmail: string; paymentLink?: string;
+}) {
+  const amt = "$" + params.interestAmount.toFixed(2);
+  const total = "$" + params.totalNowDue.toFixed(2);
+  return sendEmail({
+    to: params.to, from: params.fromEmail,
+    subject: `Interest Applied — Invoice ${params.invoiceNumber}`,
+    html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <h2 style="color:#1a1a1a;">Interest Applied to Your Account</h2>
+      <p>Hello ${params.clientName},</p>
+      <p>Invoice <strong>${params.invoiceNumber}</strong> is <strong>${params.daysLate} days</strong> past due. An interest charge of <strong>${amt}</strong> has been applied.</p>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:16px 0;">
+        <p style="margin:4px 0;"><strong>Interest Charge:</strong> ${amt}</p>
+        <p style="margin:4px 0;"><strong>Total Now Due:</strong> ${total}</p>
+      </div>
+      ${params.paymentLink ? `<div style="text-align:center;margin:24px 0;"><a href="${params.paymentLink}" style="display:inline-block;background:#3B82F6;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;">Pay Now</a></div>` : ""}
+      <p>Please remit payment promptly to avoid additional charges.</p>
+      <p style="color:#666;font-size:14px;">${params.firmName}</p></div>`,
+  });
+}
+
+export async function sendEarlyPaymentReminder(params: {
+  to: string; clientName: string; invoiceNumber: string; discountAmount: number;
+  discountPercentage: number; deadline: string; firmName: string; fromEmail: string; paymentLink?: string;
+}) {
+  const disc = "$" + params.discountAmount.toFixed(2);
+  return sendEmail({
+    to: params.to, from: params.fromEmail,
+    subject: `Save ${params.discountPercentage}% — Pay Invoice ${params.invoiceNumber} Early`,
+    html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <h2 style="color:#16a34a;">Save ${disc} with Early Payment!</h2>
+      <p>Hello ${params.clientName},</p>
+      <p>Pay invoice <strong>${params.invoiceNumber}</strong> by <strong>${params.deadline}</strong> and receive a <strong>${params.discountPercentage}%</strong> discount (${disc}).</p>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0;">
+        <p style="margin:4px 0;"><strong>Discount:</strong> ${disc} (${params.discountPercentage}%)</p>
+        <p style="margin:4px 0;"><strong>Pay By:</strong> ${params.deadline}</p>
+      </div>
+      ${params.paymentLink ? `<div style="text-align:center;margin:24px 0;"><a href="${params.paymentLink}" style="display:inline-block;background:#16a34a;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;">Pay Now & Save</a></div>` : ""}
+      <p style="color:#666;font-size:14px;">${params.firmName}</p></div>`,
+  });
+}
+
+export async function sendDiscountApplied(params: {
+  to: string; clientName: string; invoiceNumber: string; discountAmount: number; firmName: string; fromEmail: string;
+}) {
+  const disc = "$" + params.discountAmount.toFixed(2);
+  return sendEmail({
+    to: params.to, from: params.fromEmail,
+    subject: `Early Payment Discount Applied — Invoice ${params.invoiceNumber}`,
+    html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <h2 style="color:#16a34a;">Discount Applied!</h2>
+      <p>Hello ${params.clientName},</p>
+      <p>Thank you for your prompt payment! A discount of <strong>${disc}</strong> has been applied to invoice <strong>${params.invoiceNumber}</strong>.</p>
+      <p style="color:#666;font-size:14px;">${params.firmName}</p></div>`,
+  });
+}
+
 export async function sendAppointmentCancellation(data: AppointmentEmailData & { reason?: string }) {
   return sendEmail({
     to: data.clientEmail,

@@ -132,6 +132,12 @@ export default function BillingPage() {
               Reminders
             </Link>
           </Button>
+          <Button variant="outline" asChild className="flex-1 sm:flex-initial">
+            <Link href="/billing/interest">
+              <DollarSign className="mr-2 h-4 w-4" />
+              Interest
+            </Link>
+          </Button>
           <Button asChild className="bg-blue-500 hover:bg-blue-600 shadow-sm flex-1 sm:flex-initial">
             <Link href="/billing/new">
               <Plus className="mr-2 h-4 w-4" />
