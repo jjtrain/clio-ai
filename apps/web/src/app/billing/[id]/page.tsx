@@ -399,6 +399,13 @@ export default function InvoiceDetailPage() {
                   ? "Confirming..."
                   : "Pay Now"}
               </Button>
+              {invoice && Number(invoice.total) - Number(invoice.amountPaid) >= 50 && invoice.status !== "PAID" && (
+                <Button variant="outline" asChild>
+                  <Link href={`/financing?invoiceId=${invoice.id}&amount=${Number(invoice.total) - Number(invoice.amountPaid)}`}>
+                    Offer Financing
+                  </Link>
+                </Button>
+              )}
               <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-emerald-500 hover:bg-emerald-600">

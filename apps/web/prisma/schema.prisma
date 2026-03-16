@@ -47,6 +47,7 @@ model Client {
   riskAlerts         RiskAlert[]
   paymentLinks       PaymentLink[]
   paymentTransactions PaymentTransaction[]
+  financingApplications FinancingApplication[]
 }
 
 model Matter {
@@ -230,6 +231,7 @@ model Invoice {
   paymentPlan   PaymentPlan?
   paymentLinks  PaymentLink[]
   paymentTransactions PaymentTransaction[]
+  financingApplications FinancingApplication[]
 
   @@index([matterId])
   @@index([status])
@@ -2845,4 +2847,68 @@ enum TransactionStatus {
   FAILED
   REFUNDED
   VOIDED
+}
+
+// ============================================
+// CLIENT FINANCING (AFFIRM)
+// ============================================
+
+model FinancingApplication {
+  id                  String           @id @default(cuid())
+  invoiceId           String?
+  invoice             Invoice?         @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  clientId            String
+  client              Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  matterId            String?
+  amount              Decimal          @db.Decimal(10, 2)
+  status              FinancingStatus  @default(PENDING)
+  provider            String           @default("affirm")
+  affirmCheckoutToken String?
+  affirmChargeId      String?
+  affirmLoanId        String?
+  termMonths          Int?
+  apr                 Decimal?         @db.Decimal(5, 2)
+  monthlyPayment      Decimal?         @db.Decimal(10, 2)
+  totalFinanced       Decimal?         @db.Decimal(12, 2)
+  clientName          String
+  clientEmail         String
+  clientPhone         String?
+  applicationUrl      String?
+  appliedAt           DateTime?
+  approvedAt          DateTime?
+  completedAt         DateTime?
+  denialReason        String?
+  metadata            String?          @db.Text
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@index([invoiceId])
+  @@index([clientId])
+  @@index([status])
+  @@index([affirmChargeId])
+}
+
+model FinancingSettings {
+  id                    String   @id @default("default")
+  isEnabled             Boolean  @default(false)
+  affirmPublicKey       String?
+  affirmPrivateKey      String?
+  affirmEnvironment     String   @default("sandbox")
+  minimumAmount         Decimal  @default(50) @db.Decimal(10, 2)
+  maximumAmount         Decimal  @default(30000) @db.Decimal(10, 2)
+  enabledForRetainers   Boolean  @default(true)
+  enabledForInvoices    Boolean  @default(true)
+  enabledForSettlements Boolean  @default(false)
+  promotionalMessage    String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+enum FinancingStatus {
+  PENDING
+  APPROVED
+  DENIED
+  COMPLETED
+  CANCELLED
+  EXPIRED
 }

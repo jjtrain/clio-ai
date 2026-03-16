@@ -41,6 +41,7 @@ import {
   MessageSquare,
   HeartPulse,
   CreditCard,
+  Wallet,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -65,6 +66,7 @@ const mainNavigation = [
   { name: "Risk Monitor", href: "/risk", icon: ShieldCheck },
   { name: "Injury Cases", href: "/injury", icon: HeartPulse },
   { name: "Payments", href: "/payments", icon: CreditCard },
+  { name: "Financing", href: "/financing", icon: Wallet },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Campaigns", href: "/campaigns", icon: Mail },
   { name: "Website", href: "/website", icon: Globe },

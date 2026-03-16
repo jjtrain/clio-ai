@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Lock, CheckCircle, XCircle, CreditCard, Building2, Smartphone, AlertCircle } from "lucide-react";
+import { Lock, CheckCircle, XCircle, CreditCard, Building2, Smartphone, AlertCircle, Wallet } from "lucide-react";
 
 function cur(n: number) {
   return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -181,6 +181,9 @@ export default function PublicPaymentPage() {
                 {(methods.applePay || methods.googlePay) && (
                   <TabsTrigger value="wallet" className="flex-1"><Smartphone className="h-4 w-4 mr-1" /> Wallet</TabsTrigger>
                 )}
+                {amount >= 50 && (
+                  <TabsTrigger value="paylater" className="flex-1"><Wallet className="h-4 w-4 mr-1" /> Pay Later</TabsTrigger>
+                )}
               </TabsList>
 
               {/* Card Tab */}
@@ -247,6 +250,29 @@ export default function PublicPaymentPage() {
                 )}
                 <p className="text-xs text-slate-500 text-center">Digital wallet payments require a compatible device</p>
               </TabsContent>
+
+              {/* Pay Later Tab */}
+              <TabsContent value="paylater" className="space-y-4 mt-4">
+                <div className="text-center space-y-3">
+                  <Wallet className="h-10 w-10 text-blue-600 mx-auto" />
+                  <h3 className="font-medium">Pay over time with Affirm</h3>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                    <p className="font-medium text-blue-800">Estimated monthly payments:</p>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      <div><p className="font-bold">{cur(Math.ceil((actualAmount / 3) * 100) / 100)}</p><p className="text-xs text-blue-600">3 months</p></div>
+                      <div><p className="font-bold">{cur(Math.ceil((actualAmount / 6) * 100) / 100)}</p><p className="text-xs text-blue-600">6 months</p></div>
+                      <div><p className="font-bold">{cur(Math.ceil((actualAmount / 12) * 100) / 100)}</p><p className="text-xs text-blue-600">12 months</p></div>
+                    </div>
+                    <p className="text-xs text-blue-500 mt-2">0% APR available for qualifying applicants</p>
+                  </div>
+                  <Button className="w-full h-12" onClick={() => {
+                    window.location.href = `/financing/apply/${token}`;
+                  }}>
+                    Apply Now with Affirm
+                  </Button>
+                  <p className="text-xs text-slate-400">You'll be redirected to Affirm to complete your application</p>
+                </div>
+              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
@@ -261,7 +287,7 @@ export default function PublicPaymentPage() {
         )}
 
         {/* Pay Button */}
-        {payTab !== "wallet" && (
+        {payTab !== "wallet" && payTab !== "paylater" && (
           <Button
             className="w-full h-14 text-lg font-semibold"
             disabled={processPayment.isLoading || (payTab === "card" ? !isCardValid : !isBankValid)}
