@@ -94,6 +94,9 @@ model Matter {
   paymentLinks       PaymentLink[]
   expenses           Expense[]
   journalLines       JournalLine[]
+  deadlines          Deadline[]
+  courtCases         CourtCase[]
+  trademarkDockets   TrademarkDocket[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -3514,4 +3517,144 @@ enum SyncAction {
   UPDATED
   SKIPPED
   FAILED
+}
+
+// ============================================
+// DOCKETING MODULE
+// ============================================
+
+model Deadline {
+  id                    String           @id @default(cuid())
+  matterId              String
+  matter                Matter           @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  title                 String
+  description           String?          @db.Text
+  dueDate               DateTime
+  ruleAuthority         String?
+  consequenceOfMissing  String?          @db.Text
+  triggerDate           DateTime?
+  triggerType           String?
+  source                DeadlineSource   @default(MANUAL)
+  externalId            String?
+  jurisdiction          String?
+  methodOfService       String?
+  priority              DeadlinePriority @default(SCHEDULED)
+  status                DeadlineStatus   @default(ACTIVE)
+  calendarEventId       String?
+  notes                 String?          @db.Text
+  createdBy             String?
+  completedAt           DateTime?
+  dismissedAt           DateTime?
+  dismissReason         String?
+  overriddenByOrderRef  String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([matterId, dueDate])
+  @@index([dueDate, status])
+  @@index([status, priority])
+}
+
+model CourtCase {
+  id            String        @id @default(cuid())
+  matterId      String
+  matter        Matter        @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  courtName     String
+  caseNumber    String
+  caseName      String?
+  judge         String?
+  isMonitored   Boolean       @default(true)
+  lastChecked   DateTime?
+  courtDriveId  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  filings       CourtFiling[]
+
+  @@unique([courtName, caseNumber])
+  @@index([matterId])
+  @@index([isMonitored])
+}
+
+model CourtFiling {
+  id                 String    @id @default(cuid())
+  courtCaseId        String
+  courtCase          CourtCase @relation(fields: [courtCaseId], references: [id], onDelete: Cascade)
+  docketEntryNum     Int?
+  description        String    @db.Text
+  filedDate          DateTime
+  documentUrl        String?
+  documentStored     Boolean   @default(false)
+  storedDocumentId   String?
+  hasImpliedDeadline Boolean   @default(false)
+  impliedDeadlineId  String?
+  externalId         String?
+  isNew              Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+
+  @@index([courtCaseId, filedDate])
+  @@index([isNew])
+}
+
+model TrademarkDocket {
+  id                  String    @id @default(cuid())
+  matterId            String?
+  matter              Matter?   @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  markName            String
+  serialNumber        String    @unique
+  registrationNumber  String?
+  currentStatus       String?
+  statusDate          DateTime?
+  ownerName           String?
+  filingDate          DateTime?
+  registrationDate    DateTime?
+  nextDeadlineType    String?
+  nextDeadlineDate    DateTime?
+  autoMonitor         Boolean   @default(true)
+  lastChecked         DateTime  @default(now())
+  lastStatusChange    DateTime?
+  prosecutionHistory  Json?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([serialNumber])
+  @@index([nextDeadlineDate])
+  @@index([autoMonitor])
+  @@index([matterId])
+}
+
+model DocketingAuditLog {
+  id         String   @id @default(cuid())
+  matterId   String?
+  action     String
+  source     String
+  inputData  Json?
+  outputData Json?
+  userId     String?
+  createdAt  DateTime @default(now())
+
+  @@index([matterId, createdAt])
+  @@index([source, createdAt])
+}
+
+enum DeadlineSource {
+  LAWTOOLBOX
+  COURTDRIVE
+  USPTO
+  MANUAL
+  DOCUMENT_PARSED
+}
+
+enum DeadlinePriority {
+  CRITICAL
+  UPCOMING
+  SCHEDULED
+}
+
+enum DeadlineStatus {
+  ACTIVE
+  COMPLETED
+  DISMISSED
+  MISSED
+  OVERRIDDEN
 }

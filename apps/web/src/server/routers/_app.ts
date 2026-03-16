@@ -42,6 +42,7 @@ import { approvalsRouter } from "./approvals";
 import { accountingRouter } from "./accounting";
 import { reconciliationRouter } from "./reconciliation";
 import { integrationsRouter } from "./integrations";
+import { docketingRouter } from "./docketing";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -87,6 +88,7 @@ export const appRouter = router({
   accounting: accountingRouter,
   reconciliation: reconciliationRouter,
   integrations: integrationsRouter,
+  docketing: docketingRouter,
 });
 
 export type AppRouter = typeof appRouter;

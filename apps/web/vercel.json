@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/sync",
       "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/recalculate-priorities",
+      "schedule": "0 5 * * *"
     }
   ]
 }
