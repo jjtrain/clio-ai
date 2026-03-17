@@ -49,6 +49,8 @@ model Client {
   paymentTransactions PaymentTransaction[]
   financingApplications FinancingApplication[]
   journalLines          JournalLine[]
+  clientProfitabilities  ClientProfitability[]
+  matterProfitabilities  MatterProfitability[]
 }
 
 model Matter {
@@ -100,6 +102,7 @@ model Matter {
   externalResearchResults ExternalResearchResult[]
   docketAlerts       DocketAlert[]
   familyCase         FamilyCase?
+  matterProfitability  MatterProfitability?
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -5792,4 +5795,313 @@ model ProviderDirectory {
   @@index([providerType])
   @@index([city])
   @@index([state])
+}
+
+// ─── Financial Insights ─────────────────────────────────────────
+
+enum FinInsightsProvider {
+  PWC_INSIGHTS
+  RAINMAKER
+}
+
+enum FinPeriodType {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+enum FinForecastType {
+  REVENUE
+  EXPENSE
+  CASH_FLOW
+  PROFITABILITY
+  GROWTH
+}
+
+enum ForecastGranularity {
+  MONTHLY
+  QUARTERLY
+}
+
+enum FinAlertType {
+  REVENUE_DECLINE
+  EXPENSE_SPIKE
+  AR_AGING
+  CASH_FLOW_WARNING
+  UTILIZATION_DROP
+  COLLECTION_RATE_DROP
+  REALIZATION_DECLINE
+  BENCHMARK_BELOW
+  WIP_BUILDUP
+  CLIENT_CONCENTRATION
+  PROFITABILITY_RISK
+  OPPORTUNITY
+  CUSTOM
+}
+
+enum FinAlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum BudgetTargetType {
+  REVENUE
+  EXPENSE
+  PROFIT
+  HOURS
+  MATTERS
+  COLLECTIONS
+}
+
+enum BudgetStatus {
+  ON_TRACK
+  AT_RISK
+  BEHIND
+  EXCEEDED
+  COMPLETED
+}
+
+enum DiagnosticType {
+  CLIENT_ONBOARDING
+  ANNUAL_REVIEW
+  RISK_ASSESSMENT
+  OPPORTUNITY_SCAN
+  COMPLIANCE_CHECK
+}
+
+enum DiagnosticStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  REVIEWED
+}
+
+model FinInsightsIntegration {
+  id                  String               @id @default(cuid())
+  provider            FinInsightsProvider   @unique
+  isEnabled           Boolean              @default(false)
+  displayName         String
+  apiKey              String?
+  apiSecret           String?
+  baseUrl             String?
+  accountId           String?
+  firmId              String?
+  accessToken         String?
+  refreshToken        String?
+  tokenExpiresAt      DateTime?
+  webhookUrl          String?
+  webhookSecret       String?
+  autoSyncAccounting  Boolean              @default(true)
+  syncFrequency       String               @default("daily")
+  reportingPeriod     String               @default("monthly")
+  fiscalYearStart     Int                  @default(1)
+  benchmarkIndustry   String               @default("legal_services")
+  benchmarkFirmSize   String               @default("solo_small")
+  settings            String?              @db.Text
+  lastSyncAt          DateTime?
+  lastSyncStatus      String?
+  lastSyncError       String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model FinancialSnapshot {
+  id                        String               @id @default(cuid())
+  provider                  FinInsightsProvider?
+  period                    String
+  periodType                FinPeriodType
+  periodStart               DateTime
+  periodEnd                 DateTime
+  revenue                   Decimal              @default(0) @db.Decimal(14, 2)
+  revenueByPracticeArea     String?              @db.Text
+  revenueByAttorney         String?              @db.Text
+  revenueByBillingType      String?              @db.Text
+  expenses                  Decimal              @default(0) @db.Decimal(14, 2)
+  expensesByCategory        String?              @db.Text
+  netIncome                 Decimal              @default(0) @db.Decimal(14, 2)
+  profitMargin              Decimal?             @db.Decimal(7, 4)
+  operatingCashFlow         Decimal?             @db.Decimal(14, 2)
+  accountsReceivable        Decimal              @default(0) @db.Decimal(14, 2)
+  accountsReceivableAging   String?              @db.Text
+  workInProgress            Decimal              @default(0) @db.Decimal(14, 2)
+  collectionRate            Decimal?             @db.Decimal(7, 4)
+  realizationRate           Decimal?             @db.Decimal(7, 4)
+  utilizationRate           Decimal?             @db.Decimal(7, 4)
+  averageHourlyRate         Decimal?             @db.Decimal(10, 2)
+  effectiveHourlyRate       Decimal?             @db.Decimal(10, 2)
+  totalHoursWorked          Decimal?             @db.Decimal(10, 2)
+  totalHoursBilled          Decimal?             @db.Decimal(10, 2)
+  totalHoursCollected       Decimal?             @db.Decimal(10, 2)
+  newMatters                Int                  @default(0)
+  closedMatters             Int                  @default(0)
+  activeMatters             Int                  @default(0)
+  newClients                Int                  @default(0)
+  clientRetentionRate       Decimal?             @db.Decimal(5, 4)
+  averageMatterValue        Decimal?             @db.Decimal(12, 2)
+  averageDaysToCollect      Int?
+  overheadPerLawyer         Decimal?             @db.Decimal(10, 2)
+  revenuePerLawyer          Decimal?             @db.Decimal(12, 2)
+  profitPerPartner          Decimal?             @db.Decimal(12, 2)
+  benchmarkComparison       String?              @db.Text
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+
+  @@index([period])
+  @@index([periodType])
+  @@index([periodStart])
+}
+
+model FinancialForecast {
+  id              String               @id @default(cuid())
+  provider        FinInsightsProvider?
+  forecastType    FinForecastType
+  periodStart     DateTime
+  periodEnd       DateTime
+  granularity     ForecastGranularity
+  predictions     String               @db.Text
+  assumptions     String?              @db.Text
+  methodology     String?
+  accuracy        Decimal?             @db.Decimal(5, 4)
+  aiInsights      String?              @db.Text
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([forecastType])
+  @@index([periodStart])
+}
+
+model FinancialAlert {
+  id              String               @id @default(cuid())
+  provider        FinInsightsProvider?
+  alertType       FinAlertType
+  severity        FinAlertSeverity
+  title           String
+  description     String               @db.Text
+  metric          String?
+  currentValue    Decimal?             @db.Decimal(14, 2)
+  thresholdValue  Decimal?             @db.Decimal(14, 2)
+  recommendation  String?              @db.Text
+  isRead          Boolean              @default(false)
+  isDismissed     Boolean              @default(false)
+  dismissedAt     DateTime?
+  dismissedBy     String?
+  linkedMatterId  String?
+  linkedClientId  String?
+  createdAt       DateTime             @default(now())
+
+  @@index([alertType])
+  @@index([severity])
+  @@index([isRead])
+  @@index([isDismissed])
+  @@index([createdAt])
+}
+
+model BudgetTarget {
+  id                  String             @id @default(cuid())
+  name                String
+  targetType          BudgetTargetType
+  period              String
+  periodType          FinPeriodType
+  targetAmount        Decimal            @db.Decimal(14, 2)
+  actualAmount        Decimal            @default(0) @db.Decimal(14, 2)
+  variance            Decimal?           @db.Decimal(14, 2)
+  variancePercentage  Decimal?           @db.Decimal(7, 4)
+  status              BudgetStatus       @default(ON_TRACK)
+  practiceArea        String?
+  attorneyId          String?
+  notes               String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([targetType])
+  @@index([period])
+  @@index([status])
+}
+
+model ClientProfitability {
+  id                  String          @id @default(cuid())
+  clientId            String
+  period              String
+  periodType          FinPeriodType
+  revenue             Decimal         @default(0) @db.Decimal(12, 2)
+  directCosts         Decimal         @default(0) @db.Decimal(12, 2)
+  expenses            Decimal         @default(0) @db.Decimal(12, 2)
+  indirectCosts       Decimal         @default(0) @db.Decimal(12, 2)
+  grossProfit         Decimal         @default(0) @db.Decimal(12, 2)
+  netProfit           Decimal         @default(0) @db.Decimal(12, 2)
+  profitMargin        Decimal?        @db.Decimal(7, 4)
+  hoursWorked         Decimal         @default(0) @db.Decimal(8, 2)
+  hoursBilled         Decimal         @default(0) @db.Decimal(8, 2)
+  realizationRate     Decimal?        @db.Decimal(5, 4)
+  collectionRate      Decimal?        @db.Decimal(5, 4)
+  averageDaysToCollect Int?
+  lifetimeValue       Decimal?        @db.Decimal(14, 2)
+  riskScore           Decimal?        @db.Decimal(5, 2)
+  segment             String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  client              Client          @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
+  @@index([period])
+  @@index([segment])
+}
+
+model MatterProfitability {
+  id                String          @id @default(cuid())
+  matterId          String          @unique
+  clientId          String
+  practiceArea      String?
+  billingType       String?
+  totalRevenue      Decimal         @default(0) @db.Decimal(12, 2)
+  totalTimeCost     Decimal         @default(0) @db.Decimal(12, 2)
+  totalExpenses     Decimal         @default(0) @db.Decimal(12, 2)
+  totalCosts        Decimal         @default(0) @db.Decimal(12, 2)
+  grossProfit       Decimal         @default(0) @db.Decimal(12, 2)
+  netProfit         Decimal         @default(0) @db.Decimal(12, 2)
+  profitMargin      Decimal?        @db.Decimal(7, 4)
+  hoursWorked       Decimal         @default(0) @db.Decimal(8, 2)
+  hoursBilled       Decimal         @default(0) @db.Decimal(8, 2)
+  realizationRate   Decimal?        @db.Decimal(5, 4)
+  collectionRate    Decimal?        @db.Decimal(5, 4)
+  budgetedHours     Decimal?        @db.Decimal(8, 2)
+  budgetedRevenue   Decimal?        @db.Decimal(12, 2)
+  budgetVariance    Decimal?        @db.Decimal(12, 2)
+  isOverBudget      Boolean         @default(false)
+  lastCalculated    DateTime        @default(now())
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  matter            Matter          @relation(fields: [matterId], references: [id])
+  client            Client          @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
+  @@index([practiceArea])
+  @@index([profitMargin])
+}
+
+model RainmakerDiagnostic {
+  id                String           @id @default(cuid())
+  clientId          String?
+  matterId          String?
+  diagnosticType    DiagnosticType
+  status            DiagnosticStatus @default(PENDING)
+  riskScore         Int?
+  opportunityScore  Int?
+  findings          String?          @db.Text
+  opportunities     String?          @db.Text
+  workPlan          String?          @db.Text
+  aiAnalysis        String?          @db.Text
+  completedAt       DateTime?
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([clientId])
+  @@index([matterId])
+  @@index([diagnosticType])
+  @@index([status])
 }

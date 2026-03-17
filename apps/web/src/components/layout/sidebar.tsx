@@ -59,6 +59,7 @@ import {
   Truck,
   FolderOpen,
   Share2,
+  Lightbulb,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -89,6 +90,7 @@ const mainNavigation = [
   { name: "Collections", href: "/collections", icon: Banknote },
   { name: "Approvals", href: "/approvals", icon: ClipboardCheck },
   { name: "Accounting", href: "/accounting", icon: Calculator },
+  { name: "Insights", href: "/insights", icon: LineChart },
   { name: "Integrations", href: "/integrations", icon: Plug },
   { name: "Docketing", href: "/docketing", icon: Gavel },
   { name: "Discovery", href: "/discovery", icon: FileQuestion },

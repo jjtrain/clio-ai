@@ -56,6 +56,7 @@ import { processServingRouter } from "./processServing";
 import { documentStorageRouter } from "./documentStorage";
 import { referralsRouter } from "./referrals";
 import { piMedicalRouter } from "./piMedical";
+import { finInsightsRouter } from "./finInsights";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -115,6 +116,7 @@ export const appRouter = router({
   documentStorage: documentStorageRouter,
   referrals: referralsRouter,
   piMedical: piMedicalRouter,
+  finInsights: finInsightsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy } from "lucide-react";
+import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb } from "lucide-react";
 
 const PROVIDERS = [
   { provider: "CASETEXT", name: "Casetext CoCounsel", desc: "AI legal research by Thomson Reuters", icon: Scale, color: "text-blue-600" },
@@ -86,6 +86,9 @@ export default function IntegrationSettingsPage() {
         </Card>
       </div>
 
+      {/* Financial Insights Integrations */}
+      <FinancialInsightsSection webhookBase={webhookBase} />
+
       {/* Webhook URLs */}
       <Card>
         <CardHeader><CardTitle className="text-sm">Webhook URLs</CardTitle><CardDescription>Add these to your provider dashboards for real-time alerts</CardDescription></CardHeader>
@@ -114,6 +117,187 @@ export default function IntegrationSettingsPage() {
         />
       )}
     </div>
+  );
+}
+
+function FinancialInsightsSection({ webhookBase }: { webhookBase: string }) {
+  const { toast } = useToast();
+  const utils = trpc.useUtils();
+  const [finConfigOpen, setFinConfigOpen] = useState<string | null>(null);
+
+  const { data: finIntegrations } = trpc.finInsights["settings.list"].useQuery();
+  const finUpdateMut = trpc.finInsights["settings.update"].useMutation({
+    onSuccess: () => { utils.finInsights["settings.list"].invalidate(); setFinConfigOpen(null); toast({ title: "Saved" }); },
+  });
+  const finTestMut = trpc.finInsights["settings.test"].useMutation({
+    onSuccess: (d: any) => toast({ title: d.success ? "Connection successful!" : `Failed: ${d.error}`, variant: d.success ? "default" : "destructive" }),
+  });
+
+  const finMap: Record<string, any> = {};
+  for (const i of finIntegrations || []) finMap[i.provider] = i;
+
+  const FIN_PROVIDERS = [
+    { provider: "PWC_INSIGHTS", name: "PwC InsightsOfficer", desc: "Automated bookkeeping insights and financial analytics. PwC analyzes your practice management data to provide benchmarks, forecasts, compliance reviews, and actionable financial insights. Trusted by accounting professionals worldwide.", icon: BarChart3, color: "text-orange-600", note: "PwC InsightsOfficer connects your financial data to PwC's analysis engine. Data is encrypted in transit and at rest. Benchmarks compare your firm against similar practices." },
+    { provider: "RAINMAKER", name: "Rainmaker", desc: "Client risk and opportunity diagnostics. Rainmaker identifies legal risks and new business opportunities for your clients, then generates work plans to address them. Use as an onboarding tool for new clients or annual review for existing ones.", icon: Lightbulb, color: "text-yellow-600", note: "Run diagnostics on new clients during onboarding to identify immediate legal needs. Schedule annual reviews for existing clients to uncover expansion opportunities and strengthen relationships." },
+  ];
+
+  return (
+    <>
+      <div>
+        <h2 className="text-lg font-bold mt-8 mb-1">Financial Insights Integrations</h2>
+        <p className="text-sm text-slate-500 mb-4">Connect financial analytics and client advisory providers</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {FIN_PROVIDERS.map((p) => {
+          const int = finMap[p.provider];
+          const connected = int?.isEnabled && int?.apiKey;
+          return (
+            <Card key={p.provider}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <p.icon className={`h-6 w-6 ${p.color}`} />
+                    <div>
+                      <CardTitle className="text-sm">{p.name}</CardTitle>
+                      <CardDescription className="text-xs leading-relaxed">{p.desc}</CardDescription>
+                    </div>
+                  </div>
+                  {connected ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-gray-300" />}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-gray-400 mb-3">{p.note}</p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setFinConfigOpen(p.provider)}>Configure</Button>
+                  {connected && <Button size="sm" variant="outline" onClick={() => finTestMut.mutate({ provider: p.provider as any })} disabled={finTestMut.isLoading}>Test</Button>}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Financial Insights Webhook URLs */}
+      <Card className="mt-4">
+        <CardHeader><CardTitle className="text-sm">Financial Insights Webhook URLs</CardTitle><CardDescription>Add these to your provider dashboards</CardDescription></CardHeader>
+        <CardContent className="space-y-2">
+          {[
+            { name: "PwC InsightsOfficer", url: `${webhookBase}/api/integrations/pwc-insights/webhook` },
+            { name: "Rainmaker", url: `${webhookBase}/api/integrations/rainmaker/webhook` },
+          ].map((wh) => (
+            <div key={wh.name} className="flex items-center gap-2">
+              <span className="text-sm text-slate-500 w-40">{wh.name}:</span>
+              <code className="flex-1 text-xs bg-slate-100 px-2 py-1 rounded font-mono truncate">{wh.url}</code>
+              <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard?.writeText(wh.url); toast({ title: "Copied" }); }}><Copy className="h-3 w-3" /></Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Financial Insights Config Dialog */}
+      {finConfigOpen && (
+        <FinInsightsConfigDialog
+          provider={finConfigOpen}
+          integration={finMap[finConfigOpen]}
+          onClose={() => setFinConfigOpen(null)}
+          onSave={(data: any) => finUpdateMut.mutate({ provider: finConfigOpen as any, ...data })}
+          isLoading={finUpdateMut.isLoading}
+        />
+      )}
+    </>
+  );
+}
+
+function FinInsightsConfigDialog({ provider, integration, onClose, onSave, isLoading }: any) {
+  const [form, setForm] = useState<any>({
+    displayName: integration?.displayName || provider,
+    apiKey: integration?.apiKey || "",
+    accountId: integration?.accountId || "",
+    firmId: integration?.firmId || "",
+    isEnabled: integration?.isEnabled ?? false,
+    autoSyncAccounting: integration?.autoSyncAccounting ?? true,
+    syncFrequency: integration?.syncFrequency || "daily",
+    reportingPeriod: integration?.reportingPeriod || "monthly",
+    fiscalYearStart: integration?.fiscalYearStart || 1,
+    benchmarkIndustry: integration?.benchmarkIndustry || "legal_services",
+    benchmarkFirmSize: integration?.benchmarkFirmSize || "solo_small",
+  });
+
+  const Toggle = ({ label, checked, onChange }: any) => (
+    <label className="flex items-center justify-between py-2">
+      <span className="text-sm">{label}</span>
+      <button type="button" className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-gray-200"}`} onClick={() => onChange(!checked)}>
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`} />
+      </button>
+    </label>
+  );
+
+  const isPwC = provider === "PWC_INSIGHTS";
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-h-[80vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Configure {form.displayName}</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <Toggle label="Enabled" checked={form.isEnabled} onChange={(v: boolean) => setForm({ ...form, isEnabled: v })} />
+          <div className="space-y-2"><Label>Display Name</Label><Input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} /></div>
+          <div className="space-y-2"><Label>API Key</Label><Input type="password" value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} /></div>
+          <div className="space-y-2"><Label>Account ID</Label><Input value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })} /></div>
+          <div className="space-y-2"><Label>Firm ID</Label><Input value={form.firmId} onChange={(e) => setForm({ ...form, firmId: e.target.value })} /></div>
+          {isPwC && (
+            <>
+              <Toggle label="Auto-sync Accounting Data" checked={form.autoSyncAccounting} onChange={(v: boolean) => setForm({ ...form, autoSyncAccounting: v })} />
+              <div className="space-y-2">
+                <Label>Sync Frequency</Label>
+                <select className="w-full border rounded px-3 py-2 text-sm" value={form.syncFrequency} onChange={(e) => setForm({ ...form, syncFrequency: e.target.value })}>
+                  <option value="daily">Daily</option><option value="weekly">Weekly</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Reporting Period</Label>
+                <select className="w-full border rounded px-3 py-2 text-sm" value={form.reportingPeriod} onChange={(e) => setForm({ ...form, reportingPeriod: e.target.value })}>
+                  <option value="monthly">Monthly</option><option value="quarterly">Quarterly</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Fiscal Year Start Month</Label>
+                <select className="w-full border rounded px-3 py-2 text-sm" value={form.fiscalYearStart} onChange={(e) => setForm({ ...form, fiscalYearStart: parseInt(e.target.value) })}>
+                  {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{new Date(2000, i).toLocaleString("default", { month: "long" })}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Benchmark Industry</Label>
+                <Input value={form.benchmarkIndustry} onChange={(e) => setForm({ ...form, benchmarkIndustry: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Benchmark Firm Size</Label>
+                <select className="w-full border rounded px-3 py-2 text-sm" value={form.benchmarkFirmSize} onChange={(e) => setForm({ ...form, benchmarkFirmSize: e.target.value })}>
+                  <option value="solo_small">Solo / Small</option><option value="mid">Mid-size</option><option value="large">Large</option>
+                </select>
+              </div>
+            </>
+          )}
+          <Button className="w-full" disabled={isLoading} onClick={() => onSave({
+            displayName: form.displayName,
+            apiKey: form.apiKey || null,
+            accountId: form.accountId || null,
+            firmId: form.firmId || null,
+            isEnabled: form.isEnabled,
+            ...(isPwC ? {
+              autoSyncAccounting: form.autoSyncAccounting,
+              syncFrequency: form.syncFrequency,
+              reportingPeriod: form.reportingPeriod,
+              fiscalYearStart: form.fiscalYearStart,
+              benchmarkIndustry: form.benchmarkIndustry,
+              benchmarkFirmSize: form.benchmarkFirmSize,
+            } : {}),
+          })}>
+            {isLoading ? "Saving..." : "Save Configuration"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
