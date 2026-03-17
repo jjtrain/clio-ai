@@ -5121,3 +5121,145 @@ model PassiveTimeCapture {
   productivityScore     Decimal?  @db.Decimal(5, 2)
   createdAt             DateTime  @default(now())
 }
+
+// ============================================
+// PROCESS SERVING & COURT REPORTING
+// ============================================
+
+model ProcessServingIntegration {
+  id                    String    @id @default(cuid())
+  provider              String    @unique
+  isEnabled             Boolean   @default(false)
+  displayName           String
+  apiKey                String?
+  apiSecret             String?
+  baseUrl               String?
+  accountId             String?
+  webhookUrl            String?
+  webhookSecret         String?
+  defaultServiceMethod  String?
+  defaultUrgency        String    @default("standard")
+  autoCreateDocketEntry Boolean   @default(true)
+  autoSaveProofOfService Boolean  @default(true)
+  settings              String?   @db.Text
+  lastSyncAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model ServiceJob {
+  id                    String    @id @default(cuid())
+  provider              String
+  externalJobId         String?
+  matterId              String
+  clientId              String?
+  jobType               String    @default("PERSONAL_SERVICE")
+  status                String    @default("DRAFT")
+  priority              String    @default("STANDARD")
+  recipientName         String
+  recipientAlias        String?
+  recipientDescription  String?   @db.Text
+  recipientPhone        String?
+  serviceAddress        String    @db.Text
+  serviceCity           String?
+  serviceState          String?
+  serviceZip            String?
+  alternateAddresses    String?   @db.Text
+  documentsToServe      String?   @db.Text
+  documentIds           String?   @db.Text
+  courtName             String?
+  caseNumber            String?
+  jurisdiction          String?
+  specialInstructions   String?   @db.Text
+  attemptLog            String?   @db.Text
+  totalAttempts         Int       @default(0)
+  servedDate            DateTime?
+  servedTime            String?
+  servedAddress         String?
+  servedTo              String?
+  servedRelationship    String?
+  serverName            String?
+  serverId              String?
+  proofOfServiceUrl     String?
+  proofOfServiceDocId   String?
+  affidavitOfServiceUrl String?
+  affidavitOfServiceDocId String?
+  mailingDate           DateTime?
+  mailingTrackingNumber String?
+  cost                  Decimal?  @db.Decimal(10, 2)
+  rushFee               Decimal?  @db.Decimal(10, 2)
+  totalCost             Decimal?  @db.Decimal(10, 2)
+  estimatedServiceDate  DateTime?
+  dueDate               DateTime?
+  assignedServerName    String?
+  assignedServerPhone   String?
+  trackingUrl           String?
+  gpsVerified           Boolean   @default(false)
+  photoEvidence         String?   @db.Text
+  notes                 String?   @db.Text
+  rawPayload            String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([provider])
+  @@index([matterId])
+  @@index([status])
+  @@index([recipientName])
+  @@index([priority])
+  @@index([dueDate])
+}
+
+model CourtReporterJob {
+  id                        String    @id @default(cuid())
+  provider                  String    @default("STENO")
+  externalJobId             String?
+  matterId                  String
+  clientId                  String?
+  jobType                   String    @default("DEPOSITION")
+  status                    String    @default("REQUESTED")
+  eventDate                 DateTime
+  eventTime                 String?
+  estimatedDuration         Int?
+  actualDuration            Int?
+  location                  String?   @db.Text
+  locationType              String    @default("IN_PERSON")
+  videoConferenceUrl        String?
+  witnessList               String?   @db.Text
+  deponentName              String?
+  deponentRole              String?
+  requestingAttorney        String?
+  courtReporterName         String?
+  courtReporterFirm         String?
+  videographerRequested     Boolean   @default(false)
+  interpreterRequested      Boolean   @default(false)
+  interpreterLanguage       String?
+  realtimeRequested         Boolean   @default(false)
+  roughDraftRequested       Boolean   @default(false)
+  expeditedTranscriptRequested Boolean @default(false)
+  expeditedDays             Int?
+  transcriptStatus          String?
+  transcriptUrl             String?
+  transcriptDocId           String?
+  transcriptPageCount       Int?
+  exhibitList               String?   @db.Text
+  exhibitDocIds             String?   @db.Text
+  videoUrl                  String?
+  videoDocId                String?
+  cost                      Decimal?  @db.Decimal(10, 2)
+  transcriptCost            Decimal?  @db.Decimal(10, 2)
+  videoCost                 Decimal?  @db.Decimal(10, 2)
+  totalCost                 Decimal?  @db.Decimal(10, 2)
+  calendarEventId           String?
+  specialInstructions       String?   @db.Text
+  notes                     String?   @db.Text
+  rawPayload                String?   @db.Text
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@index([provider])
+  @@index([matterId])
+  @@index([status])
+  @@index([eventDate])
+  @@index([jobType])
+  @@index([deponentName])
+}

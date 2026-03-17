@@ -52,6 +52,7 @@ import { crmIntakeRouter } from "./crmIntake";
 import { marketingRouter } from "./marketing";
 import { schedulingExtRouter } from "./scheduling-ext";
 import { timeTrackingRouter } from "./timeTracking";
+import { processServingRouter } from "./processServing";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -107,6 +108,7 @@ export const appRouter = router({
   marketing: marketingRouter,
   schedulingExt: schedulingExtRouter,
   timeTracking: timeTrackingRouter,
+  processServing: processServingRouter,
 });
 
 export type AppRouter = typeof appRouter;

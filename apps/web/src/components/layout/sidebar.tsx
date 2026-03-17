@@ -56,6 +56,7 @@ import {
   Contact,
   Megaphone,
   CalendarRange,
+  Truck,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -89,6 +90,7 @@ const mainNavigation = [
   { name: "Discovery", href: "/discovery", icon: FileQuestion },
   { name: "Family Law", href: "/family", icon: Heart },
   { name: "Filing & Service", href: "/filing", icon: Send },
+  { name: "Service & Reporters", href: "/process-serving", icon: Truck },
   { name: "Docket Search", href: "/docket-search", icon: SearchCode },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Campaigns", href: "/campaigns", icon: Mail },
