@@ -55,6 +55,7 @@ import {
   Headphones,
   Contact,
   Megaphone,
+  CalendarRange,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -103,6 +104,7 @@ const mainNavigation = [
   { name: "Communications", href: "/communications", icon: Headphones },
   { name: "CRM & Intake", href: "/crm", icon: Contact },
   { name: "Reviews", href: "/marketing/reviews", icon: Megaphone },
+  { name: "Scheduling", href: "/scheduling", icon: CalendarRange },
 ];
 
 const bottomNavigation = [

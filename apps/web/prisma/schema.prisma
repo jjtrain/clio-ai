@@ -4837,3 +4837,166 @@ model WebsiteAnalytics {
   formSubmissions   Int       @default(0)
   createdAt         DateTime  @default(now())
 }
+
+// ============================================
+// SCHEDULING INTEGRATIONS
+// ============================================
+
+model SchedulingIntegration {
+  id                      String    @id @default(cuid())
+  provider                String    @unique
+  isEnabled               Boolean   @default(false)
+  displayName             String
+  apiKey                  String?
+  apiSecret               String?
+  baseUrl                 String?
+  accountId               String?
+  accessToken             String?   @db.Text
+  refreshToken            String?   @db.Text
+  tokenExpiresAt          DateTime?
+  organizationId          String?
+  userId                  String?
+  webhookUrl              String?
+  webhookSecret           String?
+  defaultEventTypeId      String?
+  syncWithBuiltIn         Boolean   @default(true)
+  syncDirection           String    @default("INBOUND")
+  autoCreateLead          Boolean   @default(true)
+  autoLinkToClient        Boolean   @default(true)
+  reminderSettings        String?   @db.Text
+  settings                String?   @db.Text
+  lastSyncAt              DateTime?
+  lastSyncStatus          String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
+
+model ExternalEventType {
+  id                    String    @id @default(cuid())
+  provider              String
+  externalTypeId        String
+  name                  String
+  description           String?
+  duration              Int
+  location              String?
+  locationType          String    @default("IN_PERSON")
+  price                 Decimal?  @db.Decimal(10, 2)
+  currency              String    @default("USD")
+  collectPayment        Boolean   @default(false)
+  color                 String?
+  isActive              Boolean   @default(true)
+  availability          String?   @db.Text
+  questions             String?   @db.Text
+  bufferBefore          Int       @default(0)
+  bufferAfter           Int       @default(0)
+  maxPerDay             Int?
+  bookingUrl            String?
+  mappedToPracticeArea  String?
+  mappedToAppointmentType String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([provider, externalTypeId])
+  @@index([isActive])
+}
+
+model ExternalBooking {
+  id                  String    @id @default(cuid())
+  provider            String
+  externalBookingId   String
+  eventTypeId         String?
+  appointmentId       String?
+  calendarEventId     String?
+  clientId            String?
+  leadId              String?
+  matterId            String?
+  bookerName          String
+  bookerEmail         String
+  bookerPhone         String?
+  eventName           String
+  startTime           DateTime
+  endTime             DateTime
+  duration            Int
+  timezone            String    @default("America/New_York")
+  location            String?
+  locationType        String    @default("IN_PERSON")
+  videoLink           String?
+  status              String    @default("SCHEDULED")
+  previousStartTime   DateTime?
+  cancellationReason  String?
+  cancelledAt         DateTime?
+  intakeAnswers       String?   @db.Text
+  paymentStatus       String?
+  paymentAmount       Decimal?  @db.Decimal(10, 2)
+  remindersSent       Int       @default(0)
+  lastReminderAt      DateTime?
+  confirmationSent    Boolean   @default(false)
+  notes               String?   @db.Text
+  hostName            String?
+  hostEmail           String?
+  rawPayload          String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([provider, externalBookingId])
+  @@index([appointmentId])
+  @@index([clientId])
+  @@index([leadId])
+  @@index([startTime])
+  @@index([status])
+}
+
+model ReminderLog {
+  id              String    @id @default(cuid())
+  provider        String?
+  bookingId       String?
+  appointmentId   String?
+  recipientName   String
+  recipientEmail  String?
+  recipientPhone  String?
+  method          String    @default("EMAIL")
+  status          String    @default("QUEUED")
+  scheduledFor    DateTime
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  response        String?
+  respondedAt     DateTime?
+  content         String?   @db.Text
+  errorMessage    String?
+  createdAt       DateTime  @default(now())
+
+  @@index([bookingId])
+  @@index([appointmentId])
+  @@index([method])
+  @@index([status])
+}
+
+model AvailabilityRule {
+  id              String    @id @default(cuid())
+  provider        String?
+  name            String
+  isDefault       Boolean   @default(false)
+  rules           String    @db.Text
+  overrides       String?   @db.Text
+  timezone        String    @default("America/New_York")
+  linkedEventTypes String?  @db.Text
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model BookingWidget {
+  id            String    @id @default(cuid())
+  name          String
+  provider      String?
+  eventTypeId   String?
+  widgetType    String    @default("LINK")
+  embedCode     String?   @db.Text
+  bookingUrl    String
+  theme         String?   @db.Text
+  isActive      Boolean   @default(true)
+  viewCount     Int       @default(0)
+  bookingCount  Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}

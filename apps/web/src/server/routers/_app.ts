@@ -50,6 +50,7 @@ import { collectionsRouter } from "./collections";
 import { communicationsRouter } from "./communications";
 import { crmIntakeRouter } from "./crmIntake";
 import { marketingRouter } from "./marketing";
+import { schedulingExtRouter } from "./scheduling-ext";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -103,6 +104,7 @@ export const appRouter = router({
   communications: communicationsRouter,
   crmIntake: crmIntakeRouter,
   marketing: marketingRouter,
+  schedulingExt: schedulingExtRouter,
 });
 
 export type AppRouter = typeof appRouter;
