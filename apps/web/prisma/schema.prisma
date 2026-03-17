@@ -51,6 +51,7 @@ model Client {
   journalLines          JournalLine[]
   clientProfitabilities  ClientProfitability[]
   matterProfitabilities  MatterProfitability[]
+  zoomMeetings           ZoomMeeting[]
 }
 
 model Matter {
@@ -103,6 +104,7 @@ model Matter {
   docketAlerts       DocketAlert[]
   familyCase         FamilyCase?
   matterProfitability  MatterProfitability?
+  zoomMeetings         ZoomMeeting[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -6104,4 +6106,210 @@ model RainmakerDiagnostic {
   @@index([matterId])
   @@index([diagnosticType])
   @@index([status])
+}
+
+// ─── Video & Conferencing (Zoom) ────────────────────────────────
+
+enum VideoProvider {
+  ZOOM
+}
+
+enum ZoomMeetingType {
+  INSTANT
+  SCHEDULED
+  RECURRING_NO_FIXED
+  RECURRING_FIXED
+}
+
+enum ZoomMeetingStatus {
+  WAITING
+  STARTED
+  ENDED
+  CANCELLED
+}
+
+enum ZoomRecordingType {
+  NONE
+  LOCAL
+  CLOUD
+}
+
+enum ZoomRegistrantStatus {
+  PENDING
+  APPROVED
+  DENIED
+  CANCELLED
+}
+
+model VideoIntegration {
+  id                          String         @id @default(cuid())
+  provider                    VideoProvider   @unique
+  isEnabled                   Boolean        @default(false)
+  displayName                 String
+  apiKey                      String?
+  apiSecret                   String?
+  accountId                   String?
+  accessToken                 String?
+  refreshToken                String?
+  tokenExpiresAt              DateTime?
+  userId                      String?
+  webhookUrl                  String?
+  webhookSecret               String?
+  webhookVerificationToken    String?
+  defaultMeetingDuration      Int            @default(30)
+  defaultWaitingRoom          Boolean        @default(true)
+  defaultRecordMeeting        Boolean        @default(false)
+  defaultAutoTranscribe       Boolean        @default(true)
+  defaultPassword             Boolean        @default(true)
+  defaultMuteOnEntry          Boolean        @default(true)
+  requireRegistration         Boolean        @default(false)
+  autoCreateForAppointments   Boolean        @default(true)
+  autoSaveRecordings          Boolean        @default(true)
+  autoSaveTranscripts         Boolean        @default(true)
+  autoSummarize               Boolean        @default(true)
+  settings                    String?        @db.Text
+  lastSyncAt                  DateTime?
+  createdAt                   DateTime       @default(now())
+  updatedAt                   DateTime       @updatedAt
+}
+
+model ZoomMeeting {
+  id                    String             @id @default(cuid())
+  zoomMeetingId         String
+  zoomUUID              String?
+  hostId                String?
+  hostEmail             String?
+  matterId              String?
+  matter                Matter?            @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  clientId              String?
+  client                Client?            @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  appointmentId         String?
+  calendarEventId       String?
+  topic                 String
+  agenda                String?            @db.Text
+  meetingType           ZoomMeetingType    @default(SCHEDULED)
+  status                ZoomMeetingStatus  @default(WAITING)
+  startTime             DateTime
+  endTime               DateTime?
+  scheduledDuration     Int
+  actualDuration        Int?
+  timezone              String             @default("America/New_York")
+  joinUrl               String
+  startUrl              String?
+  password              String?
+  waitingRoomEnabled    Boolean            @default(true)
+  muteOnEntry           Boolean            @default(true)
+  autoRecording         ZoomRecordingType  @default(NONE)
+  dialInNumbers         String?            @db.Text
+  participants          String?            @db.Text
+  participantCount      Int                @default(0)
+  maxParticipants       Int                @default(0)
+  registrationRequired  Boolean            @default(false)
+  registrationUrl       String?
+  registrants           String?            @db.Text
+  recurrence            String?            @db.Text
+  breakoutRooms         String?            @db.Text
+  hasRecording          Boolean            @default(false)
+  hasTranscript         Boolean            @default(false)
+  recordingFiles        String?            @db.Text
+  transcriptText        String?            @db.Text
+  transcriptVTT         String?            @db.Text
+  chatLog               String?            @db.Text
+  aiSummary             String?            @db.Text
+  aiActionItems         String?            @db.Text
+  aiKeyDecisions        String?            @db.Text
+  aiFollowUps           String?            @db.Text
+  summaryDocId          String?
+  recordingDocIds       String?            @db.Text
+  transcriptDocId       String?
+  billableTime          Int?
+  timeEntryId           String?
+  tags                  String?            @db.Text
+  notes                 String?            @db.Text
+  rawPayload            String?            @db.Text
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  zoomRegistrants       ZoomRegistrant[]
+  recurringInstances    ZoomRecurringInstance[]
+
+  @@index([zoomMeetingId])
+  @@index([zoomUUID])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([appointmentId])
+  @@index([status])
+  @@index([startTime])
+  @@index([hostEmail])
+}
+
+model ZoomRegistrant {
+  id                String               @id @default(cuid())
+  meetingId         String
+  meeting           ZoomMeeting          @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  zoomRegistrantId  String?
+  firstName         String
+  lastName          String
+  email             String
+  phone             String?
+  company           String?
+  status            ZoomRegistrantStatus @default(PENDING)
+  customAnswers     String?              @db.Text
+  joinUrl           String?
+  registeredAt      DateTime             @default(now())
+  approvedAt        DateTime?
+  createdAt         DateTime             @default(now())
+
+  @@index([meetingId])
+  @@index([email])
+  @@index([status])
+}
+
+model ZoomRecurringInstance {
+  id                String             @id @default(cuid())
+  meetingId         String
+  meeting           ZoomMeeting        @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  zoomUUID          String
+  startTime         DateTime
+  endTime           DateTime?
+  actualDuration    Int?
+  status            ZoomMeetingStatus  @default(WAITING)
+  participantCount  Int                @default(0)
+  participants      String?            @db.Text
+  hasRecording      Boolean            @default(false)
+  hasTranscript     Boolean            @default(false)
+  recordingFiles    String?            @db.Text
+  transcriptText    String?            @db.Text
+  aiSummary         String?            @db.Text
+  aiActionItems     String?            @db.Text
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([meetingId])
+  @@index([zoomUUID])
+  @@index([startTime])
+  @@index([status])
+}
+
+model MeetingTemplate {
+  id                    String           @id @default(cuid())
+  name                  String
+  description           String?
+  defaultDuration       Int              @default(30)
+  defaultAgenda         String?          @db.Text
+  waitingRoom           Boolean          @default(true)
+  muteOnEntry           Boolean          @default(true)
+  autoRecord            ZoomRecordingType @default(NONE)
+  requireRegistration   Boolean          @default(false)
+  registrationQuestions String?          @db.Text
+  breakoutRooms         String?          @db.Text
+  practiceArea          String?
+  meetingType           String?
+  autoSummarize         Boolean          @default(true)
+  autoLogTime           Boolean          @default(false)
+  billingActivityCode   String?
+  followUpTemplate      String?          @db.Text
+  isActive              Boolean          @default(true)
+  usageCount            Int              @default(0)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 }

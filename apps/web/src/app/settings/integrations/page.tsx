@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb } from "lucide-react";
+import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video } from "lucide-react";
 
 const PROVIDERS = [
   { provider: "CASETEXT", name: "Casetext CoCounsel", desc: "AI legal research by Thomson Reuters", icon: Scale, color: "text-blue-600" },
@@ -88,6 +88,9 @@ export default function IntegrationSettingsPage() {
 
       {/* Financial Insights Integrations */}
       <FinancialInsightsSection webhookBase={webhookBase} />
+
+      {/* Video & Conferencing Integrations */}
+      <ZoomSection webhookBase={webhookBase} />
 
       {/* Webhook URLs */}
       <Card>
@@ -298,6 +301,135 @@ function FinInsightsConfigDialog({ provider, integration, onClose, onSave, isLoa
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ZoomSection({ webhookBase }: { webhookBase: string }) {
+  const { toast } = useToast();
+  const utils = trpc.useUtils();
+  const [zoomConfigOpen, setZoomConfigOpen] = useState(false);
+
+  const { data: zoomConfig } = trpc.zoom["settings.get"].useQuery();
+  const zoomUpdateMut = trpc.zoom["settings.update"].useMutation({
+    onSuccess: () => { utils.zoom["settings.get"].invalidate(); setZoomConfigOpen(false); toast({ title: "Saved" }); },
+  });
+  const zoomTestMut = trpc.zoom["settings.test"].useMutation({
+    onSuccess: (d: any) => toast({ title: d.success ? `Connected: ${d.userName}` : `Failed: ${d.error}`, variant: d.success ? "default" : "destructive" }),
+  });
+
+  const connected = zoomConfig?.isEnabled && zoomConfig?.apiKey;
+
+  const [zForm, setZForm] = useState<any>({
+    apiKey: "", apiSecret: "", accountId: "", userId: "", isEnabled: false,
+    defaultMeetingDuration: 30, defaultWaitingRoom: true, defaultMuteOnEntry: true,
+    defaultRecordMeeting: false, defaultAutoTranscribe: true,
+    autoCreateForAppointments: true, autoSaveRecordings: true, autoSaveTranscripts: true, autoSummarize: true,
+    webhookSecret: "", webhookVerificationToken: "",
+  });
+
+  const loadForm = () => {
+    if (zoomConfig) setZForm({
+      apiKey: zoomConfig.apiKey || "", apiSecret: zoomConfig.apiSecret || "", accountId: zoomConfig.accountId || "",
+      userId: zoomConfig.userId || "", isEnabled: zoomConfig.isEnabled,
+      defaultMeetingDuration: zoomConfig.defaultMeetingDuration, defaultWaitingRoom: zoomConfig.defaultWaitingRoom,
+      defaultMuteOnEntry: zoomConfig.defaultMuteOnEntry, defaultRecordMeeting: zoomConfig.defaultRecordMeeting,
+      defaultAutoTranscribe: zoomConfig.defaultAutoTranscribe, autoCreateForAppointments: zoomConfig.autoCreateForAppointments,
+      autoSaveRecordings: zoomConfig.autoSaveRecordings, autoSaveTranscripts: zoomConfig.autoSaveTranscripts,
+      autoSummarize: zoomConfig.autoSummarize, webhookSecret: zoomConfig.webhookSecret || "",
+      webhookVerificationToken: zoomConfig.webhookVerificationToken || "",
+    });
+    setZoomConfigOpen(true);
+  };
+
+  const Toggle = ({ label, checked, onChange }: any) => (
+    <label className="flex items-center justify-between py-1">
+      <span className="text-sm">{label}</span>
+      <button type="button" className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-gray-200"}`} onClick={() => onChange(!checked)}>
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`} />
+      </button>
+    </label>
+  );
+
+  return (
+    <>
+      <div>
+        <h2 className="text-lg font-bold mt-8 mb-1">Video & Conferencing</h2>
+        <p className="text-sm text-slate-500 mb-4">Video conferencing with recording, transcription, and AI intelligence</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Video className="h-6 w-6 text-blue-600" />
+                <div>
+                  <CardTitle className="text-sm">Zoom</CardTitle>
+                  <CardDescription className="text-xs leading-relaxed">Video conferencing with automatic recording, transcription, and AI meeting summaries. Schedule meetings from Clio AI, get join links, and automatically log time and create follow-up tasks after every call.</CardDescription>
+                </div>
+              </div>
+              {connected ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-gray-300" />}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-gray-400 mb-3">Create a Server-to-Server OAuth app in the Zoom App Marketplace. Copy the Client ID, Client Secret, and Account ID. Required scopes: meeting:read, meeting:write, recording:read, user:read.</p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={loadForm}>Configure</Button>
+              {connected && <Button size="sm" variant="outline" onClick={() => zoomTestMut.mutate()} disabled={zoomTestMut.isLoading}>Test</Button>}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Zoom Webhook URL */}
+      <Card className="mt-4">
+        <CardHeader><CardTitle className="text-sm">Zoom Webhook URL</CardTitle><CardDescription>Add this to your Zoom app Event Subscriptions</CardDescription></CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500 w-20">Zoom:</span>
+            <code className="flex-1 text-xs bg-slate-100 px-2 py-1 rounded font-mono truncate">{webhookBase}/api/integrations/zoom/webhook</code>
+            <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard?.writeText(`${webhookBase}/api/integrations/zoom/webhook`); toast({ title: "Copied" }); }}><Copy className="h-3 w-3" /></Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Zoom Config Dialog */}
+      {zoomConfigOpen && (
+        <Dialog open onOpenChange={() => setZoomConfigOpen(false)}>
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>Configure Zoom</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <Toggle label="Enabled" checked={zForm.isEnabled} onChange={(v: boolean) => setZForm({ ...zForm, isEnabled: v })} />
+              <div className="space-y-2"><Label>Client ID (API Key)</Label><Input type="password" value={zForm.apiKey} onChange={(e: any) => setZForm({ ...zForm, apiKey: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Client Secret (API Secret)</Label><Input type="password" value={zForm.apiSecret} onChange={(e: any) => setZForm({ ...zForm, apiSecret: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Account ID</Label><Input value={zForm.accountId} onChange={(e: any) => setZForm({ ...zForm, accountId: e.target.value })} /></div>
+              <div className="space-y-2"><Label>User ID / Email</Label><Input value={zForm.userId} onChange={(e: any) => setZForm({ ...zForm, userId: e.target.value })} placeholder="me" /></div>
+              <div className="space-y-2"><Label>Default Meeting Duration (min)</Label><Input type="number" value={zForm.defaultMeetingDuration} onChange={(e: any) => setZForm({ ...zForm, defaultMeetingDuration: parseInt(e.target.value) || 30 })} /></div>
+              <Toggle label="Waiting Room" checked={zForm.defaultWaitingRoom} onChange={(v: boolean) => setZForm({ ...zForm, defaultWaitingRoom: v })} />
+              <Toggle label="Mute on Entry" checked={zForm.defaultMuteOnEntry} onChange={(v: boolean) => setZForm({ ...zForm, defaultMuteOnEntry: v })} />
+              <Toggle label="Auto-Record (Cloud)" checked={zForm.defaultRecordMeeting} onChange={(v: boolean) => setZForm({ ...zForm, defaultRecordMeeting: v })} />
+              <Toggle label="Auto-Transcribe" checked={zForm.defaultAutoTranscribe} onChange={(v: boolean) => setZForm({ ...zForm, defaultAutoTranscribe: v })} />
+              <Toggle label="Auto-Create for Appointments" checked={zForm.autoCreateForAppointments} onChange={(v: boolean) => setZForm({ ...zForm, autoCreateForAppointments: v })} />
+              <Toggle label="Auto-Save Recordings" checked={zForm.autoSaveRecordings} onChange={(v: boolean) => setZForm({ ...zForm, autoSaveRecordings: v })} />
+              <Toggle label="Auto-Save Transcripts" checked={zForm.autoSaveTranscripts} onChange={(v: boolean) => setZForm({ ...zForm, autoSaveTranscripts: v })} />
+              <Toggle label="Auto-Summarize (AI)" checked={zForm.autoSummarize} onChange={(v: boolean) => setZForm({ ...zForm, autoSummarize: v })} />
+              <div className="space-y-2"><Label>Webhook Secret Token</Label><Input type="password" value={zForm.webhookSecret} onChange={(e: any) => setZForm({ ...zForm, webhookSecret: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Verification Token</Label><Input value={zForm.webhookVerificationToken} onChange={(e: any) => setZForm({ ...zForm, webhookVerificationToken: e.target.value })} /></div>
+              <Button className="w-full" disabled={zoomUpdateMut.isLoading} onClick={() => zoomUpdateMut.mutate({
+                apiKey: zForm.apiKey || null, apiSecret: zForm.apiSecret || null, accountId: zForm.accountId || null,
+                userId: zForm.userId || null, isEnabled: zForm.isEnabled,
+                defaultMeetingDuration: zForm.defaultMeetingDuration, defaultWaitingRoom: zForm.defaultWaitingRoom,
+                defaultMuteOnEntry: zForm.defaultMuteOnEntry, defaultRecordMeeting: zForm.defaultRecordMeeting,
+                defaultAutoTranscribe: zForm.defaultAutoTranscribe, autoCreateForAppointments: zForm.autoCreateForAppointments,
+                autoSaveRecordings: zForm.autoSaveRecordings, autoSaveTranscripts: zForm.autoSaveTranscripts,
+                autoSummarize: zForm.autoSummarize, webhookSecret: zForm.webhookSecret || null,
+                webhookVerificationToken: zForm.webhookVerificationToken || null,
+              })}>{zoomUpdateMut.isLoading ? "Saving..." : "Save Configuration"}</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
 

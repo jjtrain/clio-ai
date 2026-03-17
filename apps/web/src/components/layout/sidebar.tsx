@@ -60,6 +60,7 @@ import {
   FolderOpen,
   Share2,
   Lightbulb,
+  Video,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -110,6 +111,7 @@ const mainNavigation = [
   { name: "Client Portal", href: "/client-portal", icon: UserCircle },
   { name: "Text Messaging", href: "/messaging", icon: MessageSquare },
   { name: "Communications", href: "/communications", icon: Headphones },
+  { name: "Zoom", href: "/zoom", icon: Video },
   { name: "Referrals", href: "/referrals", icon: Share2 },
   { name: "CRM & Intake", href: "/crm", icon: Contact },
   { name: "Reviews", href: "/marketing/reviews", icon: Megaphone },
