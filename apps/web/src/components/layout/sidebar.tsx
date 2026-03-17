@@ -112,6 +112,7 @@ const mainNavigation = [
   { name: "Text Messaging", href: "/messaging", icon: MessageSquare },
   { name: "Communications", href: "/communications", icon: Headphones },
   { name: "Zoom", href: "/zoom", icon: Video },
+  { name: "Compliance", href: "/compliance", icon: ShieldCheck },
   { name: "Referrals", href: "/referrals", icon: Share2 },
   { name: "CRM & Intake", href: "/crm", icon: Contact },
   { name: "Reviews", href: "/marketing/reviews", icon: Megaphone },

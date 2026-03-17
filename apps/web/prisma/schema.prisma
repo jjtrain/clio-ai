@@ -52,6 +52,7 @@ model Client {
   clientProfitabilities  ClientProfitability[]
   matterProfitabilities  MatterProfitability[]
   zoomMeetings           ZoomMeeting[]
+  complianceChecks       ComplianceCheck[]
 }
 
 model Matter {
@@ -105,6 +106,7 @@ model Matter {
   familyCase         FamilyCase?
   matterProfitability  MatterProfitability?
   zoomMeetings         ZoomMeeting[]
+  complianceChecks     ComplianceCheck[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -6312,4 +6314,306 @@ model MeetingTemplate {
   usageCount            Int              @default(0)
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
+}
+
+// ─── Compliance & Onboarding (Legl KYC/AML) ────────────────────
+
+enum ComplianceProvider {
+  LEGL
+}
+
+enum ComplianceRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+  PROHIBITED
+}
+
+enum ComplianceCheckType {
+  KYC
+  AML
+  SANCTIONS
+  PEP
+  ADVERSE_MEDIA
+  SOURCE_OF_FUNDS
+  SOURCE_OF_WEALTH
+  DOCUMENT_VERIFICATION
+  ENHANCED_DUE_DILIGENCE
+  ONGOING_MONITORING
+  FULL_CDD
+}
+
+enum ComplianceCheckStatus {
+  NOT_STARTED
+  PENDING_CLIENT
+  IN_PROGRESS
+  AWAITING_DOCUMENTS
+  UNDER_REVIEW
+  PASSED
+  FAILED
+  REFERRED
+  EXPIRED
+  CANCELLED
+}
+
+enum ComplianceSubjectType {
+  INDIVIDUAL
+  COMPANY
+  TRUST
+  PARTNERSHIP
+  OTHER
+}
+
+enum ComplianceMatchResult {
+  CLEAR
+  POTENTIAL_MATCH
+  CONFIRMED_MATCH
+}
+
+enum ComplianceDocType {
+  PASSPORT
+  DRIVERS_LICENSE
+  NATIONAL_ID
+  UTILITY_BILL
+  BANK_STATEMENT
+  TAX_RETURN
+  COMPANY_REGISTRATION
+  ARTICLES_OF_INCORPORATION
+  TRUST_DEED
+  PARTNERSHIP_AGREEMENT
+  SOURCE_OF_FUNDS_EVIDENCE
+  SOURCE_OF_WEALTH_EVIDENCE
+  PROOF_OF_ADDRESS
+  SELFIE
+  OTHER
+}
+
+enum ComplianceDocStatus {
+  PENDING
+  SUBMITTED
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum ComplianceActivityType {
+  CHECK_INITIATED
+  CLIENT_NOTIFIED
+  DOCUMENTS_REQUESTED
+  DOCUMENT_SUBMITTED
+  DOCUMENT_VERIFIED
+  DOCUMENT_REJECTED
+  SANCTIONS_CLEAR
+  SANCTIONS_MATCH
+  PEP_CLEAR
+  PEP_MATCH
+  ADVERSE_MEDIA_CLEAR
+  ADVERSE_MEDIA_MATCH
+  RISK_ASSESSED
+  EDD_REQUIRED
+  EDD_COMPLETED
+  REVIEW_STARTED
+  APPROVED
+  FAILED
+  REFERRED
+  EXPIRED
+  RENEWED
+  MONITORING_ALERT
+  NOTE_ADDED
+  STATUS_CHANGED
+}
+
+enum ComplianceReportType {
+  FIRM_OVERVIEW
+  CLIENT_RISK_REGISTER
+  EXPIRED_CHECKS
+  MONITORING_SUMMARY
+  AUDIT_LOG
+  SAR_REPORT
+  ANNUAL_REVIEW
+}
+
+enum ComplianceReportStatus {
+  DRAFT
+  FINAL
+  SUBMITTED
+}
+
+model ComplianceIntegration {
+  id                                String              @id @default(cuid())
+  provider                          ComplianceProvider   @unique
+  isEnabled                         Boolean             @default(false)
+  displayName                       String
+  apiKey                            String?
+  apiSecret                         String?
+  baseUrl                           String?             @default("https://api.legl.com/v1")
+  accountId                         String?
+  firmId                            String?
+  accessToken                       String?
+  refreshToken                      String?
+  tokenExpiresAt                    DateTime?
+  webhookUrl                        String?
+  webhookSecret                     String?
+  autoRunOnNewClient                Boolean             @default(false)
+  autoRunOnNewMatter                Boolean             @default(true)
+  requireApprovalBeforeMatterStart  Boolean             @default(true)
+  defaultRiskThreshold              ComplianceRiskLevel @default(MEDIUM)
+  retentionPeriod                   Int                 @default(60)
+  sanctionsCheckEnabled             Boolean             @default(true)
+  pepCheckEnabled                   Boolean             @default(true)
+  adverseMediaCheckEnabled          Boolean             @default(true)
+  documentVerificationEnabled       Boolean             @default(true)
+  sourceOfFundsRequired             Boolean             @default(false)
+  sourceOfWealthRequired            Boolean             @default(false)
+  ongoingMonitoringEnabled          Boolean             @default(false)
+  monitoringFrequency               String?
+  settings                          String?             @db.Text
+  lastSyncAt                        DateTime?
+  createdAt                         DateTime            @default(now())
+  updatedAt                         DateTime            @updatedAt
+}
+
+model ComplianceCheck {
+  id                          String                @id @default(cuid())
+  provider                    ComplianceProvider?
+  externalCheckId             String?
+  clientId                    String
+  client                      Client                @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  matterId                    String?
+  matter                      Matter?               @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  leadId                      String?
+  checkType                   ComplianceCheckType
+  status                      ComplianceCheckStatus @default(NOT_STARTED)
+  overallRiskLevel            ComplianceRiskLevel?
+  riskScore                   Int?
+  subjectType                 ComplianceSubjectType @default(INDIVIDUAL)
+  subjectName                 String
+  subjectEmail                String?
+  subjectPhone                String?
+  subjectDOB                  DateTime?
+  subjectNationality          String?
+  subjectAddress              String?               @db.Text
+  subjectIdType               String?
+  subjectIdNumber             String?
+  companyName                 String?
+  companyRegistrationNumber   String?
+  companyJurisdiction         String?
+  companyType                 String?
+  beneficialOwners            String?               @db.Text
+  sanctionsResult             ComplianceMatchResult?
+  sanctionsMatches            String?               @db.Text
+  pepResult                   ComplianceMatchResult?
+  pepMatches                  String?               @db.Text
+  adverseMediaResult          ComplianceMatchResult?
+  adverseMediaMatches         String?               @db.Text
+  documentVerificationResult  String?               @db.Text
+  sourceOfFundsResult         String?               @db.Text
+  sourceOfWealthResult        String?               @db.Text
+  enhancedDueDiligenceRequired Boolean              @default(false)
+  eddReason                   String?
+  eddCompletedAt              DateTime?
+  eddNotes                    String?               @db.Text
+  reviewedBy                  String?
+  reviewedAt                  DateTime?
+  reviewNotes                 String?               @db.Text
+  approvedBy                  String?
+  approvedAt                  DateTime?
+  decisionReason              String?               @db.Text
+  expiresAt                   DateTime?
+  reminderSentAt              DateTime?
+  ongoingMonitoringId         String?
+  lastMonitoringCheck         DateTime?
+  nextMonitoringCheck         DateTime?
+  monitoringAlerts            String?               @db.Text
+  clientPortalUrl             String?
+  aiRiskAssessment            String?               @db.Text
+  rawPayload                  String?               @db.Text
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
+  documents                   ComplianceDocument[]
+  activities                  ComplianceActivity[]
+
+  @@index([provider])
+  @@index([externalCheckId])
+  @@index([clientId])
+  @@index([matterId])
+  @@index([checkType])
+  @@index([status])
+  @@index([overallRiskLevel])
+  @@index([expiresAt])
+}
+
+model ComplianceDocument {
+  id               String              @id @default(cuid())
+  checkId          String
+  check            ComplianceCheck     @relation(fields: [checkId], references: [id], onDelete: Cascade)
+  documentType     ComplianceDocType
+  fileName         String
+  mimeType         String?
+  fileSize         Int?
+  documentId       String?
+  externalDocId    String?
+  status           ComplianceDocStatus @default(PENDING)
+  verifiedAt       DateTime?
+  verifiedBy       String?
+  rejectionReason  String?
+  expiryDate       DateTime?
+  issuingCountry   String?
+  extractedData    String?             @db.Text
+  notes            String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([checkId])
+  @@index([documentType])
+  @@index([status])
+}
+
+model ComplianceActivity {
+  id            String                  @id @default(cuid())
+  checkId       String
+  check         ComplianceCheck         @relation(fields: [checkId], references: [id], onDelete: Cascade)
+  activityType  ComplianceActivityType
+  description   String
+  performedBy   String?
+  metadata      String?                 @db.Text
+  createdAt     DateTime                @default(now())
+
+  @@index([checkId])
+  @@index([activityType])
+  @@index([createdAt])
+}
+
+model CompliancePolicy {
+  id                    String                @id @default(cuid())
+  name                  String
+  description           String?
+  subjectType           ComplianceSubjectType
+  requiredChecks        String                @db.Text
+  requiredDocuments     String                @db.Text
+  riskThresholds        String?               @db.Text
+  eddTriggers           String?               @db.Text
+  practiceArea          String?
+  matterValueThreshold  Decimal?              @db.Decimal(14, 2)
+  isDefault             Boolean               @default(false)
+  isActive              Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}
+
+model ComplianceReport {
+  id            String                  @id @default(cuid())
+  reportType    ComplianceReportType
+  title         String
+  period        String?
+  generatedBy   String?
+  content       String                  @db.Text
+  status        ComplianceReportStatus  @default(DRAFT)
+  submittedTo   String?
+  submittedAt   DateTime?
+  documentId    String?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
 }

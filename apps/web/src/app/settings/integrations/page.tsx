@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video } from "lucide-react";
+import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video, ShieldCheck } from "lucide-react";
 
 const PROVIDERS = [
   { provider: "CASETEXT", name: "Casetext CoCounsel", desc: "AI legal research by Thomson Reuters", icon: Scale, color: "text-blue-600" },
@@ -91,6 +91,9 @@ export default function IntegrationSettingsPage() {
 
       {/* Video & Conferencing Integrations */}
       <ZoomSection webhookBase={webhookBase} />
+
+      {/* Compliance Integrations */}
+      <LeglSection webhookBase={webhookBase} />
 
       {/* Webhook URLs */}
       <Card>
@@ -425,6 +428,140 @@ function ZoomSection({ webhookBase }: { webhookBase: string }) {
                 autoSummarize: zForm.autoSummarize, webhookSecret: zForm.webhookSecret || null,
                 webhookVerificationToken: zForm.webhookVerificationToken || null,
               })}>{zoomUpdateMut.isLoading ? "Saving..." : "Save Configuration"}</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+function LeglSection({ webhookBase }: { webhookBase: string }) {
+  const { toast } = useToast();
+  const utils = trpc.useUtils();
+  const [configOpen, setConfigOpen] = useState(false);
+
+  const { data: config } = trpc.compliance["settings.get"].useQuery();
+  const updateMut = trpc.compliance["settings.update"].useMutation({
+    onSuccess: () => { utils.compliance["settings.get"].invalidate(); setConfigOpen(false); toast({ title: "Saved" }); },
+  });
+  const testMut = trpc.compliance["settings.test"].useMutation({
+    onSuccess: (d: any) => toast({ title: d.success ? `Connected: ${d.firmName}` : `Failed: ${d.error}`, variant: d.success ? "default" : "destructive" }),
+  });
+
+  const connected = config?.isEnabled && config?.apiKey;
+
+  const [form, setForm] = useState<any>({
+    apiKey: "", apiSecret: "", accountId: "", firmId: "", isEnabled: false,
+    autoRunOnNewClient: false, autoRunOnNewMatter: true, requireApprovalBeforeMatterStart: true,
+    defaultRiskThreshold: "MEDIUM", sanctionsCheckEnabled: true, pepCheckEnabled: true,
+    adverseMediaCheckEnabled: true, documentVerificationEnabled: true,
+    ongoingMonitoringEnabled: false, monitoringFrequency: "quarterly", retentionPeriod: 60,
+  });
+
+  const loadForm = () => {
+    if (config) setForm({
+      apiKey: config.apiKey || "", apiSecret: config.apiSecret || "", accountId: config.accountId || "",
+      firmId: config.firmId || "", isEnabled: config.isEnabled,
+      autoRunOnNewClient: config.autoRunOnNewClient, autoRunOnNewMatter: config.autoRunOnNewMatter,
+      requireApprovalBeforeMatterStart: config.requireApprovalBeforeMatterStart,
+      defaultRiskThreshold: config.defaultRiskThreshold, sanctionsCheckEnabled: config.sanctionsCheckEnabled,
+      pepCheckEnabled: config.pepCheckEnabled, adverseMediaCheckEnabled: config.adverseMediaCheckEnabled,
+      documentVerificationEnabled: config.documentVerificationEnabled,
+      ongoingMonitoringEnabled: config.ongoingMonitoringEnabled,
+      monitoringFrequency: config.monitoringFrequency || "quarterly", retentionPeriod: config.retentionPeriod,
+    });
+    setConfigOpen(true);
+  };
+
+  const Toggle = ({ label, checked, onChange }: any) => (
+    <label className="flex items-center justify-between py-1">
+      <span className="text-sm">{label}</span>
+      <button type="button" className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-gray-200"}`} onClick={() => onChange(!checked)}>
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`} />
+      </button>
+    </label>
+  );
+
+  return (
+    <>
+      <div>
+        <h2 className="text-lg font-bold mt-8 mb-1">Compliance & KYC/AML</h2>
+        <p className="text-sm text-slate-500 mb-4">Client identity verification, sanctions screening, and compliance monitoring</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="h-6 w-6 text-emerald-600" />
+                <div>
+                  <CardTitle className="text-sm">Legl</CardTitle>
+                  <CardDescription className="text-xs leading-relaxed">KYC and AML compliance, client ID verification, sanctions screening, PEP checks, adverse media monitoring, and ongoing client monitoring. Legl provides a client-facing portal where your clients submit documents and complete verification.</CardDescription>
+                </div>
+              </div>
+              {connected ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-gray-300" />}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-gray-400 mb-3">Legl handles the client-facing experience — clients receive a branded portal link where they upload ID documents and answer compliance questions. Results flow back to Clio AI automatically.</p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={loadForm}>Configure</Button>
+              {connected && <Button size="sm" variant="outline" onClick={() => testMut.mutate()} disabled={testMut.isLoading}>Test</Button>}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle className="text-sm">Compliance Webhook URL</CardTitle></CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500 w-20">Legl:</span>
+            <code className="flex-1 text-xs bg-slate-100 px-2 py-1 rounded font-mono truncate">{webhookBase}/api/integrations/legl/webhook</code>
+            <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard?.writeText(`${webhookBase}/api/integrations/legl/webhook`); toast({ title: "Copied" }); }}><Copy className="h-3 w-3" /></Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {configOpen && (
+        <Dialog open onOpenChange={() => setConfigOpen(false)}>
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>Configure Legl</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <Toggle label="Enabled" checked={form.isEnabled} onChange={(v: boolean) => setForm({ ...form, isEnabled: v })} />
+              <div className="space-y-2"><Label>API Key</Label><Input type="password" value={form.apiKey} onChange={(e: any) => setForm({ ...form, apiKey: e.target.value })} /></div>
+              <div className="space-y-2"><Label>API Secret</Label><Input type="password" value={form.apiSecret} onChange={(e: any) => setForm({ ...form, apiSecret: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Account ID</Label><Input value={form.accountId} onChange={(e: any) => setForm({ ...form, accountId: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Firm ID</Label><Input value={form.firmId} onChange={(e: any) => setForm({ ...form, firmId: e.target.value })} /></div>
+              <div className="border-t pt-3"><p className="text-xs font-medium text-gray-500 mb-2">Automation</p></div>
+              <Toggle label="Auto-run on new client" checked={form.autoRunOnNewClient} onChange={(v: boolean) => setForm({ ...form, autoRunOnNewClient: v })} />
+              <Toggle label="Auto-run on new matter" checked={form.autoRunOnNewMatter} onChange={(v: boolean) => setForm({ ...form, autoRunOnNewMatter: v })} />
+              <Toggle label="Require approval before matter start" checked={form.requireApprovalBeforeMatterStart} onChange={(v: boolean) => setForm({ ...form, requireApprovalBeforeMatterStart: v })} />
+              <div className="border-t pt-3"><p className="text-xs font-medium text-gray-500 mb-2">Checks Enabled</p></div>
+              <Toggle label="Sanctions screening" checked={form.sanctionsCheckEnabled} onChange={(v: boolean) => setForm({ ...form, sanctionsCheckEnabled: v })} />
+              <Toggle label="PEP screening" checked={form.pepCheckEnabled} onChange={(v: boolean) => setForm({ ...form, pepCheckEnabled: v })} />
+              <Toggle label="Adverse media" checked={form.adverseMediaCheckEnabled} onChange={(v: boolean) => setForm({ ...form, adverseMediaCheckEnabled: v })} />
+              <Toggle label="Document verification" checked={form.documentVerificationEnabled} onChange={(v: boolean) => setForm({ ...form, documentVerificationEnabled: v })} />
+              <Toggle label="Ongoing monitoring" checked={form.ongoingMonitoringEnabled} onChange={(v: boolean) => setForm({ ...form, ongoingMonitoringEnabled: v })} />
+              {form.ongoingMonitoringEnabled && (
+                <div className="space-y-2"><Label>Monitoring Frequency</Label>
+                  <select className="w-full border rounded px-3 py-2 text-sm" value={form.monitoringFrequency} onChange={(e) => setForm({ ...form, monitoringFrequency: e.target.value })}>
+                    <option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="annually">Annually</option>
+                  </select>
+                </div>
+              )}
+              <div className="space-y-2"><Label>Retention Period (months)</Label><Input type="number" value={form.retentionPeriod} onChange={(e: any) => setForm({ ...form, retentionPeriod: parseInt(e.target.value) || 60 })} /></div>
+              <Button className="w-full" disabled={updateMut.isLoading} onClick={() => updateMut.mutate({
+                apiKey: form.apiKey || null, apiSecret: form.apiSecret || null, accountId: form.accountId || null,
+                firmId: form.firmId || null, isEnabled: form.isEnabled, autoRunOnNewClient: form.autoRunOnNewClient,
+                autoRunOnNewMatter: form.autoRunOnNewMatter, requireApprovalBeforeMatterStart: form.requireApprovalBeforeMatterStart,
+                sanctionsCheckEnabled: form.sanctionsCheckEnabled, pepCheckEnabled: form.pepCheckEnabled,
+                adverseMediaCheckEnabled: form.adverseMediaCheckEnabled, documentVerificationEnabled: form.documentVerificationEnabled,
+                ongoingMonitoringEnabled: form.ongoingMonitoringEnabled, monitoringFrequency: form.monitoringFrequency || null,
+                retentionPeriod: form.retentionPeriod,
+              })}>{updateMut.isLoading ? "Saving..." : "Save Configuration"}</Button>
             </div>
           </DialogContent>
         </Dialog>
