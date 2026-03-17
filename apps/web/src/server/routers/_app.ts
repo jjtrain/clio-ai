@@ -55,6 +55,7 @@ import { timeTrackingRouter } from "./timeTracking";
 import { processServingRouter } from "./processServing";
 import { documentStorageRouter } from "./documentStorage";
 import { referralsRouter } from "./referrals";
+import { piMedicalRouter } from "./piMedical";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -113,6 +114,7 @@ export const appRouter = router({
   processServing: processServingRouter,
   documentStorage: documentStorageRouter,
   referrals: referralsRouter,
+  piMedical: piMedicalRouter,
 });
 
 export type AppRouter = typeof appRouter;

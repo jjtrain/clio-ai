@@ -83,6 +83,7 @@ const mainNavigation = [
   { name: "Forecasting", href: "/forecasting", icon: LineChart },
   { name: "Risk Monitor", href: "/risk", icon: ShieldCheck },
   { name: "Injury Cases", href: "/injury", icon: HeartPulse },
+  { name: "PI Medical", href: "/pi-medical", icon: HeartPulse },
   { name: "Payments", href: "/payments", icon: CreditCard },
   { name: "Financing", href: "/financing", icon: Wallet },
   { name: "Collections", href: "/collections", icon: Banknote },

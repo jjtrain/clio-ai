@@ -5585,3 +5585,211 @@ model ReferralContact {
   @@index([relationship])
   @@index([isActive])
 }
+
+// ============================================
+// PI MEDICAL INTEGRATIONS
+// ============================================
+
+model PImedIntegration {
+  id                    String    @id @default(cuid())
+  provider              String    @unique
+  isEnabled             Boolean   @default(false)
+  displayName           String
+  apiKey                String?
+  apiSecret             String?
+  baseUrl               String?
+  accountId             String?
+  firmId                String?
+  webhookUrl            String?
+  webhookSecret         String?
+  defaultContactMethod  String?
+  autoAttachToMatter    Boolean   @default(true)
+  autoCreateChronology  Boolean   @default(true)
+  settings              String?   @db.Text
+  lastSyncAt            DateTime?
+  lastSyncStatus        String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model MedicalRecordRequest {
+  id                      String    @id @default(cuid())
+  provider                String
+  externalRequestId       String?
+  matterId                String
+  clientId                String
+  patientName             String
+  patientDOB              DateTime?
+  providerName            String
+  providerType            String    @default("PHYSICIAN")
+  providerAddress         String?   @db.Text
+  providerPhone           String?
+  providerFax             String?
+  recordType              String    @default("ALL_RECORDS")
+  dateRangeStart          DateTime?
+  dateRangeEnd            DateTime?
+  requestMethod           String    @default("FAX")
+  status                  String    @default("DRAFT")
+  authorizationDocId      String?
+  authorizationSentDate   DateTime?
+  submittedDate           DateTime?
+  acknowledgedDate        DateTime?
+  estimatedCompletionDate DateTime?
+  receivedDate            DateTime?
+  receivedDocumentIds     String?   @db.Text
+  pageCount               Int?
+  isCertified             Boolean   @default(false)
+  cost                    Decimal?  @db.Decimal(10, 2)
+  rushRequested           Boolean   @default(false)
+  rushFee                 Decimal?  @db.Decimal(10, 2)
+  followUpCount           Int       @default(0)
+  lastFollowUpDate        DateTime?
+  nextFollowUpDate        DateTime?
+  followUpLog             String?   @db.Text
+  rejectionReason         String?
+  assignedTo              String?
+  notes                   String?   @db.Text
+  rawPayload              String?   @db.Text
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([provider])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([providerName])
+  @@index([status])
+}
+
+model MedicalBill {
+  id                  String    @id @default(cuid())
+  matterId            String
+  clientId            String
+  recordRequestId     String?
+  providerName        String
+  providerType        String    @default("PHYSICIAN")
+  serviceDate         DateTime?
+  description         String
+  cptCode             String?
+  icdCodes            String?   @db.Text
+  chargedAmount       Decimal   @db.Decimal(12, 2)
+  adjustments         Decimal   @default(0) @db.Decimal(12, 2)
+  insurancePaid       Decimal   @default(0) @db.Decimal(12, 2)
+  patientPaid         Decimal   @default(0) @db.Decimal(12, 2)
+  outstandingBalance  Decimal   @default(0) @db.Decimal(12, 2)
+  lienAmount          Decimal?  @db.Decimal(12, 2)
+  lienType            String?
+  lienStatus          String?
+  negotiatedAmount    Decimal?  @db.Decimal(12, 2)
+  lienHolderName      String?
+  isPaid              Boolean   @default(false)
+  documentId          String?
+  isVerified          Boolean   @default(false)
+  notes               String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([matterId])
+  @@index([providerName])
+  @@index([serviceDate])
+  @@index([lienType])
+}
+
+model MedicalChronology {
+  id                String    @id @default(cuid())
+  matterId          String
+  clientId          String
+  title             String    @default("Medical Chronology")
+  status            String    @default("DRAFT")
+  entries           String    @db.Text
+  gapAnalysis       String?   @db.Text
+  aiSummary         String?   @db.Text
+  aiCausation       String?   @db.Text
+  totalProviders    Int       @default(0)
+  totalVisits       Int       @default(0)
+  dateRangeStart    DateTime?
+  dateRangeEnd      DateTime?
+  lastUpdated       DateTime
+  documentId        String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([matterId])
+  @@index([status])
+}
+
+model DemandPackage {
+  id                      String    @id @default(cuid())
+  provider                String?
+  externalDemandId        String?
+  matterId                String
+  clientId                String
+  insurerName             String
+  insurerAddress          String?   @db.Text
+  adjustorName            String?
+  adjustorEmail           String?
+  claimNumber             String?
+  policyNumber            String?
+  policyLimits            Decimal?  @db.Decimal(14, 2)
+  status                  String    @default("DRAFT")
+  demandAmount            Decimal?  @db.Decimal(14, 2)
+  counterOfferAmount      Decimal?  @db.Decimal(14, 2)
+  settlementAmount        Decimal?  @db.Decimal(14, 2)
+  incidentDate            DateTime?
+  incidentDescription     String?   @db.Text
+  liabilityTheory         String?   @db.Text
+  injuryDescription       String?   @db.Text
+  treatmentSummary        String?   @db.Text
+  painAndSufferingNarrative String? @db.Text
+  lostWages               Decimal?  @db.Decimal(12, 2)
+  futureLostEarnings      Decimal?  @db.Decimal(12, 2)
+  specialDamagesTotal     Decimal?  @db.Decimal(14, 2)
+  generalDamagesTotal     Decimal?  @db.Decimal(14, 2)
+  totalDamages            Decimal?  @db.Decimal(14, 2)
+  multiplier              Decimal?  @db.Decimal(4, 2)
+  demandLetterDocId       String?
+  demandPackageDocId      String?
+  supportingDocIds        String?   @db.Text
+  chronologyId            String?
+  deliveryMethod          String?
+  sentDate                DateTime?
+  responseDeadline        DateTime?
+  negotiationLog          String?   @db.Text
+  notes                   String?   @db.Text
+  rawPayload              String?   @db.Text
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([matterId])
+  @@index([status])
+  @@index([insurerName])
+}
+
+model ProviderDirectory {
+  id                      String    @id @default(cuid())
+  name                    String
+  providerType            String
+  specialty               String?
+  address                 String?   @db.Text
+  city                    String?
+  state                   String?
+  zip                     String?
+  phone                   String?
+  fax                     String?
+  email                   String?
+  portalUrl               String?
+  preferredRequestMethod  String?
+  averageResponseDays     Int?
+  averageCost             Decimal?  @db.Decimal(8, 2)
+  contactPerson           String?
+  notes                   String?   @db.Text
+  lastUsed                DateTime?
+  timesUsed               Int       @default(0)
+  isActive                Boolean   @default(true)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([name])
+  @@index([providerType])
+  @@index([city])
+  @@index([state])
+}
