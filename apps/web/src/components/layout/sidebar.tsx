@@ -53,6 +53,7 @@ import {
   ScanEye,
   Banknote,
   Headphones,
+  Contact,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -99,6 +100,7 @@ const mainNavigation = [
   { name: "Client Portal", href: "/client-portal", icon: UserCircle },
   { name: "Text Messaging", href: "/messaging", icon: MessageSquare },
   { name: "Communications", href: "/communications", icon: Headphones },
+  { name: "CRM & Intake", href: "/crm", icon: Contact },
 ];
 
 const bottomNavigation = [

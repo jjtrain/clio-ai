@@ -4512,3 +4512,134 @@ model ReceptionistScreeningRule {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
+
+// ============================================
+// CRM & INTAKE INTEGRATIONS
+// ============================================
+
+model CrmIntakeIntegration {
+  id              String    @id @default(cuid())
+  provider        String    @unique
+  isEnabled       Boolean   @default(false)
+  displayName     String
+  apiKey          String?
+  apiSecret       String?
+  baseUrl         String?
+  accountId       String?
+  portalId        String?
+  accessToken     String?   @db.Text
+  refreshToken    String?   @db.Text
+  tokenExpiresAt  DateTime?
+  webhookUrl      String?
+  webhookSecret   String?
+  syncDirection   String    @default("BIDIRECTIONAL")
+  autoCreateLeads Boolean   @default(true)
+  autoCreateMatters Boolean @default(false)
+  fieldMappings   String?   @db.Text
+  settings        String?   @db.Text
+  lastSyncAt      DateTime?
+  lastSyncStatus  String?
+  lastSyncError   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model ExternalContact {
+  id            String    @id @default(cuid())
+  provider      String
+  externalId    String
+  clientId      String?
+  leadId        String?
+  firstName     String?
+  lastName      String?
+  email         String?
+  phone         String?
+  company       String?
+  source        String?
+  status        String?
+  tags          String?   @db.Text
+  customFields  String?   @db.Text
+  lastSyncedAt  DateTime?
+  syncStatus    String    @default("PENDING")
+  syncError     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([provider, externalId])
+  @@index([clientId])
+  @@index([leadId])
+  @@index([email])
+  @@index([syncStatus])
+}
+
+model ExternalFormSubmission {
+  id                    String    @id @default(cuid())
+  provider              String
+  externalFormId        String?
+  externalSubmissionId  String?
+  formName              String
+  submittedAt           DateTime
+  respondentName        String?
+  respondentEmail       String?
+  respondentPhone       String?
+  fields                String    @db.Text
+  mappedToLeadId        String?
+  mappedToIntakeId      String?
+  processingStatus      String    @default("RECEIVED")
+  processingError       String?
+  rawPayload            String?   @db.Text
+  createdAt             DateTime  @default(now())
+
+  @@index([provider])
+  @@index([externalFormId])
+  @@index([processingStatus])
+  @@index([submittedAt])
+}
+
+model ExternalPipeline {
+  id                  String    @id @default(cuid())
+  provider            String
+  externalPipelineId  String?
+  name                String
+  stages              String    @db.Text
+  isActive            Boolean   @default(true)
+  lastSyncedAt        DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model ExternalActivity {
+  id                String    @id @default(cuid())
+  provider          String
+  externalContactId String?
+  clientId          String?
+  leadId            String?
+  activityType      String
+  description       String
+  metadata          String?   @db.Text
+  occurredAt        DateTime
+  createdAt         DateTime  @default(now())
+
+  @@index([provider])
+  @@index([clientId])
+  @@index([leadId])
+  @@index([activityType])
+  @@index([occurredAt])
+}
+
+model FormFieldMapping {
+  id              String    @id @default(cuid())
+  provider        String
+  externalFormId  String
+  formName        String
+  mappings        String    @db.Text
+  autoCreateLead  Boolean   @default(true)
+  leadSource      String    @default("Web Form")
+  assignTo        String?
+  notifyEmail     String?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([provider, externalFormId])
+}
