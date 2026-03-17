@@ -4134,3 +4134,163 @@ enum MedilenzStatus {
   REVIEWED
   FLAGGED
 }
+
+// ============================================
+// COLLECTIONS MODULE
+// ============================================
+
+model CollectionSettings {
+  id                        String       @id @default("default")
+  autoReminderEnabled       Boolean      @default(true)
+  reminderSchedule          String       @default("7,14,30,60,90")
+  escalationThreshold       Int          @default(60)
+  lateFeePolicyEnabled      Boolean      @default(false)
+  lateFeeType               String?
+  lateFeeAmount             Decimal?     @db.Decimal(10, 2)
+  lateFeeGracePeriod        Int          @default(0)
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
+}
+
+model CollectionAccount {
+  id                  String           @id @default(cuid())
+  invoiceId           String           @unique
+  matterId            String
+  clientId            String
+  originalAmount      Decimal          @db.Decimal(12, 2)
+  outstandingBalance  Decimal          @db.Decimal(12, 2)
+  lateFees            Decimal          @default(0) @db.Decimal(10, 2)
+  totalOwed           Decimal          @db.Decimal(12, 2)
+  dueDate             DateTime
+  daysPastDue         Int
+  agingBucket         String           @default("CURRENT")
+  status              String           @default("OPEN")
+  priority            String           @default("LOW")
+  lastContactDate     DateTime?
+  lastContactMethod   String?
+  lastReminderSent    DateTime?
+  reminderCount       Int              @default(0)
+  nextReminderDate    DateTime?
+  externalCollectionId String?
+  externalProvider    String?
+  sentToCollectionAt  DateTime?
+  notes               String?          @db.Text
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  activities          CollectionActivity[]
+  collboxAccount      CollBoxAccount?
+  sherpaAccount       InvoiceSherpaAccount?
+
+  @@index([clientId])
+  @@index([status])
+  @@index([agingBucket])
+  @@index([daysPastDue])
+  @@index([priority])
+}
+
+model CollectionActivity {
+  id              String   @id @default(cuid())
+  accountId       String
+  account         CollectionAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  activityType    String
+  description     String
+  amount          Decimal? @db.Decimal(10, 2)
+  performedBy     String?
+  contactMethod   String?
+  emailSent       Boolean  @default(false)
+  smsSent         Boolean  @default(false)
+  notes           String?  @db.Text
+  metadata        String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  @@index([accountId])
+}
+
+model CollBoxSettings {
+  id                  String   @id @default("default")
+  isEnabled           Boolean  @default(false)
+  apiKey              String?
+  apiSecret           String?
+  baseUrl             String?  @default("https://api.collbox.co/v1")
+  firmId              String?
+  autoSendThreshold   Int?
+  minimumAmount       Decimal? @db.Decimal(10, 2) @default(500)
+  commissionRate      Decimal? @db.Decimal(5, 4)
+  preserveRelationship Boolean @default(true)
+  webhookUrl          String?
+  webhookSecret       String?
+  lastSyncAt          DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model CollBoxAccount {
+  id                  String            @id @default(cuid())
+  collectionAccountId String            @unique
+  collectionAccount   CollectionAccount @relation(fields: [collectionAccountId], references: [id], onDelete: Cascade)
+  collboxClaimId      String?
+  collboxStatus       String?
+  debtorName          String
+  debtorEmail         String?
+  debtorPhone         String?
+  originalBalance     Decimal           @db.Decimal(12, 2)
+  amountRecovered     Decimal           @default(0) @db.Decimal(12, 2)
+  commissionCharged   Decimal           @default(0) @db.Decimal(10, 2)
+  netRecovered        Decimal           @default(0) @db.Decimal(12, 2)
+  submittedAt         DateTime?
+  lastUpdateAt        DateTime?
+  closedAt            DateTime?
+  closeReason         String?
+  communicationLog    String?           @db.Text
+  rawPayload          String?           @db.Text
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([collboxClaimId])
+  @@index([collboxStatus])
+}
+
+model InvoiceSherpaSettings {
+  id                  String   @id @default("default")
+  isEnabled           Boolean  @default(false)
+  apiKey              String?
+  baseUrl             String?  @default("https://api.invoicesherpa.com/v1")
+  firmId              String?
+  autoSyncInvoices    Boolean  @default(false)
+  sendInitialInvoice  Boolean  @default(true)
+  reminderEnabled     Boolean  @default(true)
+  reminderSchedule    String?
+  thankYouEnabled     Boolean  @default(true)
+  brandColor          String?
+  logoUrl             String?
+  webhookUrl          String?
+  webhookSecret       String?
+  lastSyncAt          DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model InvoiceSherpaAccount {
+  id                  String            @id @default(cuid())
+  collectionAccountId String?           @unique
+  collectionAccount   CollectionAccount? @relation(fields: [collectionAccountId], references: [id], onDelete: SetNull)
+  invoiceId           String
+  sherpaInvoiceId     String?
+  sherpaContactId     String?
+  syncStatus          String            @default("PENDING")
+  lastSynced          DateTime?
+  remindersSent       Int               @default(0)
+  lastReminderDate    DateTime?
+  nextReminderDate    DateTime?
+  paymentLinkUrl      String?
+  emailOpens          Int               @default(0)
+  emailClicks         Int               @default(0)
+  autopayEnabled      Boolean           @default(false)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([invoiceId])
+  @@index([sherpaInvoiceId])
+  @@index([syncStatus])
+}

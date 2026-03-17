@@ -51,6 +51,7 @@ import {
   Send,
   SearchCode,
   ScanEye,
+  Banknote,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -76,6 +77,7 @@ const mainNavigation = [
   { name: "Injury Cases", href: "/injury", icon: HeartPulse },
   { name: "Payments", href: "/payments", icon: CreditCard },
   { name: "Financing", href: "/financing", icon: Wallet },
+  { name: "Collections", href: "/collections", icon: Banknote },
   { name: "Approvals", href: "/approvals", icon: ClipboardCheck },
   { name: "Accounting", href: "/accounting", icon: Calculator },
   { name: "Integrations", href: "/integrations", icon: Plug },
