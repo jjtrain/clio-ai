@@ -48,6 +48,8 @@ import {
   Gavel,
   FileQuestion,
   Heart,
+  Send,
+  SearchCode,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -79,6 +81,8 @@ const mainNavigation = [
   { name: "Docketing", href: "/docketing", icon: Gavel },
   { name: "Discovery", href: "/discovery", icon: FileQuestion },
   { name: "Family Law", href: "/family", icon: Heart },
+  { name: "Filing & Service", href: "/filing", icon: Send },
+  { name: "Docket Search", href: "/docket-search", icon: SearchCode },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Campaigns", href: "/campaigns", icon: Mail },
   { name: "Website", href: "/website", icon: Globe },

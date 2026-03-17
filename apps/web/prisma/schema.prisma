@@ -3742,6 +3742,12 @@ enum LegalToolProvider {
   VERA
   BRIEFPOINT
   CUSTOM
+  CLEARBRIEF
+  DEFINELY
+  MEDILENZ
+  GAVEL
+  INFOTRACK
+  DOCKETBIRD
 }
 
 enum DocketAlertType {
@@ -3913,4 +3919,218 @@ enum OFWReimbursementStatus {
   DENIED
   PAID
   DISPUTED
+}
+
+// ============================================
+// DOCUMENT REVIEW & LEGAL TOOL INTEGRATIONS
+// ============================================
+
+model DocToolIntegration {
+  id               String          @id @default(cuid())
+  provider         DocToolProvider @unique
+  isEnabled        Boolean         @default(false)
+  displayName      String
+  apiKey           String?
+  apiSecret        String?
+  baseUrl          String?
+  accountId        String?
+  subscriptionTier String?
+  settings         String?         @db.Text
+  lastSyncAt       DateTime?
+  lastSyncStatus   String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model ClearBriefReview {
+  id                  String              @id @default(cuid())
+  matterId            String
+  documentId          String?
+  briefType           String
+  citationsFound      Int                 @default(0)
+  citationsVerified   Int                 @default(0)
+  citationsFlagged    Int                 @default(0)
+  suggestedCitations  Int                 @default(0)
+  factCheckResults    String?             @db.Text
+  citationReport      String?             @db.Text
+  suggestedAuthorities String?            @db.Text
+  processingStatus    DocProcessingStatus @default(QUEUED)
+  completedAt         DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+}
+
+model DefinelyReview {
+  id                String              @id @default(cuid())
+  matterId          String
+  documentId        String?
+  termsExtracted    Int                 @default(0)
+  definitionsFound  Int                 @default(0)
+  undefinedTerms    Int                 @default(0)
+  inconsistencies   Int                 @default(0)
+  crossReferences   Int                 @default(0)
+  termsReport       String?             @db.Text
+  crossRefReport    String?             @db.Text
+  readabilityReport String?             @db.Text
+  numbering         String?             @db.Text
+  processingStatus  DocProcessingStatus @default(QUEUED)
+  completedAt       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+}
+
+model MedilenzRecord {
+  id                  String          @id @default(cuid())
+  matterId            String
+  medilenzCaseId      String?
+  patientName         String
+  recordType          String
+  provider            String
+  dateOfService       DateTime?
+  dateRangeStart      DateTime?
+  dateRangeEnd        DateTime?
+  status              MedilenzStatus  @default(REQUESTED)
+  pageCount           Int?
+  originalDocumentId  String?
+  summaryDocumentId   String?
+  aiSummary           String?         @db.Text
+  keyFindings         String?         @db.Text
+  diagnoses           String?         @db.Text
+  treatments          String?         @db.Text
+  medications         String?         @db.Text
+  chronology          String?         @db.Text
+  costToDate          Decimal?        @db.Decimal(10, 2)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([matterId])
+  @@index([status])
+  @@index([patientName])
+}
+
+model GavelTemplate {
+  id              String            @id @default(cuid())
+  gavelTemplateId String?
+  name            String
+  description     String?
+  category        String?
+  practiceArea    String?
+  templateType    String
+  gavelUrl        String?
+  fieldMappings   String?           @db.Text
+  isActive        Boolean           @default(true)
+  lastUsedAt      DateTime?
+  usageCount      Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  documents       GavelDocument[]
+}
+
+model GavelDocument {
+  id                String        @id @default(cuid())
+  templateId        String
+  template          GavelTemplate @relation(fields: [templateId], references: [id])
+  matterId          String
+  documentId        String?
+  gavelDocumentId   String?
+  title             String
+  status            String        @default("DRAFT")
+  fieldValues       String?       @db.Text
+  generatedUrl      String?
+  signatureRequestId String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model InfoTrackFiling {
+  id                  String          @id @default(cuid())
+  matterId            String
+  infotrackOrderId    String?
+  filingType          String
+  court               String?
+  caseNumber          String?
+  jurisdiction        String?
+  description         String
+  status              String          @default("DRAFT")
+  documentIds         String?         @db.Text
+  filingDate          DateTime?
+  servedDate          DateTime?
+  serviceMethod       String?
+  recipientName       String?
+  recipientAddress    String?         @db.Text
+  proofOfServiceUrl   String?
+  cost                Decimal?        @db.Decimal(10, 2)
+  courtFee            Decimal?        @db.Decimal(10, 2)
+  serviceFee          Decimal?        @db.Decimal(10, 2)
+  confirmationNumber  String?
+  rejectionReason     String?
+  trackingUrl         String?
+  notes               String?         @db.Text
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([matterId])
+  @@index([status])
+  @@index([filingType])
+}
+
+model DocketbirdSearch {
+  id              String    @id @default(cuid())
+  matterId        String?
+  searchType      String
+  query           String
+  jurisdiction    String?
+  court           String?
+  results         String?   @db.Text
+  resultCount     Int       @default(0)
+  selectedCaseId  String?
+  caseDetail      String?   @db.Text
+  docketEntries   String?   @db.Text
+  createdAt       DateTime  @default(now())
+
+  @@index([matterId])
+  @@index([searchType])
+}
+
+model DraftTemplate {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  category        String
+  practiceArea    String?
+  documentType    String
+  templateContent String    @db.Text
+  variables       String    @db.Text
+  aiPrompt        String?   @db.Text
+  isSystem        Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  usageCount      Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+enum DocToolProvider {
+  CLEARBRIEF
+  DEFINELY
+  MEDILENZ
+  GAVEL
+  INFOTRACK
+  DOCKETBIRD
+}
+
+enum DocProcessingStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum MedilenzStatus {
+  REQUESTED
+  RECEIVED
+  PROCESSING
+  SUMMARIZED
+  REVIEWED
+  FLAGGED
 }
