@@ -54,6 +54,7 @@ import {
   Banknote,
   Headphones,
   Contact,
+  Megaphone,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -101,6 +102,7 @@ const mainNavigation = [
   { name: "Text Messaging", href: "/messaging", icon: MessageSquare },
   { name: "Communications", href: "/communications", icon: Headphones },
   { name: "CRM & Intake", href: "/crm", icon: Contact },
+  { name: "Reviews", href: "/marketing/reviews", icon: Megaphone },
 ];
 
 const bottomNavigation = [

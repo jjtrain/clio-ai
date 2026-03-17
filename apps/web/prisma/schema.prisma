@@ -4643,3 +4643,197 @@ model FormFieldMapping {
 
   @@unique([provider, externalFormId])
 }
+
+// ============================================
+// MARKETING & REVIEWS
+// ============================================
+
+model MarketingIntegration {
+  id              String    @id @default(cuid())
+  provider        String    @unique
+  isEnabled       Boolean   @default(false)
+  displayName     String
+  apiKey          String?
+  apiSecret       String?
+  baseUrl         String?
+  accountId       String?
+  accessToken     String?   @db.Text
+  refreshToken    String?   @db.Text
+  tokenExpiresAt  DateTime?
+  dataCenter      String?
+  businessId      String?
+  locationIds     String?   @db.Text
+  webhookUrl      String?
+  webhookSecret   String?
+  autoSyncContacts Boolean  @default(false)
+  syncContactList String?
+  settings        String?   @db.Text
+  lastSyncAt      DateTime?
+  lastSyncStatus  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model EmailList {
+  id              String    @id @default(cuid())
+  provider        String
+  externalListId  String
+  name            String
+  description     String?
+  memberCount     Int       @default(0)
+  unsubscribeCount Int      @default(0)
+  syncedWithClioAI Boolean  @default(false)
+  syncSource      String?
+  lastSyncedAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([provider, externalListId])
+}
+
+model EmailCampaignExternal {
+  id                  String    @id @default(cuid())
+  provider            String
+  externalCampaignId  String
+  internalCampaignId  String?
+  name                String
+  subject             String?
+  status              String    @default("draft")
+  listId              String?
+  sentAt              DateTime?
+  stats_sent          Int       @default(0)
+  stats_delivered     Int       @default(0)
+  stats_opens         Int       @default(0)
+  stats_uniqueOpens   Int       @default(0)
+  stats_clicks        Int       @default(0)
+  stats_uniqueClicks  Int       @default(0)
+  stats_unsubscribes  Int       @default(0)
+  stats_bounces       Int       @default(0)
+  openRate            Decimal?  @db.Decimal(5, 4)
+  clickRate           Decimal?  @db.Decimal(5, 4)
+  previewUrl          String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([provider])
+  @@index([status])
+  @@index([sentAt])
+}
+
+model EmailSubscriber {
+  id                    String    @id @default(cuid())
+  provider              String
+  externalSubscriberId  String?
+  listId                String?
+  clientId              String?
+  leadId                String?
+  email                 String
+  firstName             String?
+  lastName              String?
+  status                String    @default("SUBSCRIBED")
+  tags                  String?   @db.Text
+  mergeFields           String?   @db.Text
+  lastActivityAt        DateTime?
+  subscribedAt          DateTime?
+  unsubscribedAt        DateTime?
+  lastSyncedAt          DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([provider])
+  @@index([email])
+  @@index([clientId])
+  @@index([status])
+}
+
+model ReviewPlatform {
+  id                String    @id @default(cuid())
+  provider          String
+  platform          String
+  externalPlatformId String?
+  profileUrl        String?
+  isActive          Boolean   @default(true)
+  totalReviews      Int       @default(0)
+  averageRating     Decimal?  @db.Decimal(3, 2)
+  lastCheckedAt     DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  reviews           ReviewRecord[]
+
+  @@index([provider])
+  @@index([platform])
+}
+
+model ReviewRecord {
+  id                String    @id @default(cuid())
+  provider          String
+  platformId        String
+  platformRef       ReviewPlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  externalReviewId  String?
+  platform          String
+  reviewerName      String?
+  rating            Int
+  title             String?
+  content           String?   @db.Text
+  reviewDate        DateTime
+  responseText      String?   @db.Text
+  responseDate      DateTime?
+  respondedBy       String?
+  status            String    @default("NEW")
+  sentiment         String    @default("NEUTRAL")
+  matterId          String?
+  clientId          String?
+  tags              String?   @db.Text
+  rawPayload        String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([provider])
+  @@index([platform])
+  @@index([rating])
+  @@index([status])
+  @@index([sentiment])
+  @@index([reviewDate])
+}
+
+model ReviewRequest {
+  id            String    @id @default(cuid())
+  provider      String
+  clientId      String
+  matterId      String?
+  email         String
+  phone         String?
+  platform      String
+  status        String    @default("PENDING")
+  sentAt        DateTime?
+  sentVia       String?
+  openedAt      DateTime?
+  completedAt   DateTime?
+  reviewId      String?
+  followUpCount Int       @default(0)
+  lastFollowUpAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+  @@index([platform])
+}
+
+model WebsiteAnalytics {
+  id                String    @id @default(cuid())
+  date              DateTime
+  sessions          Int       @default(0)
+  uniqueVisitors    Int       @default(0)
+  pageViews         Int       @default(0)
+  bounceRate        Decimal?  @db.Decimal(5, 4)
+  avgSessionDuration Int?
+  topPages          String?   @db.Text
+  trafficSources    String?   @db.Text
+  conversions       Int       @default(0)
+  leadsGenerated    Int       @default(0)
+  callsFromWebsite  Int       @default(0)
+  formSubmissions   Int       @default(0)
+  createdAt         DateTime  @default(now())
+}

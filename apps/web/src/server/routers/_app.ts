@@ -49,6 +49,7 @@ import { docToolsRouter } from "./docTools";
 import { collectionsRouter } from "./collections";
 import { communicationsRouter } from "./communications";
 import { crmIntakeRouter } from "./crmIntake";
+import { marketingRouter } from "./marketing";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -101,6 +102,7 @@ export const appRouter = router({
   collections: collectionsRouter,
   communications: communicationsRouter,
   crmIntake: crmIntakeRouter,
+  marketing: marketingRouter,
 });
 
 export type AppRouter = typeof appRouter;
