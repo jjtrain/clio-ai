@@ -47,6 +47,7 @@ import { legalToolsRouter } from "./legalTools";
 import { familyLawRouter } from "./familyLaw";
 import { docToolsRouter } from "./docTools";
 import { collectionsRouter } from "./collections";
+import { communicationsRouter } from "./communications";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -97,6 +98,7 @@ export const appRouter = router({
   familyLaw: familyLawRouter,
   docTools: docToolsRouter,
   collections: collectionsRouter,
+  communications: communicationsRouter,
 });
 
 export type AppRouter = typeof appRouter;

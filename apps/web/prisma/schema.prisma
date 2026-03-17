@@ -4294,3 +4294,221 @@ model InvoiceSherpaAccount {
   @@index([sherpaInvoiceId])
   @@index([syncStatus])
 }
+
+// ============================================
+// COMMUNICATIONS & VIRTUAL RECEPTION
+// ============================================
+
+model CommIntegration {
+  id            String          @id @default(cuid())
+  provider      String          @unique
+  isEnabled     Boolean         @default(false)
+  displayName   String
+  apiKey        String?
+  apiSecret     String?
+  baseUrl       String?
+  accountId     String?
+  phoneNumber   String?
+  webhookUrl    String?
+  webhookSecret String?
+  settings      String?         @db.Text
+  lastSyncAt    DateTime?
+  lastSyncStatus String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model CallRecord {
+  id                String    @id @default(cuid())
+  provider          String
+  externalCallId    String?
+  matterId          String?
+  clientId          String?
+  leadId            String?
+  direction         String    @default("INBOUND")
+  callerName        String?
+  callerPhone       String?
+  callerEmail       String?
+  recipientName     String?
+  recipientPhone    String?
+  status            String    @default("ANSWERED")
+  disposition       String?
+  duration          Int?
+  startedAt         DateTime
+  endedAt           DateTime?
+  recordingUrl      String?
+  transcription     String?   @db.Text
+  summary           String?   @db.Text
+  isUrgent          Boolean   @default(false)
+  urgentReason      String?
+  actionRequired    Boolean   @default(false)
+  actionDescription String?
+  actionCompletedAt DateTime?
+  intakeCompleted   Boolean   @default(false)
+  appointmentBooked Boolean   @default(false)
+  tags              String?   @db.Text
+  rawPayload        String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([provider])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([callerPhone])
+  @@index([status])
+  @@index([disposition])
+  @@index([startedAt])
+  @@index([isUrgent])
+  @@index([actionRequired])
+}
+
+model ChatConversation {
+  id            String    @id @default(cuid())
+  provider      String
+  externalChatId String?
+  matterId      String?
+  clientId      String?
+  leadId        String?
+  visitorName   String?
+  visitorEmail  String?
+  visitorPhone  String?
+  channel       String    @default("WEB_CHAT")
+  status        String    @default("ACTIVE")
+  startedAt     DateTime
+  endedAt       DateTime?
+  messageCount  Int       @default(0)
+  isHandedOff   Boolean   @default(false)
+  handedOffAt   DateTime?
+  handedOffTo   String?
+  outcome       String?
+  summary       String?   @db.Text
+  sentiment     String?
+  tags          String?   @db.Text
+  rawPayload    String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  messages      ChatMsg[]
+
+  @@index([provider])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([channel])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model ChatMsg {
+  id              String           @id @default(cuid())
+  conversationId  String
+  conversation    ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          String           @default("VISITOR")
+  senderName      String?
+  content         String           @db.Text
+  timestamp       DateTime
+  isRead          Boolean          @default(false)
+  attachmentUrls  String?          @db.Text
+  createdAt       DateTime         @default(now())
+
+  @@index([conversationId])
+}
+
+model ClientPortalConnection {
+  id                     String    @id @default(cuid())
+  provider               String
+  matterId               String
+  clientId               String
+  externalCaseId         String?
+  portalUrl              String?
+  status                 String    @default("ACTIVE")
+  lastActivityAt         DateTime?
+  automatedUpdatesEnabled Boolean  @default(true)
+  updateFrequency        String?
+  lastUpdateSent         DateTime?
+  clientSatisfactionScore Decimal? @db.Decimal(3, 2)
+  feedbackCount          Int       @default(0)
+  messageCount           Int       @default(0)
+  documentSharedCount    Int       @default(0)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([provider])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([status])
+}
+
+model SecureMessage {
+  id               String    @id @default(cuid())
+  provider         String    @default("PRIVILEGE_LAW")
+  matterId         String?
+  clientId         String
+  externalThreadId String?
+  direction        String    @default("TO_CLIENT")
+  subject          String?
+  body             String    @db.Text
+  isEncrypted      Boolean   @default(true)
+  isRead           Boolean   @default(false)
+  readAt           DateTime?
+  attachmentUrls   String?   @db.Text
+  expiresAt        DateTime?
+  sentAt           DateTime
+  createdAt        DateTime  @default(now())
+
+  @@index([clientId])
+  @@index([matterId])
+  @@index([direction])
+  @@index([isRead])
+  @@index([sentAt])
+}
+
+model VoIPCall {
+  id              String    @id @default(cuid())
+  provider        String    @default("DIALPAD")
+  dialpadCallId   String?
+  matterId        String?
+  clientId        String?
+  direction       String    @default("INBOUND")
+  fromNumber      String
+  toNumber        String
+  fromName        String?
+  status          String    @default("COMPLETED")
+  duration        Int?
+  startedAt       DateTime
+  answeredAt      DateTime?
+  endedAt         DateTime?
+  recordingUrl    String?
+  transcription   String?   @db.Text
+  aiSummary       String?   @db.Text
+  aiActionItems   String?   @db.Text
+  aiSentiment     String?
+  voicemailUrl    String?
+  voicemailTranscription String?
+  department      String?
+  assignedTo      String?
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([matterId])
+  @@index([clientId])
+  @@index([fromNumber])
+  @@index([toNumber])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model ReceptionistScreeningRule {
+  id          String    @id @default(cuid())
+  provider    String
+  ruleType    String
+  name        String
+  description String?
+  conditions  String    @db.Text
+  action      String
+  transferTo  String?
+  priority    Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
