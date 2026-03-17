@@ -54,6 +54,7 @@ import { schedulingExtRouter } from "./scheduling-ext";
 import { timeTrackingRouter } from "./timeTracking";
 import { processServingRouter } from "./processServing";
 import { documentStorageRouter } from "./documentStorage";
+import { referralsRouter } from "./referrals";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -111,6 +112,7 @@ export const appRouter = router({
   timeTracking: timeTrackingRouter,
   processServing: processServingRouter,
   documentStorage: documentStorageRouter,
+  referrals: referralsRouter,
 });
 
 export type AppRouter = typeof appRouter;

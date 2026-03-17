@@ -5411,3 +5411,177 @@ model MatterFolderTemplate {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
+
+// ============================================
+// REFERRALS & CASE SHARING
+// ============================================
+
+model ReferralIntegration {
+  id                    String    @id @default(cuid())
+  provider              String    @unique
+  isEnabled             Boolean   @default(false)
+  displayName           String
+  apiKey                String?
+  apiSecret             String?
+  baseUrl               String?
+  accountId             String?
+  firmProfileId         String?
+  webhookUrl            String?
+  webhookSecret         String?
+  autoNotifyOnReferral  Boolean   @default(true)
+  defaultReferralFee    Decimal?  @db.Decimal(5, 4)
+  practiceAreas         String?   @db.Text
+  jurisdictions         String?   @db.Text
+  settings              String?   @db.Text
+  lastSyncAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Referral {
+  id                        String    @id @default(cuid())
+  provider                  String?
+  externalReferralId        String?
+  direction                 String    @default("INBOUND")
+  status                    String    @default("DRAFT")
+  matterId                  String?
+  clientId                  String?
+  leadId                    String?
+  referringAttorneyName     String?
+  referringAttorneyEmail    String?
+  referringFirmName         String?
+  receivingAttorneyName     String?
+  receivingAttorneyEmail    String?
+  receivingFirmName         String?
+  clientName                String
+  clientEmail               String?
+  clientPhone               String?
+  caseType                  String?
+  caseDescription           String?   @db.Text
+  jurisdiction              String?
+  urgency                   String    @default("NORMAL")
+  conflictCheckCompleted    Boolean   @default(false)
+  conflictCheckResult       String?
+  referralFeeType           String?
+  referralFeePercentage     Decimal?  @db.Decimal(5, 4)
+  referralFeeFlat           Decimal?  @db.Decimal(10, 2)
+  referralFeeAgreed         Boolean   @default(false)
+  referralAgreementDocId    String?
+  estimatedCaseValue        Decimal?  @db.Decimal(14, 2)
+  estimatedFeeAmount        Decimal?  @db.Decimal(12, 2)
+  actualFeeAmount           Decimal?  @db.Decimal(12, 2)
+  feePaidAmount             Decimal?  @db.Decimal(12, 2)
+  feePaidDate               DateTime?
+  documents                 String?   @db.Text
+  notes                     String?   @db.Text
+  declineReason             String?
+  sentAt                    DateTime?
+  receivedAt                DateTime?
+  acceptedAt                DateTime?
+  completedAt               DateTime?
+  expiresAt                 DateTime?
+  followUpDate              DateTime?
+  lastActivityAt            DateTime?
+  rawPayload                String?   @db.Text
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  activities                ReferralActivity[]
+
+  @@index([direction])
+  @@index([status])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([caseType])
+  @@index([createdAt])
+}
+
+model ReferralActivity {
+  id            String    @id @default(cuid())
+  referralId    String
+  referral      Referral  @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  activityType  String
+  description   String
+  performedBy   String?
+  metadata      String?   @db.Text
+  createdAt     DateTime  @default(now())
+
+  @@index([referralId])
+  @@index([activityType])
+}
+
+model AppearanceRequest {
+  id                        String    @id @default(cuid())
+  provider                  String    @default("APPEARME")
+  externalRequestId         String?
+  matterId                  String
+  clientId                  String?
+  requestType               String    @default("COURT_APPEARANCE")
+  status                    String    @default("DRAFT")
+  courtName                 String?
+  courtAddress              String?
+  courtroom                 String?
+  caseNumber                String?
+  judgeName                 String?
+  eventDate                 DateTime
+  eventTime                 String?
+  estimatedDuration         Int?
+  actualDuration            Int?
+  practiceArea              String
+  jurisdiction              String
+  caseDescription           String    @db.Text
+  specialInstructions       String?   @db.Text
+  documentIds               String?   @db.Text
+  urgency                   String    @default("STANDARD")
+  assignedAttorneyName      String?
+  assignedAttorneyEmail     String?
+  assignedAttorneyBarNumber String?
+  assignedAttorneyRating    Decimal?  @db.Decimal(3, 2)
+  budget                    Decimal?  @db.Decimal(10, 2)
+  agreedRate                Decimal?  @db.Decimal(10, 2)
+  rateType                  String?
+  totalCost                 Decimal?  @db.Decimal(10, 2)
+  paymentStatus             String?
+  reportText                String?   @db.Text
+  reportDocId               String?
+  rating                    Int?
+  ratingComment             String?
+  calendarEventId           String?
+  notes                     String?   @db.Text
+  rawPayload                String?   @db.Text
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@index([matterId])
+  @@index([status])
+  @@index([eventDate])
+  @@index([practiceArea])
+}
+
+model ReferralContact {
+  id                String    @id @default(cuid())
+  name              String
+  email             String?
+  phone             String?
+  firmName          String?
+  barNumber         String?
+  jurisdiction      String?
+  practiceAreas     String?   @db.Text
+  relationship      String    @default("REFERRAL_PARTNER")
+  source            String?
+  rating            Decimal?  @db.Decimal(3, 2)
+  referralsSent     Int       @default(0)
+  referralsReceived Int       @default(0)
+  totalFeesPaid     Decimal   @default(0) @db.Decimal(12, 2)
+  totalFeesReceived Decimal   @default(0) @db.Decimal(12, 2)
+  notes             String?   @db.Text
+  isActive          Boolean   @default(true)
+  lastReferralDate  DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([email])
+  @@index([firmName])
+  @@index([relationship])
+  @@index([isActive])
+}

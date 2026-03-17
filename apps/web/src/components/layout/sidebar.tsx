@@ -58,6 +58,7 @@ import {
   CalendarRange,
   Truck,
   FolderOpen,
+  Share2,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -106,6 +107,7 @@ const mainNavigation = [
   { name: "Client Portal", href: "/client-portal", icon: UserCircle },
   { name: "Text Messaging", href: "/messaging", icon: MessageSquare },
   { name: "Communications", href: "/communications", icon: Headphones },
+  { name: "Referrals", href: "/referrals", icon: Share2 },
   { name: "CRM & Intake", href: "/crm", icon: Contact },
   { name: "Reviews", href: "/marketing/reviews", icon: Megaphone },
   { name: "Scheduling", href: "/scheduling", icon: CalendarRange },
