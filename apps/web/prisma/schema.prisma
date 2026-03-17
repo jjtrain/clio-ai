@@ -5263,3 +5263,151 @@ model CourtReporterJob {
   @@index([jobType])
   @@index([deponentName])
 }
+
+// ============================================
+// DOCUMENT STORAGE INTEGRATIONS
+// ============================================
+
+model StorageIntegration {
+  id                  String    @id @default(cuid())
+  provider            String    @unique
+  isEnabled           Boolean   @default(false)
+  displayName         String
+  apiKey              String?
+  apiSecret           String?
+  accessToken         String?   @db.Text
+  refreshToken        String?   @db.Text
+  tokenExpiresAt      DateTime?
+  accountId           String?
+  accountEmail        String?
+  rootFolderId        String?
+  rootFolderPath      String?
+  autoSync            Boolean   @default(false)
+  syncDirection       String    @default("BIDIRECTIONAL")
+  folderStructure     String    @default("CLIENT_MATTER")
+  conflictResolution  String    @default("NEWEST_WINS")
+  fileTypesAllowed    String?   @db.Text
+  maxFileSizeMB       Int       @default(100)
+  webhookUrl          String?
+  webhookSecret       String?
+  webhookId           String?
+  lastSyncAt          DateTime?
+  lastSyncStatus      String?
+  lastSyncError       String?
+  settings            String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model StorageFolder {
+  id                String    @id @default(cuid())
+  provider          String
+  externalFolderId  String
+  externalPath      String?
+  name              String
+  parentFolderId    String?
+  matterId          String?
+  clientId          String?
+  folderType        String    @default("SUBFOLDER")
+  isAutoCreated     Boolean   @default(false)
+  lastSyncedAt      DateTime?
+  itemCount         Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([provider, externalFolderId])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([folderType])
+}
+
+model StorageFile {
+  id                String    @id @default(cuid())
+  provider          String
+  externalFileId    String
+  externalPath      String?
+  folderId          String?
+  documentId        String?
+  matterId          String?
+  clientId          String?
+  name              String
+  extension         String?
+  mimeType          String?
+  sizeBytes         BigInt    @default(0)
+  version           Int       @default(1)
+  versionHistory    String?   @db.Text
+  checksum          String?
+  isShared          Boolean   @default(false)
+  sharedWith        String?   @db.Text
+  sharedLink        String?
+  lastModifiedAt    DateTime?
+  lastModifiedBy    String?
+  lastSyncedAt      DateTime?
+  syncStatus        String    @default("SYNCED")
+  syncError         String?
+  previewUrl        String?
+  editUrl           String?
+  thumbnailUrl      String?
+  tags              String?   @db.Text
+  metadata          String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([provider, externalFileId])
+  @@index([documentId])
+  @@index([matterId])
+  @@index([folderId])
+  @@index([syncStatus])
+  @@index([name])
+}
+
+model StorageActivity {
+  id              String    @id @default(cuid())
+  provider        String
+  fileId          String?
+  folderId        String?
+  matterId        String?
+  activityType    String
+  description     String
+  performedBy     String?
+  performedByEmail String?
+  oldPath         String?
+  newPath         String?
+  metadata        String?   @db.Text
+  createdAt       DateTime  @default(now())
+
+  @@index([provider])
+  @@index([fileId])
+  @@index([matterId])
+  @@index([activityType])
+  @@index([createdAt])
+}
+
+model ShareLink {
+  id              String    @id @default(cuid())
+  provider        String
+  fileId          String?
+  folderId        String?
+  matterId        String?
+  url             String
+  permission      String    @default("VIEW")
+  password        String?
+  expiresAt       DateTime?
+  isActive        Boolean   @default(true)
+  accessCount     Int       @default(0)
+  lastAccessedAt  DateTime?
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model MatterFolderTemplate {
+  id            String    @id @default(cuid())
+  name          String
+  practiceArea  String?
+  subfolders    String    @db.Text
+  isDefault     Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}

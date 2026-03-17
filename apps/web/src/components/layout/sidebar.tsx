@@ -57,6 +57,7 @@ import {
   Megaphone,
   CalendarRange,
   Truck,
+  FolderOpen,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -68,6 +69,7 @@ const mainNavigation = [
   { name: "Billing", href: "/billing", icon: Receipt },
   { name: "Trust Accounting", href: "/trust", icon: Landmark },
   { name: "Documents", href: "/documents", icon: FileText },
+  { name: "Cloud Storage", href: "/storage", icon: FolderOpen },
   { name: "Calendar", href: "/calendar", icon: Calendar },
   { name: "Appointments", href: "/appointments", icon: CalendarClock },
   { name: "Intake Forms", href: "/intake-forms", icon: ClipboardList },
