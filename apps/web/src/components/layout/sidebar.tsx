@@ -50,6 +50,7 @@ import {
   Heart,
   Send,
   SearchCode,
+  ScanEye,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -88,6 +89,7 @@ const mainNavigation = [
   { name: "Website", href: "/website", icon: Globe },
   { name: "AI Assistant", href: "/ai-assistant", icon: Sparkles },
   { name: "Legal Research", href: "/research", icon: BookOpen },
+  { name: "Review & Analysis", href: "/doc-review", icon: ScanEye },
   { name: "Document Drafting", href: "/drafting", icon: FilePen },
   { name: "Intake Screening", href: "/screening", icon: ScanSearch },
   { name: "E-Filing", href: "/efiling", icon: Upload },
