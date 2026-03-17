@@ -5000,3 +5000,124 @@ model BookingWidget {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
+
+// ============================================
+// TIME TRACKING INTEGRATIONS
+// ============================================
+
+model TimeTrackingIntegration {
+  id                String    @id @default(cuid())
+  provider          String    @unique
+  isEnabled         Boolean   @default(false)
+  displayName       String
+  apiKey            String?
+  apiSecret         String?
+  baseUrl           String?
+  accountId         String?
+  userId            String?
+  webhookUrl        String?
+  webhookSecret     String?
+  syncDirection     String    @default("INBOUND")
+  autoSync          Boolean   @default(true)
+  syncFrequency     String    @default("hourly")
+  autoApprove       Boolean   @default(false)
+  defaultBillingRate Decimal? @db.Decimal(10, 2)
+  roundingRule      String    @default("NONE")
+  roundingIncrement Int       @default(6)
+  minimumEntry      Int       @default(0)
+  lastSyncAt        DateTime?
+  lastSyncStatus    String?
+  lastSyncError     String?
+  settings          String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model ExternalTimeEntry {
+  id                    String    @id @default(cuid())
+  provider              String
+  externalEntryId       String
+  timeEntryId           String?
+  matterId              String?
+  clientId              String?
+  userId                String?
+  userName              String?
+  date                  DateTime
+  startTime             DateTime?
+  endTime               DateTime?
+  duration              Int
+  durationHours         Decimal   @db.Decimal(6, 2)
+  description           String?   @db.Text
+  activity              String?
+  application           String?
+  documentName          String?
+  emailSubject          String?
+  website               String?
+  tags                  String?   @db.Text
+  source                String    @default("AUTOMATIC")
+  billingStatus         String    @default("PENDING_REVIEW")
+  isBillable            Boolean   @default(true)
+  billingRate           Decimal?  @db.Decimal(10, 2)
+  billingAmount         Decimal?  @db.Decimal(10, 2)
+  matterMatchConfidence String?
+  matterMatchMethod     String?
+  isReviewed            Boolean   @default(false)
+  reviewedBy            String?
+  reviewedAt            DateTime?
+  adjustedDuration      Int?
+  adjustedDescription   String?   @db.Text
+  notes                 String?   @db.Text
+  rawPayload            String?   @db.Text
+  syncStatus            String    @default("PENDING")
+  syncError             String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([provider, externalEntryId])
+  @@index([timeEntryId])
+  @@index([matterId])
+  @@index([userId])
+  @@index([date])
+  @@index([billingStatus])
+  @@index([syncStatus])
+  @@index([matterMatchConfidence])
+}
+
+model TimeMatchRule {
+  id          String    @id @default(cuid())
+  provider    String?
+  ruleType    String
+  pattern     String
+  matchField  String
+  matterId    String?
+  clientId    String?
+  activity    String?
+  isBillable  Boolean   @default(true)
+  priority    Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([ruleType])
+  @@index([isActive])
+  @@index([priority])
+}
+
+model PassiveTimeCapture {
+  id                    String    @id @default(cuid())
+  provider              String
+  userId                String?
+  captureDate           DateTime
+  totalCapturedSeconds  Int       @default(0)
+  totalEntries          Int       @default(0)
+  categorizedEntries    Int       @default(0)
+  uncategorizedEntries  Int       @default(0)
+  applicationBreakdown  String?   @db.Text
+  topDocuments          String?   @db.Text
+  topEmails             String?   @db.Text
+  topWebsites           String?   @db.Text
+  idleTime              Int       @default(0)
+  productiveTime        Int       @default(0)
+  productivityScore     Decimal?  @db.Decimal(5, 2)
+  createdAt             DateTime  @default(now())
+}

@@ -105,6 +105,7 @@ const mainNavigation = [
   { name: "CRM & Intake", href: "/crm", icon: Contact },
   { name: "Reviews", href: "/marketing/reviews", icon: Megaphone },
   { name: "Scheduling", href: "/scheduling", icon: CalendarRange },
+  { name: "Time Review", href: "/time-tracking/review", icon: Clock },
 ];
 
 const bottomNavigation = [
