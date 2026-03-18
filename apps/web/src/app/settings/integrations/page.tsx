@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video, ShieldCheck, Search, Radar, Eye, GanttChart, Presentation, MailOpen } from "lucide-react";
+import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video, ShieldCheck, Search, Radar, Eye, GanttChart, Presentation, MailOpen, Globe2 } from "lucide-react";
 
 const PROVIDERS = [
   { provider: "CASETEXT", name: "Casetext CoCounsel", desc: "AI legal research by Thomson Reuters", icon: Scale, color: "text-blue-600" },
@@ -103,6 +103,9 @@ export default function IntegrationSettingsPage() {
 
       {/* Mail */}
       <CaseMailSection webhookBase={webhookBase} />
+
+      {/* Immigration */}
+      <DocketwiseSection webhookBase={webhookBase} />
 
       {/* Webhook URLs */}
       <Card>
@@ -840,6 +843,72 @@ function CaseMailSection({ webhookBase }: { webhookBase: string }) {
               <Toggle label="Auto-save proofs to matter documents" checked={mForm.autoSaveProofs} onChange={(v: boolean) => setMForm({ ...mForm, autoSaveProofs: v })} />
               <Toggle label="Auto-create docket entry for service mailings" checked={mForm.autoCreateDocketEntry} onChange={(v: boolean) => setMForm({ ...mForm, autoCreateDocketEntry: v })} />
               <Button className="w-full" disabled={updateMut.isLoading} onClick={() => updateMut.mutate({ apiKey: mForm.apiKey || null, accountId: mForm.accountId || null, firmId: mForm.firmId || null, isEnabled: mForm.isEnabled, defaultReturnAddress: mForm.defaultReturnAddress || null, defaultReturnName: mForm.defaultReturnName || null, defaultMailClass: mForm.defaultMailClass, autoTrackCosts: mForm.autoTrackCosts, autoSaveProofs: mForm.autoSaveProofs, autoCreateDocketEntry: mForm.autoCreateDocketEntry })}>
+                {updateMut.isLoading ? "Saving..." : "Save Configuration"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+function DocketwiseSection({ webhookBase }: { webhookBase: string }) {
+  const { toast } = useToast();
+  const utils = trpc.useUtils();
+  const [configOpen, setConfigOpen] = useState(false);
+  const [dwForm, setDwForm] = useState<any>({ apiKey: "", accountId: "", firmId: "", isEnabled: false, defaultPreparer: "", autoSyncCases: true, autoSyncForms: true, autoCreateDocketEntries: true, autoTrackReceiptNumbers: true });
+
+  const { data: config } = trpc.immigration["settings.get"].useQuery();
+  const updateMut = trpc.immigration["settings.update"].useMutation({ onSuccess: () => { utils.immigration["settings.get"].invalidate(); setConfigOpen(false); toast({ title: "Saved" }); } });
+  const testMut = trpc.immigration["settings.test"].useMutation({ onSuccess: (d: any) => toast({ title: d.success ? "Connected!" : `Failed: ${d.error}`, variant: d.success ? "default" : "destructive" }) });
+
+  const connected = config?.isEnabled && config?.apiKey;
+  const loadForm = () => {
+    if (config) setDwForm({ apiKey: config.apiKey || "", accountId: config.accountId || "", firmId: config.firmId || "", isEnabled: config.isEnabled, defaultPreparer: config.defaultPreparer || "", autoSyncCases: config.autoSyncCases, autoSyncForms: config.autoSyncForms, autoCreateDocketEntries: config.autoCreateDocketEntries, autoTrackReceiptNumbers: config.autoTrackReceiptNumbers });
+    setConfigOpen(true);
+  };
+
+  const Toggle = ({ label, checked, onChange }: any) => (
+    <label className="flex items-center justify-between py-1"><span className="text-sm">{label}</span><button type="button" className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-gray-200"}`} onClick={() => onChange(!checked)}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`} /></button></label>
+  );
+
+  return (
+    <>
+      <div><h2 className="text-lg font-bold mt-8 mb-1">Immigration</h2><p className="text-sm text-slate-500 mb-4">Immigration case management, form preparation, and USCIS tracking</p></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3"><Globe2 className="h-6 w-6 text-blue-600" /><div><CardTitle className="text-sm">Docketwise</CardTitle><CardDescription className="text-xs leading-relaxed">Immigration case management: form preparation with auto-fill, USCIS case status tracking, visa bulletin monitoring, client questionnaires, and deadline tracking.</CardDescription></div></div>
+              {connected ? <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : <XCircle className="h-5 w-5 text-gray-300 flex-shrink-0" />}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-gray-400 mb-3">Docketwise handles immigration form preparation with smart auto-fill. Client questionnaires flow directly into forms.</p>
+            <div className="flex gap-2"><Button size="sm" variant="outline" onClick={loadForm}>Configure</Button>{connected && <Button size="sm" variant="outline" onClick={() => testMut.mutate()} disabled={testMut.isLoading}>Test</Button>}</div>
+          </CardContent>
+        </Card>
+      </div>
+      <Card className="mt-4">
+        <CardHeader><CardTitle className="text-sm">Immigration Webhook URL</CardTitle></CardHeader>
+        <CardContent><div className="flex items-center gap-2"><span className="text-sm text-slate-500 w-24">Docketwise:</span><code className="flex-1 text-xs bg-slate-100 px-2 py-1 rounded font-mono truncate">{webhookBase}/api/integrations/docketwise/webhook</code><Button variant="ghost" size="sm" onClick={() => { navigator.clipboard?.writeText(`${webhookBase}/api/integrations/docketwise/webhook`); toast({ title: "Copied" }); }}><Copy className="h-3 w-3" /></Button></div></CardContent>
+      </Card>
+      {configOpen && (
+        <Dialog open onOpenChange={() => setConfigOpen(false)}>
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>Configure Docketwise</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <Toggle label="Enabled" checked={dwForm.isEnabled} onChange={(v: boolean) => setDwForm({ ...dwForm, isEnabled: v })} />
+              <div className="space-y-2"><Label>API Key</Label><Input type="password" value={dwForm.apiKey} onChange={(e: any) => setDwForm({ ...dwForm, apiKey: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Account ID</Label><Input value={dwForm.accountId} onChange={(e: any) => setDwForm({ ...dwForm, accountId: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Firm ID</Label><Input value={dwForm.firmId} onChange={(e: any) => setDwForm({ ...dwForm, firmId: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Default Preparer (Attorney Name)</Label><Input value={dwForm.defaultPreparer} onChange={(e: any) => setDwForm({ ...dwForm, defaultPreparer: e.target.value })} /></div>
+              <Toggle label="Auto-sync cases" checked={dwForm.autoSyncCases} onChange={(v: boolean) => setDwForm({ ...dwForm, autoSyncCases: v })} />
+              <Toggle label="Auto-sync forms" checked={dwForm.autoSyncForms} onChange={(v: boolean) => setDwForm({ ...dwForm, autoSyncForms: v })} />
+              <Toggle label="Auto-create docket entries" checked={dwForm.autoCreateDocketEntries} onChange={(v: boolean) => setDwForm({ ...dwForm, autoCreateDocketEntries: v })} />
+              <Toggle label="Auto-track receipt numbers" checked={dwForm.autoTrackReceiptNumbers} onChange={(v: boolean) => setDwForm({ ...dwForm, autoTrackReceiptNumbers: v })} />
+              <Button className="w-full" disabled={updateMut.isLoading} onClick={() => updateMut.mutate({ apiKey: dwForm.apiKey || null, accountId: dwForm.accountId || null, firmId: dwForm.firmId || null, isEnabled: dwForm.isEnabled, defaultPreparer: dwForm.defaultPreparer || null, autoSyncCases: dwForm.autoSyncCases, autoSyncForms: dwForm.autoSyncForms, autoCreateDocketEntries: dwForm.autoCreateDocketEntries, autoTrackReceiptNumbers: dwForm.autoTrackReceiptNumbers })}>
                 {updateMut.isLoading ? "Saving..." : "Save Configuration"}
               </Button>
             </div>

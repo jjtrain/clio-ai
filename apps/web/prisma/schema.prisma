@@ -53,6 +53,7 @@ model Client {
   matterProfitabilities  MatterProfitability[]
   zoomMeetings           ZoomMeeting[]
   complianceChecks       ComplianceCheck[]
+  immigrationCases       ImmigrationCase[]
 }
 
 model Matter {
@@ -115,6 +116,7 @@ model Matter {
   depositionSessions  DepositionSession[]
   presentationBoards  PresentationBoard[]
   mailJobs            MailJob[]
+  immigrationCases    ImmigrationCase[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -7521,4 +7523,422 @@ model AddressBook {
   @@index([city])
   @@index([state])
   @@index([linkedClientId])
+}
+
+// ─── Immigration (Docketwise) ───────────────────────────
+
+enum ImmigrationProvider {
+  DOCKETWISE
+}
+
+enum ImmigrationCaseType {
+  H1B_INITIAL
+  H1B_TRANSFER
+  H1B_EXTENSION
+  H1B_AMENDMENT
+  H1B_CAP
+  L1A
+  L1B
+  O1A
+  O1B
+  E1
+  E2
+  TN
+  R1
+  I140_EB1A
+  I140_EB1B
+  I140_EB1C
+  I140_EB2
+  I140_EB2_NIW
+  I140_EB3
+  I140_EB5
+  I485_ADJUSTMENT
+  I130_IMMEDIATE_RELATIVE
+  I130_FAMILY_PREFERENCE
+  K1_FIANCE
+  I751_REMOVE_CONDITIONS
+  N400_NATURALIZATION
+  I765_EAD
+  I131_ADVANCE_PAROLE
+  I539_CHANGE_STATUS
+  I539_EXTEND_STATUS
+  PERM_LABOR_CERT
+  CONSULAR_PROCESSING
+  ASYLUM
+  TPS
+  DACA
+  U_VISA
+  T_VISA
+  VAWA
+  OTHER
+}
+
+enum ImmigrationCaseStatus {
+  NOT_FILED
+  PREPARING
+  FILED
+  RECEIVED
+  PENDING
+  BIOMETRICS_SCHEDULED
+  BIOMETRICS_COMPLETED
+  INTERVIEW_SCHEDULED
+  INTERVIEW_COMPLETED
+  RFE_ISSUED
+  RFE_RESPONSE_FILED
+  NOIR_ISSUED
+  NOIR_RESPONSE_FILED
+  APPROVED
+  DENIED
+  WITHDRAWN
+  APPEAL_FILED
+  CARD_BEING_PRODUCED
+  CARD_MAILED
+  CARD_DELIVERED
+  VISA_ISSUED
+  EXPIRED
+  OTHER
+}
+
+enum ImmigrationFormStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  REVIEWED
+  FILED
+  SUPERSEDED
+}
+
+enum ImmigrationDeadlineType {
+  RFE_RESPONSE
+  NOIR_RESPONSE
+  FILING_DEADLINE
+  STATUS_EXPIRY
+  EAD_EXPIRY
+  AP_EXPIRY
+  PASSPORT_EXPIRY
+  BIOMETRICS_APPOINTMENT
+  INTERVIEW_APPOINTMENT
+  VISA_BULLETIN_CHECK
+  PERM_RECRUITMENT
+  PERM_FILING
+  I140_FILING
+  I485_FILING
+  CONSULAR_INTERVIEW
+  APPEAL_DEADLINE
+  MOTION_TO_REOPEN
+  NATURALIZATION_ELIGIBILITY
+  OTHER
+}
+
+enum ImmigrationDeadlineStatus {
+  UPCOMING
+  WARNING
+  URGENT
+  OVERDUE
+  COMPLETED
+  WAIVED
+  EXTENDED
+}
+
+enum ImmigrationDocType {
+  PASSPORT
+  VISA
+  I94
+  EAD_CARD
+  AP_DOCUMENT
+  APPROVAL_NOTICE
+  RECEIPT_NOTICE
+  RFE_NOTICE
+  DENIAL_NOTICE
+  BIRTH_CERTIFICATE
+  MARRIAGE_CERTIFICATE
+  DIVORCE_DECREE
+  POLICE_CLEARANCE
+  MEDICAL_EXAM_I693
+  PHOTOS
+  EMPLOYMENT_LETTER
+  TAX_RETURNS
+  PAY_STUBS
+  BANK_STATEMENTS
+  EDUCATIONAL_CREDENTIALS
+  CREDENTIAL_EVALUATION
+  TRANSLATIONS
+  PERM_LABOR_CERT
+  RECOMMENDATION_LETTERS
+  EVIDENCE_EXTRAORDINARY_ABILITY
+  BUSINESS_PLAN
+  G28
+  COVER_LETTER
+  BRIEF
+  EXHIBIT_LIST
+  FEE_RECEIPT
+  OTHER
+}
+
+enum ImmigrationActivityType {
+  CASE_CREATED
+  FORM_STARTED
+  FORM_COMPLETED
+  FORM_FILED
+  RECEIPT_RECEIVED
+  STATUS_CHECK
+  STATUS_CHANGED
+  RFE_RECEIVED
+  RFE_RESPONDED
+  BIOMETRICS_SCHEDULED
+  BIOMETRICS_COMPLETED
+  INTERVIEW_SCHEDULED
+  INTERVIEW_COMPLETED
+  APPROVED
+  DENIED
+  APPEAL_FILED
+  DOCUMENT_OBTAINED
+  DOCUMENT_EXPIRING
+  DEADLINE_APPROACHING
+  DEADLINE_COMPLETED
+  VISA_BULLETIN_UPDATE
+  NOTE_ADDED
+  CLIENT_COMMUNICATION
+}
+
+model ImmigrationIntegration {
+  id                        String                @id @default(cuid())
+  provider                  ImmigrationProvider    @unique
+  isEnabled                 Boolean               @default(false)
+  displayName               String
+  apiKey                    String?
+  apiSecret                 String?
+  baseUrl                   String?               @default("https://api.docketwise.com/v1")
+  accountId                 String?
+  firmId                    String?
+  accessToken               String?
+  refreshToken              String?
+  tokenExpiresAt            DateTime?
+  webhookUrl                String?
+  webhookSecret             String?
+  autoSyncCases             Boolean               @default(true)
+  autoSyncForms             Boolean               @default(true)
+  autoCreateDocketEntries   Boolean               @default(true)
+  autoTrackReceiptNumbers   Boolean               @default(true)
+  defaultPreparer           String?
+  settings                  String?               @db.Text
+  lastSyncAt                DateTime?
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+}
+
+model ImmigrationCase {
+  id                        String                  @id @default(cuid())
+  provider                  ImmigrationProvider?
+  externalCaseId            String?
+  matterId                  String
+  matter                    Matter                  @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  clientId                  String
+  client                    Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  caseType                  ImmigrationCaseType
+  caseSubtype               String?
+  status                    ImmigrationCaseStatus   @default(NOT_FILED)
+  priorityDate              DateTime?
+  filingDate                DateTime?
+  receiptNumber             String?
+  receiptDate               DateTime?
+  uscisOffice               String?
+  petitionerName            String?
+  beneficiaryName           String
+  beneficiaryAlienNumber    String?
+  beneficiaryDOB            DateTime?
+  beneficiaryNationality    String?
+  beneficiaryCurrentStatus  String?
+  beneficiaryStatusExpiry   DateTime?
+  beneficiaryEADExpiry      DateTime?
+  beneficiaryAPExpiry       DateTime?
+  dependents                String?                 @db.Text
+  visaBulletinCategory      String?
+  visaBulletinCountry       String?
+  isCurrent                 Boolean                 @default(false)
+  approvalDate              DateTime?
+  denialDate                DateTime?
+  denialReason              String?                 @db.Text
+  rfeDate                   DateTime?
+  rfeDeadline               DateTime?
+  rfeResponseDate           DateTime?
+  rfeDescription            String?                 @db.Text
+  interviewDate             DateTime?
+  interviewLocation         String?
+  interviewResult           String?
+  biometricsDate            DateTime?
+  biometricsLocation        String?
+  consularProcessing        Boolean                 @default(false)
+  processingTimeEstimate    String?
+  lastCaseStatusCheck       DateTime?
+  lastCaseStatusResult      String?
+  notes                     String?                 @db.Text
+  rawPayload                String?                 @db.Text
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+  forms                     ImmigrationForm[]
+  deadlines                 ImmigrationDeadline[]
+  documents                 ImmigrationDocument[]
+  statusChecks              USCISStatusCheck[]
+  activities                ImmigrationActivity[]
+
+  @@index([provider])
+  @@index([externalCaseId])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([caseType])
+  @@index([status])
+  @@index([receiptNumber])
+  @@index([beneficiaryAlienNumber])
+  @@index([priorityDate])
+  @@index([rfeDeadline])
+}
+
+model ImmigrationForm {
+  id                    String                  @id @default(cuid())
+  provider              ImmigrationProvider?
+  externalFormId        String?
+  caseId                String
+  immigrationCase       ImmigrationCase         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  matterId              String
+  formNumber            String
+  formTitle             String
+  formEdition           String?
+  status                ImmigrationFormStatus   @default(NOT_STARTED)
+  completionPercentage  Int                     @default(0)
+  formData              String?                 @db.Text
+  validationErrors      String?                 @db.Text
+  preparedBy            String?
+  reviewedBy            String?
+  reviewedAt            DateTime?
+  reviewNotes           String?                 @db.Text
+  filedDate             DateTime?
+  documentId            String?
+  signatureRequired     Boolean                 @default(true)
+  signatureStatus       String?
+  docketwiseEditUrl     String?
+  docketwisePreviewUrl  String?
+  notes                 String?                 @db.Text
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  @@index([caseId])
+  @@index([matterId])
+  @@index([formNumber])
+  @@index([status])
+}
+
+model ImmigrationDeadline {
+  id                String                    @id @default(cuid())
+  caseId            String
+  immigrationCase   ImmigrationCase           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  matterId          String
+  docketEntryId     String?
+  deadlineType      ImmigrationDeadlineType
+  title             String
+  description       String?                   @db.Text
+  dueDate           DateTime
+  warningDays       Int                       @default(30)
+  urgentDays        Int                       @default(7)
+  status            ImmigrationDeadlineStatus @default(UPCOMING)
+  completedAt       DateTime?
+  completedBy       String?
+  extendedTo        DateTime?
+  extensionReason   String?
+  isStatutory       Boolean                   @default(false)
+  consequence       String?                   @db.Text
+  remindersSent     Int                       @default(0)
+  lastReminderAt    DateTime?
+  notes             String?                   @db.Text
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  @@index([caseId])
+  @@index([matterId])
+  @@index([deadlineType])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model USCISStatusCheck {
+  id                String              @id @default(cuid())
+  caseId            String
+  immigrationCase   ImmigrationCase     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  receiptNumber     String
+  checkDate         DateTime            @default(now())
+  previousStatus    String?
+  currentStatus     String
+  statusDescription String?
+  hasChanged        Boolean             @default(false)
+  rawResponse       String?             @db.Text
+  createdAt         DateTime            @default(now())
+
+  @@index([caseId])
+  @@index([receiptNumber])
+  @@index([checkDate])
+  @@index([hasChanged])
+}
+
+model VisaBulletinEntry {
+  id                    String    @id @default(cuid())
+  bulletinMonth         Int
+  bulletinYear          Int
+  category              String
+  country               String
+  finalActionDate       DateTime?
+  datesForFilingDate    DateTime?
+  isCurrent             Boolean   @default(false)
+  previousFinalActionDate DateTime?
+  movement              String?
+  movementDays          Int?
+  createdAt             DateTime  @default(now())
+
+  @@index([bulletinYear])
+  @@index([bulletinMonth])
+  @@index([category])
+  @@index([country])
+}
+
+model ImmigrationDocument {
+  id                    String              @id @default(cuid())
+  caseId                String
+  immigrationCase       ImmigrationCase     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  documentId            String?
+  docType               ImmigrationDocType
+  title                 String
+  description           String?
+  expirationDate        DateTime?
+  expirationWarningDays Int                 @default(60)
+  isRequired            Boolean             @default(false)
+  isObtained            Boolean             @default(false)
+  obtainedDate          DateTime?
+  isTranslated          Boolean             @default(false)
+  translationDocId      String?
+  isCertified           Boolean             @default(false)
+  forBeneficiary        Boolean             @default(true)
+  forDependent          String?
+  notes                 String?             @db.Text
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([caseId])
+  @@index([docType])
+  @@index([isRequired])
+  @@index([isObtained])
+  @@index([expirationDate])
+}
+
+model ImmigrationActivity {
+  id            String                    @id @default(cuid())
+  caseId        String
+  immigrationCase ImmigrationCase         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  activityType  ImmigrationActivityType
+  description   String
+  performedBy   String?
+  metadata      String?                   @db.Text
+  createdAt     DateTime                  @default(now())
+
+  @@index([caseId])
+  @@index([activityType])
+  @@index([createdAt])
 }

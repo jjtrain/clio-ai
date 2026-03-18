@@ -96,6 +96,7 @@ const mainNavigation = [
   { name: "Docketing", href: "/docketing", icon: Gavel },
   { name: "Discovery", href: "/discovery", icon: FileQuestion },
   { name: "Family Law", href: "/family", icon: Heart },
+  { name: "Immigration", href: "/immigration", icon: Globe },
   { name: "Filing & Service", href: "/filing", icon: Send },
   { name: "Service & Reporters", href: "/process-serving", icon: Truck },
   { name: "Docket Search", href: "/docket-search", icon: SearchCode },
