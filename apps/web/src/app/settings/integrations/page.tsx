@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video, ShieldCheck, Search, Radar, Eye, GanttChart, Presentation } from "lucide-react";
+import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video, ShieldCheck, Search, Radar, Eye, GanttChart, Presentation, MailOpen } from "lucide-react";
 
 const PROVIDERS = [
   { provider: "CASETEXT", name: "Casetext CoCounsel", desc: "AI legal research by Thomson Reuters", icon: Scale, color: "text-blue-600" },
@@ -100,6 +100,9 @@ export default function IntegrationSettingsPage() {
 
       {/* Timelines & Visuals */}
       <VisualsSection webhookBase={webhookBase} />
+
+      {/* Mail */}
+      <CaseMailSection webhookBase={webhookBase} />
 
       {/* Webhook URLs */}
       <Card>
@@ -766,6 +769,77 @@ function VisualsSection({ webhookBase }: { webhookBase: string }) {
               <Toggle label="Auto-sync Documents" checked={vForm.autoSyncDocuments} onChange={(v: boolean) => setVForm({ ...vForm, autoSyncDocuments: v })} />
               <Toggle label="Auto-sync Timeline" checked={vForm.autoSyncTimeline} onChange={(v: boolean) => setVForm({ ...vForm, autoSyncTimeline: v })} />
               <Button className="w-full" disabled={updateMut.isLoading} onClick={() => updateMut.mutate({ provider: configOpen as any, apiKey: vForm.apiKey || null, accountId: vForm.accountId || null, isEnabled: vForm.isEnabled, autoSyncDocuments: vForm.autoSyncDocuments, autoSyncTimeline: vForm.autoSyncTimeline })}>
+                {updateMut.isLoading ? "Saving..." : "Save Configuration"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+function CaseMailSection({ webhookBase }: { webhookBase: string }) {
+  const { toast } = useToast();
+  const utils = trpc.useUtils();
+  const [configOpen, setConfigOpen] = useState(false);
+  const [mForm, setMForm] = useState<any>({ apiKey: "", accountId: "", firmId: "", isEnabled: false, defaultReturnAddress: "", defaultReturnName: "", defaultMailClass: "first_class", autoTrackCosts: true, autoSaveProofs: true, autoCreateDocketEntry: true });
+
+  const { data: config } = trpc.mail["settings.get"].useQuery();
+  const updateMut = trpc.mail["settings.update"].useMutation({ onSuccess: () => { utils.mail["settings.get"].invalidate(); setConfigOpen(false); toast({ title: "Saved" }); } });
+  const testMut = trpc.mail["settings.test"].useMutation({ onSuccess: (d: any) => toast({ title: d.success ? `Connected: ${d.firmName || "OK"}` : `Failed: ${d.error}`, variant: d.success ? "default" : "destructive" }) });
+
+  const connected = config?.isEnabled && config?.apiKey;
+  const loadForm = () => {
+    if (config) setMForm({ apiKey: config.apiKey || "", accountId: config.accountId || "", firmId: config.firmId || "", isEnabled: config.isEnabled, defaultReturnAddress: config.defaultReturnAddress || "", defaultReturnName: config.defaultReturnName || "", defaultMailClass: config.defaultMailClass || "first_class", autoTrackCosts: config.autoTrackCosts, autoSaveProofs: config.autoSaveProofs, autoCreateDocketEntry: config.autoCreateDocketEntry });
+    setConfigOpen(true);
+  };
+
+  const Toggle = ({ label, checked, onChange }: any) => (
+    <label className="flex items-center justify-between py-1"><span className="text-sm">{label}</span><button type="button" className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-gray-200"}`} onClick={() => onChange(!checked)}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`} /></button></label>
+  );
+
+  return (
+    <>
+      <div><h2 className="text-lg font-bold mt-8 mb-1">Mail</h2><p className="text-sm text-slate-500 mb-4">Mail legal documents via First Class, Certified, FedEx, and UPS</p></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3"><MailOpen className="h-6 w-6 text-blue-600" /><div><CardTitle className="text-sm">CaseMail</CardTitle><CardDescription className="text-xs leading-relaxed">Mail legal documents directly from Clio AI. CaseMail prints, stuffs, and mails your documents. Proof of mailing and delivery auto-saved. Authorized bankruptcy notice provider by all U.S. Courts.</CardDescription></div></div>
+              {connected ? <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : <XCircle className="h-5 w-5 text-gray-300 flex-shrink-0" />}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-gray-400 mb-3">CaseMail handles printing and mailing. Certified mail tracking, proof of mailing, delivery confirmations, and green cards saved automatically.</p>
+            <div className="flex gap-2"><Button size="sm" variant="outline" onClick={loadForm}>Configure</Button>{connected && <Button size="sm" variant="outline" onClick={() => testMut.mutate()} disabled={testMut.isLoading}>Test</Button>}</div>
+          </CardContent>
+        </Card>
+      </div>
+      <Card className="mt-4">
+        <CardHeader><CardTitle className="text-sm">Mail Webhook URL</CardTitle></CardHeader>
+        <CardContent><div className="flex items-center gap-2"><span className="text-sm text-slate-500 w-24">CaseMail:</span><code className="flex-1 text-xs bg-slate-100 px-2 py-1 rounded font-mono truncate">{webhookBase}/api/integrations/casemail/webhook</code><Button variant="ghost" size="sm" onClick={() => { navigator.clipboard?.writeText(`${webhookBase}/api/integrations/casemail/webhook`); toast({ title: "Copied" }); }}><Copy className="h-3 w-3" /></Button></div></CardContent>
+      </Card>
+      {configOpen && (
+        <Dialog open onOpenChange={() => setConfigOpen(false)}>
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>Configure CaseMail</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <Toggle label="Enabled" checked={mForm.isEnabled} onChange={(v: boolean) => setMForm({ ...mForm, isEnabled: v })} />
+              <div className="space-y-2"><Label>API Key</Label><Input type="password" value={mForm.apiKey} onChange={(e: any) => setMForm({ ...mForm, apiKey: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Account ID</Label><Input value={mForm.accountId} onChange={(e: any) => setMForm({ ...mForm, accountId: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Firm ID</Label><Input value={mForm.firmId} onChange={(e: any) => setMForm({ ...mForm, firmId: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Default Return Name</Label><Input value={mForm.defaultReturnName} onChange={(e: any) => setMForm({ ...mForm, defaultReturnName: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Default Return Address</Label><Input value={mForm.defaultReturnAddress} onChange={(e: any) => setMForm({ ...mForm, defaultReturnAddress: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Default Mail Class</Label>
+                <select className="w-full border rounded px-3 py-2 text-sm" value={mForm.defaultMailClass} onChange={(e) => setMForm({ ...mForm, defaultMailClass: e.target.value })}>
+                  <option value="first_class">First Class</option><option value="certified">Certified</option><option value="certified_return_receipt">Certified Return Receipt</option><option value="priority">Priority</option><option value="express">Express</option>
+                </select>
+              </div>
+              <Toggle label="Auto-track mailing costs as expenses" checked={mForm.autoTrackCosts} onChange={(v: boolean) => setMForm({ ...mForm, autoTrackCosts: v })} />
+              <Toggle label="Auto-save proofs to matter documents" checked={mForm.autoSaveProofs} onChange={(v: boolean) => setMForm({ ...mForm, autoSaveProofs: v })} />
+              <Toggle label="Auto-create docket entry for service mailings" checked={mForm.autoCreateDocketEntry} onChange={(v: boolean) => setMForm({ ...mForm, autoCreateDocketEntry: v })} />
+              <Button className="w-full" disabled={updateMut.isLoading} onClick={() => updateMut.mutate({ apiKey: mForm.apiKey || null, accountId: mForm.accountId || null, firmId: mForm.firmId || null, isEnabled: mForm.isEnabled, defaultReturnAddress: mForm.defaultReturnAddress || null, defaultReturnName: mForm.defaultReturnName || null, defaultMailClass: mForm.defaultMailClass, autoTrackCosts: mForm.autoTrackCosts, autoSaveProofs: mForm.autoSaveProofs, autoCreateDocketEntry: mForm.autoCreateDocketEntry })}>
                 {updateMut.isLoading ? "Saving..." : "Save Configuration"}
               </Button>
             </div>

@@ -61,6 +61,7 @@ import { zoomRouter } from "./zoom";
 import { complianceRouter } from "./compliance";
 import { investigationsRouter } from "./investigations";
 import { visualsRouter } from "./visuals";
+import { mailRouter } from "./mail";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -125,6 +126,7 @@ export const appRouter = router({
   compliance: complianceRouter,
   investigations: investigationsRouter,
   visuals: visualsRouter,
+  mail: mailRouter,
 });
 
 export type AppRouter = typeof appRouter;

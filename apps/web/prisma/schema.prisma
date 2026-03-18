@@ -114,6 +114,7 @@ model Matter {
   caseTimelines       CaseTimeline[]
   depositionSessions  DepositionSession[]
   presentationBoards  PresentationBoard[]
+  mailJobs            MailJob[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -7254,4 +7255,270 @@ model PresentationBoard {
   @@index([matterId])
   @@index([boardType])
   @@index([status])
+}
+
+// ─── Mail (CaseMail) ────────────────────────────────────
+
+enum MailProvider {
+  CASEMAIL
+}
+
+enum MailJobType {
+  FIRST_CLASS
+  CERTIFIED
+  CERTIFIED_RETURN_RECEIPT
+  REGISTERED
+  PRIORITY
+  EXPRESS
+  FEDEX_OVERNIGHT
+  FEDEX_2DAY
+  FEDEX_GROUND
+  UPS_NEXT_DAY
+  UPS_2DAY
+  UPS_GROUND
+}
+
+enum MailPurpose {
+  SERVICE_OF_PROCESS
+  NAIL_AND_MAIL_MAILING
+  NOTICE
+  DEMAND_LETTER
+  CORRESPONDENCE
+  COURT_FILING
+  DISCOVERY
+  SUBPOENA
+  LEGAL_NOTICE
+  SETTLEMENT
+  RETAINER
+  INVOICE
+  OTHER
+}
+
+enum MailJobStatus {
+  DRAFT
+  SUBMITTED
+  PROCESSING
+  PRINTED
+  MAILED
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+  FAILED
+  CANCELLED
+}
+
+enum MailBatchStatus {
+  DRAFT
+  SUBMITTED
+  PROCESSING
+  COMPLETED
+  PARTIAL_FAILED
+  CANCELLED
+}
+
+enum MailTrackingEventType {
+  SUBMITTED
+  PROCESSING
+  PRINTED
+  MAILED
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  DELIVERY_ATTEMPTED
+  RETURNED_TO_SENDER
+  FORWARDED
+  HELD_AT_POST_OFFICE
+  NOTICE_LEFT
+  UNCLAIMED
+  REFUSED
+}
+
+enum AddressBookType {
+  COURT
+  OPPOSING_COUNSEL
+  GOVERNMENT_AGENCY
+  INSURANCE_COMPANY
+  MEDICAL_PROVIDER
+  CLIENT
+  VENDOR
+  OTHER
+}
+
+model MailIntegration {
+  id                      String        @id @default(cuid())
+  provider                MailProvider   @unique
+  isEnabled               Boolean       @default(false)
+  displayName             String
+  apiKey                  String?
+  apiSecret               String?
+  baseUrl                 String?       @default("https://api.casemail.com/v1")
+  accountId               String?
+  firmId                  String?
+  defaultReturnAddress    String?
+  defaultReturnName       String?
+  webhookUrl              String?
+  webhookSecret           String?
+  autoTrackCosts          Boolean       @default(true)
+  autoSaveProofs          Boolean       @default(true)
+  autoCreateDocketEntry   Boolean       @default(true)
+  defaultMailClass        String        @default("first_class")
+  settings                String?       @db.Text
+  lastSyncAt              DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+}
+
+model MailJob {
+  id                      String          @id @default(cuid())
+  provider                MailProvider    @default(CASEMAIL)
+  externalJobId           String?
+  matterId                String
+  matter                  Matter          @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  clientId                String?
+  serviceJobId            String?
+  jobType                 MailJobType     @default(FIRST_CLASS)
+  purpose                 MailPurpose     @default(CORRESPONDENCE)
+  status                  MailJobStatus   @default(DRAFT)
+  recipientName           String
+  recipientAddress        String          @db.Text
+  recipientCity           String?
+  recipientState          String?
+  recipientZip            String?
+  recipientCountry        String          @default("US")
+  senderName              String?
+  senderAddress           String?         @db.Text
+  documentIds             String          @db.Text
+  documentNames           String?         @db.Text
+  totalPages              Int?
+  isColor                 Boolean         @default(false)
+  isDuplex                Boolean         @default(false)
+  paperSize               String          @default("letter")
+  envelope                String          @default("standard")
+  insertAdditionalPages   String?         @db.Text
+  certifiedNumber         String?
+  returnReceiptNumber     String?
+  trackingNumber          String?
+  trackingUrl             String?
+  carrierName             String?
+  mailedDate              DateTime?
+  estimatedDeliveryDate   DateTime?
+  deliveredDate           DateTime?
+  deliveredTo             String?
+  returnedDate            DateTime?
+  returnReason            String?
+  proofOfMailingUrl       String?
+  proofOfMailingDocId     String?
+  proofOfDeliveryUrl      String?
+  proofOfDeliveryDocId    String?
+  returnReceiptUrl        String?
+  returnReceiptDocId      String?
+  cost                    Decimal?        @db.Decimal(10, 2)
+  printingCost            Decimal?        @db.Decimal(10, 2)
+  handlingFee             Decimal?        @db.Decimal(10, 2)
+  totalCost               Decimal?        @db.Decimal(10, 2)
+  expenseId               String?
+  docketEntryId           String?
+  batchId                 String?
+  notes                   String?         @db.Text
+  rawPayload              String?         @db.Text
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  trackingEvents          MailTrackingEvent[]
+
+  @@index([provider])
+  @@index([externalJobId])
+  @@index([matterId])
+  @@index([status])
+  @@index([jobType])
+  @@index([purpose])
+  @@index([recipientName])
+  @@index([mailedDate])
+  @@index([certifiedNumber])
+  @@index([trackingNumber])
+  @@index([batchId])
+}
+
+model MailTemplate {
+  id                      String        @id @default(cuid())
+  name                    String
+  description             String?
+  purpose                 MailPurpose   @default(CORRESPONDENCE)
+  defaultMailClass        String?
+  coverLetterContent      String?       @db.Text
+  variables               String?       @db.Text
+  includeReturnEnvelope   Boolean       @default(false)
+  requiresCertified       Boolean       @default(false)
+  requiresReturnReceipt   Boolean       @default(false)
+  practiceArea            String?
+  isActive                Boolean       @default(true)
+  usageCount              Int           @default(0)
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+}
+
+model MailBatch {
+  id                String          @id @default(cuid())
+  matterId          String?
+  name              String
+  status            MailBatchStatus @default(DRAFT)
+  jobCount          Int             @default(0)
+  completedCount    Int             @default(0)
+  failedCount       Int             @default(0)
+  totalCost         Decimal         @default(0) @db.Decimal(10, 2)
+  submittedAt       DateTime?
+  completedAt       DateTime?
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([matterId])
+  @@index([status])
+}
+
+model MailTrackingEvent {
+  id            String                  @id @default(cuid())
+  jobId         String
+  job           MailJob                 @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  eventType     MailTrackingEventType
+  eventDate     DateTime
+  location      String?
+  details       String?
+  rawData       String?                 @db.Text
+  createdAt     DateTime                @default(now())
+
+  @@index([jobId])
+  @@index([eventType])
+  @@index([eventDate])
+}
+
+model AddressBook {
+  id              String          @id @default(cuid())
+  name            String
+  title           String?
+  organization    String?
+  addressLine1    String
+  addressLine2    String?
+  city            String
+  state           String
+  zip             String
+  country         String          @default("US")
+  addressType     AddressBookType @default(OTHER)
+  phone           String?
+  fax             String?
+  email           String?
+  linkedClientId  String?
+  mailingCount    Int             @default(0)
+  lastMailedDate  DateTime?
+  isVerified      Boolean         @default(false)
+  verifiedAt      DateTime?
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([name])
+  @@index([organization])
+  @@index([addressType])
+  @@index([city])
+  @@index([state])
+  @@index([linkedClientId])
 }

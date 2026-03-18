@@ -112,6 +112,7 @@ const mainNavigation = [
   { name: "E-Filing", href: "/efiling", icon: Upload },
   { name: "Client Portal", href: "/client-portal", icon: UserCircle },
   { name: "Text Messaging", href: "/messaging", icon: MessageSquare },
+  { name: "Mail", href: "/mail", icon: Send },
   { name: "Communications", href: "/communications", icon: Headphones },
   { name: "Zoom", href: "/zoom", icon: Video },
   { name: "Compliance", href: "/compliance", icon: ShieldCheck },
