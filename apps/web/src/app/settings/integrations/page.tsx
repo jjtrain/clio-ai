@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video, ShieldCheck } from "lucide-react";
+import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video, ShieldCheck, Search, Radar, Eye } from "lucide-react";
 
 const PROVIDERS = [
   { provider: "CASETEXT", name: "Casetext CoCounsel", desc: "AI legal research by Thomson Reuters", icon: Scale, color: "text-blue-600" },
@@ -94,6 +94,9 @@ export default function IntegrationSettingsPage() {
 
       {/* Compliance Integrations */}
       <LeglSection webhookBase={webhookBase} />
+
+      {/* Investigations Integrations */}
+      <InvestigationsSection webhookBase={webhookBase} />
 
       {/* Webhook URLs */}
       <Card>
@@ -562,6 +565,115 @@ function LeglSection({ webhookBase }: { webhookBase: string }) {
                 ongoingMonitoringEnabled: form.ongoingMonitoringEnabled, monitoringFrequency: form.monitoringFrequency || null,
                 retentionPeriod: form.retentionPeriod,
               })}>{updateMut.isLoading ? "Saving..." : "Save Configuration"}</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+function InvestigationsSection({ webhookBase }: { webhookBase: string }) {
+  const { toast } = useToast();
+  const utils = trpc.useUtils();
+  const [configOpen, setConfigOpen] = useState<string | null>(null);
+  const [iForm, setIForm] = useState<any>({ apiKey: "", accountId: "", userId: "", isEnabled: false, defaultSearchDepth: "standard", autoSearchOnNewMatter: false, autoSearchOnConflictCheck: false });
+
+  const { data: integrations } = trpc.investigations.settings.list.useQuery();
+  const updateMut = trpc.investigations.settings.update.useMutation({
+    onSuccess: () => { utils.investigations.settings.list.invalidate(); setConfigOpen(null); toast({ title: "Saved" }); },
+  });
+  const testMut = trpc.investigations.settings.test.useMutation({
+    onSuccess: (d: any) => toast({ title: d.success ? "Connected!" : `Failed: ${d.error}`, variant: d.success ? "default" : "destructive" }),
+  });
+
+  const intMap: Record<string, any> = {};
+  for (const i of integrations || []) intMap[i.provider] = i;
+
+  const PROVIDERS = [
+    { provider: "TRACERS", name: "Tracers", desc: "Investigative data spanning 23+ years. Locate persons, skip trace, asset searches, background checks, criminal records, court records, bankruptcies, liens/judgments, property, vehicles, and more.", icon: Search, color: "text-blue-600", note: "Tracers uses a credit-based system. Different search types cost different amounts." },
+    { provider: "SONAR", name: "Sonar", desc: "Real-time identification of potential clients from incident databases — police reports, accident reports, citations, arrests. Includes lead scoring and market insights.", icon: Radar, color: "text-purple-600", note: "Particularly valuable for personal injury firms. Set up monitoring for your practice areas and jurisdictions." },
+    { provider: "MEDIASCOPE", name: "Mediascope", desc: "AI-powered visual asset protection. Upload logos, product images, or trademarks and find unauthorized use across the web and marketplaces. Includes takedown notice generation.", icon: Eye, color: "text-emerald-600", note: "Essential for IP/trademark practices. Set up monitoring for client brand assets to automatically detect infringement." },
+  ];
+
+  const loadForm = (provider: string) => {
+    const config = intMap[provider];
+    if (config) setIForm({ apiKey: config.apiKey || "", accountId: config.accountId || "", userId: config.userId || "", isEnabled: config.isEnabled, defaultSearchDepth: config.defaultSearchDepth || "standard", autoSearchOnNewMatter: config.autoSearchOnNewMatter, autoSearchOnConflictCheck: config.autoSearchOnConflictCheck });
+    else setIForm({ apiKey: "", accountId: "", userId: "", isEnabled: false, defaultSearchDepth: "standard", autoSearchOnNewMatter: false, autoSearchOnConflictCheck: false });
+    setConfigOpen(provider);
+  };
+
+  const Toggle = ({ label, checked, onChange }: any) => (
+    <label className="flex items-center justify-between py-1"><span className="text-sm">{label}</span><button type="button" className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-gray-200"}`} onClick={() => onChange(!checked)}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`} /></button></label>
+  );
+
+  return (
+    <>
+      <div><h2 className="text-lg font-bold mt-8 mb-1">Investigations & Records</h2><p className="text-sm text-slate-500 mb-4">People search, asset discovery, incident identification, and visual asset protection</p></div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {PROVIDERS.map((p) => {
+          const config = intMap[p.provider];
+          const connected = config?.isEnabled && config?.apiKey;
+          return (
+            <Card key={p.provider}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <p.icon className={`h-6 w-6 ${p.color}`} />
+                    <div><CardTitle className="text-sm">{p.name}</CardTitle><CardDescription className="text-xs leading-relaxed">{p.desc}</CardDescription></div>
+                  </div>
+                  {connected ? <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : <XCircle className="h-5 w-5 text-gray-300 flex-shrink-0" />}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-gray-400 mb-3">{p.note}</p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => loadForm(p.provider)}>Configure</Button>
+                  {connected && <Button size="sm" variant="outline" onClick={() => testMut.mutate({ provider: p.provider as any })} disabled={testMut.isLoading}>Test</Button>}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle className="text-sm">Investigation Webhook URLs</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {[{ name: "Tracers", url: `${webhookBase}/api/integrations/tracers/webhook` }, { name: "Sonar", url: `${webhookBase}/api/integrations/sonar/webhook` }, { name: "Mediascope", url: `${webhookBase}/api/integrations/mediascope/webhook` }].map((wh) => (
+            <div key={wh.name} className="flex items-center gap-2">
+              <span className="text-sm text-slate-500 w-24">{wh.name}:</span>
+              <code className="flex-1 text-xs bg-slate-100 px-2 py-1 rounded font-mono truncate">{wh.url}</code>
+              <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard?.writeText(wh.url); toast({ title: "Copied" }); }}><Copy className="h-3 w-3" /></Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {configOpen && (
+        <Dialog open onOpenChange={() => setConfigOpen(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Configure {configOpen}</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <Toggle label="Enabled" checked={iForm.isEnabled} onChange={(v: boolean) => setIForm({ ...iForm, isEnabled: v })} />
+              <div className="space-y-2"><Label>API Key</Label><Input type="password" value={iForm.apiKey} onChange={(e: any) => setIForm({ ...iForm, apiKey: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Account ID</Label><Input value={iForm.accountId} onChange={(e: any) => setIForm({ ...iForm, accountId: e.target.value })} /></div>
+              <div className="space-y-2"><Label>User ID</Label><Input value={iForm.userId} onChange={(e: any) => setIForm({ ...iForm, userId: e.target.value })} /></div>
+              {configOpen === "TRACERS" && (
+                <>
+                  <div className="space-y-2"><Label>Default Search Depth</Label>
+                    <select className="w-full border rounded px-3 py-2 text-sm" value={iForm.defaultSearchDepth} onChange={(e) => setIForm({ ...iForm, defaultSearchDepth: e.target.value })}>
+                      <option value="basic">Basic</option><option value="standard">Standard</option><option value="comprehensive">Comprehensive</option>
+                    </select>
+                  </div>
+                  <Toggle label="Auto-search on new matter" checked={iForm.autoSearchOnNewMatter} onChange={(v: boolean) => setIForm({ ...iForm, autoSearchOnNewMatter: v })} />
+                  <Toggle label="Auto-search on conflict check" checked={iForm.autoSearchOnConflictCheck} onChange={(v: boolean) => setIForm({ ...iForm, autoSearchOnConflictCheck: v })} />
+                </>
+              )}
+              <Button className="w-full" disabled={updateMut.isLoading} onClick={() => updateMut.mutate({ provider: configOpen as any, apiKey: iForm.apiKey || null, accountId: iForm.accountId || null, userId: iForm.userId || null, isEnabled: iForm.isEnabled, defaultSearchDepth: iForm.defaultSearchDepth, autoSearchOnNewMatter: iForm.autoSearchOnNewMatter, autoSearchOnConflictCheck: iForm.autoSearchOnConflictCheck })}>
+                {updateMut.isLoading ? "Saving..." : "Save Configuration"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

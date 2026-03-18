@@ -59,6 +59,7 @@ import { piMedicalRouter } from "./piMedical";
 import { finInsightsRouter } from "./finInsights";
 import { zoomRouter } from "./zoom";
 import { complianceRouter } from "./compliance";
+import { investigationsRouter } from "./investigations";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -121,6 +122,7 @@ export const appRouter = router({
   finInsights: finInsightsRouter,
   zoom: zoomRouter,
   compliance: complianceRouter,
+  investigations: investigationsRouter,
 });
 
 export type AppRouter = typeof appRouter;

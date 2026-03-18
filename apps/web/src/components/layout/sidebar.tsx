@@ -99,6 +99,7 @@ const mainNavigation = [
   { name: "Filing & Service", href: "/filing", icon: Send },
   { name: "Service & Reporters", href: "/process-serving", icon: Truck },
   { name: "Docket Search", href: "/docket-search", icon: SearchCode },
+  { name: "Investigations", href: "/investigations", icon: SearchCode },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Campaigns", href: "/campaigns", icon: Mail },
   { name: "Website", href: "/website", icon: Globe },

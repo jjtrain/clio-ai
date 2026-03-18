@@ -107,6 +107,10 @@ model Matter {
   matterProfitability  MatterProfitability?
   zoomMeetings         ZoomMeeting[]
   complianceChecks     ComplianceCheck[]
+  investigationSearches InvestigationSearch[]
+  personRecords        PersonRecord[]
+  visualAssetMatches   VisualAssetMatch[]
+  monitoringAlerts     MonitoringAlert[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -6616,4 +6620,298 @@ model ComplianceReport {
   documentId    String?
   createdAt     DateTime                @default(now())
   updatedAt     DateTime                @updatedAt
+}
+
+// ─── Investigations & Records (Tracers, Sonar, Mediascope) ──
+
+enum InvestigationsProvider {
+  TRACERS
+  SONAR
+  MEDIASCOPE
+}
+
+enum InvestigationSearchType {
+  PERSON_LOCATE
+  SKIP_TRACE
+  ASSET_SEARCH
+  BACKGROUND_CHECK
+  CRIMINAL_RECORDS
+  COURT_RECORDS
+  BANKRUPTCY
+  LIENS_JUDGMENTS
+  PROPERTY_RECORDS
+  VEHICLE_RECORDS
+  BUSINESS_SEARCH
+  UCC_FILINGS
+  SOCIAL_MEDIA
+  PHONE_LOOKUP
+  EMAIL_LOOKUP
+  ADDRESS_HISTORY
+  DEATH_RECORDS
+  PROFESSIONAL_LICENSE
+  IDENTITY_VERIFICATION
+  COMPREHENSIVE
+  VISUAL_ASSET_SEARCH
+  BRAND_MONITORING
+  TRADEMARK_SEARCH
+}
+
+enum InvestigationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  PARTIAL
+  FAILED
+  CANCELLED
+}
+
+enum VisualMatchType {
+  IMAGE
+  LOGO
+  TRADEMARK
+  PRODUCT_PHOTO
+  BRAND_ASSET
+  VIDEO_FRAME
+  SOCIAL_MEDIA_POST
+  WEBSITE_SCREENSHOT
+  MARKETPLACE_LISTING
+  ADVERTISEMENT
+}
+
+enum VisualMatchStatus {
+  NEW
+  REVIEWED
+  CONFIRMED_INFRINGEMENT
+  FALSE_POSITIVE
+  TAKEDOWN_REQUESTED
+  TAKEDOWN_COMPLETED
+  MONITORING
+}
+
+enum MonitoringType {
+  PERSON_CHANGE
+  NEW_COURT_CASE
+  NEW_LIEN
+  NEW_BANKRUPTCY
+  ADDRESS_CHANGE
+  PHONE_CHANGE
+  DEATH_RECORD
+  BUSINESS_CHANGE
+  VISUAL_ASSET_MATCH
+  BRAND_MENTION
+  TRADEMARK_USE
+  NEW_LISTING
+}
+
+enum MonitoringAlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model InvestigationsIntegration {
+  id                            String                  @id @default(cuid())
+  provider                      InvestigationsProvider   @unique
+  isEnabled                     Boolean                 @default(false)
+  displayName                   String
+  apiKey                        String?
+  apiSecret                     String?
+  baseUrl                       String?
+  accountId                     String?
+  userId                        String?
+  webhookUrl                    String?
+  webhookSecret                 String?
+  creditsRemaining              Int?
+  monthlyAllowance              Int?
+  autoSearchOnNewMatter         Boolean                 @default(false)
+  autoSearchOnConflictCheck     Boolean                 @default(false)
+  defaultSearchDepth            String                  @default("standard")
+  settings                      String?                 @db.Text
+  lastSyncAt                    DateTime?
+  createdAt                     DateTime                @default(now())
+  updatedAt                     DateTime                @updatedAt
+}
+
+model InvestigationSearch {
+  id                  String                    @id @default(cuid())
+  provider            InvestigationsProvider
+  externalSearchId    String?
+  matterId            String?
+  matter              Matter?                   @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  clientId            String?
+  requestedBy         String?
+  searchType          InvestigationSearchType
+  status              InvestigationStatus       @default(PENDING)
+  searchSubject       String
+  searchInputs        String                    @db.Text
+  resultCount         Int                       @default(0)
+  results             String?                   @db.Text
+  resultSummary       String?                   @db.Text
+  confidenceScore     Decimal?                  @db.Decimal(5, 2)
+  cost                Decimal?                  @db.Decimal(10, 2)
+  isSavedToMatter     Boolean                   @default(false)
+  savedDocumentId     String?
+  notes               String?                   @db.Text
+  rawPayload          String?                   @db.Text
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  personRecords       PersonRecord[]
+  visualAssetMatches  VisualAssetMatch[]
+
+  @@index([provider])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([searchType])
+  @@index([status])
+  @@index([searchSubject])
+  @@index([createdAt])
+}
+
+model PersonRecord {
+  id                    String                  @id @default(cuid())
+  searchId              String
+  search                InvestigationSearch      @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  provider              InvestigationsProvider
+  matterId              String?
+  matter                Matter?                 @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  externalRecordId      String?
+  fullName              String
+  firstName             String?
+  middleName            String?
+  lastName              String?
+  aliases               String?                 @db.Text
+  dateOfBirth           DateTime?
+  age                   Int?
+  ssn                   String?
+  gender                String?
+  deceased              Boolean                 @default(false)
+  deceasedDate          DateTime?
+  currentAddress        String?                 @db.Text
+  currentCity           String?
+  currentState          String?
+  currentZip            String?
+  addressHistory        String?                 @db.Text
+  phones                String?                 @db.Text
+  emails                String?                 @db.Text
+  relatives             String?                 @db.Text
+  associates            String?                 @db.Text
+  employers             String?                 @db.Text
+  professionalLicenses  String?                 @db.Text
+  education             String?                 @db.Text
+  vehicles              String?                 @db.Text
+  properties            String?                 @db.Text
+  bankruptcies          String?                 @db.Text
+  liensJudgments        String?                 @db.Text
+  criminalRecords       String?                 @db.Text
+  courtCases            String?                 @db.Text
+  uccFilings            String?                 @db.Text
+  socialMedia           String?                 @db.Text
+  isVerified            Boolean                 @default(false)
+  verificationScore     Decimal?                @db.Decimal(5, 2)
+  notes                 String?                 @db.Text
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  @@index([searchId])
+  @@index([matterId])
+  @@index([fullName])
+  @@index([currentState])
+}
+
+model VisualAssetMatch {
+  id                    String                  @id @default(cuid())
+  searchId              String
+  search                InvestigationSearch      @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  matterId              String?
+  matter                Matter?                 @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  matchType             VisualMatchType
+  matchUrl              String
+  matchPageTitle        String?
+  matchDomain           String?
+  matchImageUrl         String?
+  originalAssetUrl      String?
+  originalAssetDocId    String?
+  similarityScore       Decimal                 @db.Decimal(5, 4)
+  matchDate             DateTime?
+  platform              String?
+  context               String?                 @db.Text
+  sellerInfo            String?                 @db.Text
+  potentialInfringement Boolean                 @default(false)
+  infringementType      String?
+  status                VisualMatchStatus       @default(NEW)
+  reviewedBy            String?
+  reviewedAt            DateTime?
+  reviewNotes           String?
+  takedownRequestDate   DateTime?
+  takedownRequestMethod String?
+  takedownCompletedDate DateTime?
+  screenshotDocId       String?
+  notes                 String?                 @db.Text
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  @@index([searchId])
+  @@index([matterId])
+  @@index([matchType])
+  @@index([status])
+  @@index([matchDomain])
+  @@index([similarityScore])
+  @@index([platform])
+}
+
+model MonitoringAlert {
+  id                  String                    @id @default(cuid())
+  provider            InvestigationsProvider
+  externalAlertId     String?
+  matterId            String?
+  matter              Matter?                   @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  clientId            String?
+  monitoringType      MonitoringType
+  subject             String
+  title               String
+  description         String                    @db.Text
+  severity            MonitoringAlertSeverity    @default(INFO)
+  data                String?                   @db.Text
+  isRead              Boolean                   @default(false)
+  isDismissed         Boolean                   @default(false)
+  actionTaken         String?
+  linkedSearchId      String?
+  linkedVisualMatchId String?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  @@index([provider])
+  @@index([matterId])
+  @@index([monitoringType])
+  @@index([severity])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model MonitoringSubscription {
+  id                      String                  @id @default(cuid())
+  provider                InvestigationsProvider
+  externalSubscriptionId  String?
+  matterId                String?
+  clientId                String?
+  monitoringType          String
+  subject                 String
+  subjectDetails          String?                 @db.Text
+  isActive                Boolean                 @default(true)
+  frequency               String                  @default("daily")
+  alertCount              Int                     @default(0)
+  lastAlertAt             DateTime?
+  lastCheckedAt           DateTime?
+  nextCheckAt             DateTime?
+  expiresAt               DateTime?
+  cost                    Decimal?                @db.Decimal(8, 2)
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  @@index([provider])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([monitoringType])
+  @@index([isActive])
+  @@index([subject])
 }
