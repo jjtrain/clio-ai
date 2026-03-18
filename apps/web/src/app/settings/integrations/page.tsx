@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video, ShieldCheck, Search, Radar, Eye } from "lucide-react";
+import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video, ShieldCheck, Search, Radar, Eye, GanttChart, Presentation } from "lucide-react";
 
 const PROVIDERS = [
   { provider: "CASETEXT", name: "Casetext CoCounsel", desc: "AI legal research by Thomson Reuters", icon: Scale, color: "text-blue-600" },
@@ -97,6 +97,9 @@ export default function IntegrationSettingsPage() {
 
       {/* Investigations Integrations */}
       <InvestigationsSection webhookBase={webhookBase} />
+
+      {/* Timelines & Visuals */}
+      <VisualsSection webhookBase={webhookBase} />
 
       {/* Webhook URLs */}
       <Card>
@@ -672,6 +675,97 @@ function InvestigationsSection({ webhookBase }: { webhookBase: string }) {
                 </>
               )}
               <Button className="w-full" disabled={updateMut.isLoading} onClick={() => updateMut.mutate({ provider: configOpen as any, apiKey: iForm.apiKey || null, accountId: iForm.accountId || null, userId: iForm.userId || null, isEnabled: iForm.isEnabled, defaultSearchDepth: iForm.defaultSearchDepth, autoSearchOnNewMatter: iForm.autoSearchOnNewMatter, autoSearchOnConflictCheck: iForm.autoSearchOnConflictCheck })}>
+                {updateMut.isLoading ? "Saving..." : "Save Configuration"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+function VisualsSection({ webhookBase }: { webhookBase: string }) {
+  const { toast } = useToast();
+  const utils = trpc.useUtils();
+  const [configOpen, setConfigOpen] = useState<string | null>(null);
+  const [vForm, setVForm] = useState<any>({ apiKey: "", accountId: "", isEnabled: false, autoSyncDocuments: true, autoSyncTimeline: true });
+
+  const { data: integrations } = trpc.visuals["settings.list"].useQuery();
+  const updateMut = trpc.visuals["settings.update"].useMutation({
+    onSuccess: () => { utils.visuals["settings.list"].invalidate(); setConfigOpen(null); toast({ title: "Saved" }); },
+  });
+  const testMut = trpc.visuals["settings.test"].useMutation({
+    onSuccess: (d: any) => toast({ title: d.success ? "Connected!" : `Failed: ${d.error}`, variant: d.success ? "default" : "destructive" }),
+  });
+
+  const intMap: Record<string, any> = {};
+  for (const i of integrations || []) intMap[i.provider] = i;
+
+  const PROVIDERS = [
+    { provider: "TRIALLINE", name: "TrialLine", desc: "Create visual case timelines for strategy sessions, mediation, and courtroom presentations. Auto-builds from your docket entries, medical records, and documents.", icon: GanttChart, color: "text-blue-600", note: "Share interactive timelines with co-counsel or export for mediation briefs." },
+    { provider: "AGILELAW", name: "AgileLaw", desc: "Digital deposition tool. Add documents as exhibits, annotate in real-time, present during depositions, stamp exhibits, and track admission status.", icon: Presentation, color: "text-purple-600", note: "AgileLaw replaces paper exhibits. Upload before, present live, annotate on the fly, export after." },
+  ];
+
+  const loadForm = (provider: string) => {
+    const config = intMap[provider];
+    if (config) setVForm({ apiKey: config.apiKey || "", accountId: config.accountId || "", isEnabled: config.isEnabled, autoSyncDocuments: config.autoSyncDocuments, autoSyncTimeline: config.autoSyncTimeline });
+    else setVForm({ apiKey: "", accountId: "", isEnabled: false, autoSyncDocuments: true, autoSyncTimeline: true });
+    setConfigOpen(provider);
+  };
+
+  const Toggle = ({ label, checked, onChange }: any) => (
+    <label className="flex items-center justify-between py-1"><span className="text-sm">{label}</span><button type="button" className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-gray-200"}`} onClick={() => onChange(!checked)}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`} /></button></label>
+  );
+
+  return (
+    <>
+      <div><h2 className="text-lg font-bold mt-8 mb-1">Timelines & Visuals</h2><p className="text-sm text-slate-500 mb-4">Case timelines, deposition management, and courtroom presentations</p></div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {PROVIDERS.map((p) => {
+          const config = intMap[p.provider];
+          const connected = config?.isEnabled && config?.apiKey;
+          return (
+            <Card key={p.provider}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3"><p.icon className={`h-6 w-6 ${p.color}`} /><div><CardTitle className="text-sm">{p.name}</CardTitle><CardDescription className="text-xs leading-relaxed">{p.desc}</CardDescription></div></div>
+                  {connected ? <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : <XCircle className="h-5 w-5 text-gray-300 flex-shrink-0" />}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-gray-400 mb-3">{p.note}</p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => loadForm(p.provider)}>Configure</Button>
+                  {connected && <Button size="sm" variant="outline" onClick={() => testMut.mutate({ provider: p.provider as any })} disabled={testMut.isLoading}>Test</Button>}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle className="text-sm">Visuals Webhook URLs</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {[{ name: "TrialLine", url: `${webhookBase}/api/integrations/trialline/webhook` }, { name: "AgileLaw", url: `${webhookBase}/api/integrations/agilelaw/webhook` }].map((wh) => (
+            <div key={wh.name} className="flex items-center gap-2"><span className="text-sm text-slate-500 w-24">{wh.name}:</span><code className="flex-1 text-xs bg-slate-100 px-2 py-1 rounded font-mono truncate">{wh.url}</code><Button variant="ghost" size="sm" onClick={() => { navigator.clipboard?.writeText(wh.url); toast({ title: "Copied" }); }}><Copy className="h-3 w-3" /></Button></div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {configOpen && (
+        <Dialog open onOpenChange={() => setConfigOpen(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Configure {configOpen === "TRIALLINE" ? "TrialLine" : "AgileLaw"}</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <Toggle label="Enabled" checked={vForm.isEnabled} onChange={(v: boolean) => setVForm({ ...vForm, isEnabled: v })} />
+              <div className="space-y-2"><Label>API Key</Label><Input type="password" value={vForm.apiKey} onChange={(e: any) => setVForm({ ...vForm, apiKey: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Account ID</Label><Input value={vForm.accountId} onChange={(e: any) => setVForm({ ...vForm, accountId: e.target.value })} /></div>
+              <Toggle label="Auto-sync Documents" checked={vForm.autoSyncDocuments} onChange={(v: boolean) => setVForm({ ...vForm, autoSyncDocuments: v })} />
+              <Toggle label="Auto-sync Timeline" checked={vForm.autoSyncTimeline} onChange={(v: boolean) => setVForm({ ...vForm, autoSyncTimeline: v })} />
+              <Button className="w-full" disabled={updateMut.isLoading} onClick={() => updateMut.mutate({ provider: configOpen as any, apiKey: vForm.apiKey || null, accountId: vForm.accountId || null, isEnabled: vForm.isEnabled, autoSyncDocuments: vForm.autoSyncDocuments, autoSyncTimeline: vForm.autoSyncTimeline })}>
                 {updateMut.isLoading ? "Saving..." : "Save Configuration"}
               </Button>
             </div>

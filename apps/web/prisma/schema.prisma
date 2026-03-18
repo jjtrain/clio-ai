@@ -111,6 +111,9 @@ model Matter {
   personRecords        PersonRecord[]
   visualAssetMatches   VisualAssetMatch[]
   monitoringAlerts     MonitoringAlert[]
+  caseTimelines       CaseTimeline[]
+  depositionSessions  DepositionSession[]
+  presentationBoards  PresentationBoard[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -6914,4 +6917,341 @@ model MonitoringSubscription {
   @@index([monitoringType])
   @@index([isActive])
   @@index([subject])
+}
+
+// ─── Timelines & Visuals (TrialLine, AgileLaw) ─────────────
+
+enum VisualsProvider {
+  TRIALLINE
+  AGILELAW
+}
+
+enum TimelineType {
+  CASE_CHRONOLOGY
+  MEDICAL_TREATMENT
+  DISCOVERY
+  LITIGATION
+  INCIDENT
+  CUSTOM
+}
+
+enum TimelineStatus {
+  DRAFT
+  IN_PROGRESS
+  FINAL
+  SHARED
+  ARCHIVED
+}
+
+enum TimelineEventCategory {
+  INCIDENT
+  MEDICAL
+  LEGAL_FILING
+  DISCOVERY
+  DEPOSITION
+  HEARING
+  CONFERENCE
+  MOTION
+  ORDER
+  TRIAL
+  SETTLEMENT
+  COMMUNICATION
+  DOCUMENT
+  WITNESS
+  EXPERT
+  INVESTIGATION
+  INSURANCE
+  OTHER
+}
+
+enum TimelineSignificance {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DepoSessionLocationType {
+  IN_PERSON
+  REMOTE
+  HYBRID
+}
+
+enum DepoSessionStatus {
+  SETUP
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum ExhibitAdmissionStatus {
+  NOT_OFFERED
+  OFFERED
+  ADMITTED
+  OBJECTED
+  EXCLUDED
+  RESERVED
+}
+
+enum DepoAnnotationType {
+  HIGHLIGHT
+  UNDERLINE
+  CALLOUT
+  ARROW
+  BOX
+  REDACTION
+  TEXT_NOTE
+  BOOKMARK
+  FLAG
+  IMPEACHMENT_MARKER
+}
+
+enum PresentationBoardType {
+  TRIAL
+  MEDIATION
+  STRATEGY
+  CLIENT_PRESENTATION
+  SETTLEMENT
+  OPENING_STATEMENT
+  CLOSING_ARGUMENT
+  CUSTOM
+}
+
+enum PresentationStatus {
+  DRAFT
+  READY
+  PRESENTING
+  COMPLETED
+}
+
+model VisualsIntegration {
+  id                  String          @id @default(cuid())
+  provider            VisualsProvider  @unique
+  isEnabled           Boolean         @default(false)
+  displayName         String
+  apiKey              String?
+  apiSecret           String?
+  baseUrl             String?
+  accountId           String?
+  accessToken         String?
+  refreshToken        String?
+  tokenExpiresAt      DateTime?
+  webhookUrl          String?
+  webhookSecret       String?
+  autoSyncDocuments   Boolean         @default(true)
+  autoSyncTimeline    Boolean         @default(true)
+  settings            String?         @db.Text
+  lastSyncAt          DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+}
+
+model CaseTimeline {
+  id                    String          @id @default(cuid())
+  provider              VisualsProvider?
+  externalTimelineId    String?
+  matterId              String
+  matter                Matter          @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  title                 String
+  description           String?         @db.Text
+  timelineType          TimelineType    @default(CASE_CHRONOLOGY)
+  status                TimelineStatus  @default(DRAFT)
+  dateRangeStart        DateTime?
+  dateRangeEnd          DateTime?
+  eventCount            Int             @default(0)
+  isPublic              Boolean         @default(false)
+  publicShareUrl        String?
+  publicSharePassword   String?
+  publicShareExpiresAt  DateTime?
+  theme                 String?         @db.Text
+  filters               String?         @db.Text
+  annotations           String?         @db.Text
+  exportFormats         String?         @db.Text
+  lastExportedAt        DateTime?
+  lastExportedFormat    String?
+  exportDocumentIds     String?         @db.Text
+  collaborators         String?         @db.Text
+  version               Int             @default(1)
+  previousVersionId     String?
+  aiGenerated           Boolean         @default(false)
+  aiSummary             String?         @db.Text
+  createdBy             String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  events                TimelineEvent[]
+
+  @@index([provider])
+  @@index([externalTimelineId])
+  @@index([matterId])
+  @@index([timelineType])
+  @@index([status])
+}
+
+model TimelineEvent {
+  id                String                @id @default(cuid())
+  timelineId        String
+  timeline          CaseTimeline          @relation(fields: [timelineId], references: [id], onDelete: Cascade)
+  externalEventId   String?
+  date              DateTime
+  endDate           DateTime?
+  title             String
+  description       String?               @db.Text
+  category          TimelineEventCategory @default(OTHER)
+  subcategory       String?
+  significance      TimelineSignificance  @default(MEDIUM)
+  party             String?
+  parties           String?               @db.Text
+  location          String?
+  source            String?
+  sourceRecordId    String?
+  documentIds       String?               @db.Text
+  witnessNames      String?               @db.Text
+  amount            Decimal?              @db.Decimal(14, 2)
+  tags              String?               @db.Text
+  color             String?
+  icon              String?
+  isKeyEvent        Boolean               @default(false)
+  isDisputed        Boolean               @default(false)
+  disputeNotes      String?
+  notes             String?               @db.Text
+  position          Int                   @default(0)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([timelineId])
+  @@index([date])
+  @@index([category])
+  @@index([significance])
+  @@index([isKeyEvent])
+  @@index([party])
+}
+
+model DepositionSession {
+  id                    String                @id @default(cuid())
+  provider              VisualsProvider       @default(AGILELAW)
+  externalSessionId     String?
+  matterId              String
+  matter                Matter                @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  courtReporterJobId    String?
+  title                 String
+  deponentName          String
+  deponentRole          String?
+  depositionDate        DateTime
+  depositionTime        String?
+  location              String?
+  locationType          DepoSessionLocationType @default(IN_PERSON)
+  status                DepoSessionStatus     @default(SETUP)
+  videoConferenceUrl    String?
+  examiningAttorney     String?
+  defendingAttorney     String?
+  courtReporter         String?
+  videographer          String?
+  realTimeEnabled       Boolean               @default(false)
+  realTimeFeedUrl       String?
+  exhibitCount          Int                   @default(0)
+  annotationCount       Int                   @default(0)
+  transcriptLinked      Boolean               @default(false)
+  transcriptDocId       String?
+  videoDocId            String?
+  summaryDocId          String?
+  aiDepoSummary         String?               @db.Text
+  aiKeyTestimony        String?               @db.Text
+  aiImpeachmentPoints   String?               @db.Text
+  shareUrl              String?
+  sharePassword         String?
+  notes                 String?               @db.Text
+  rawPayload            String?               @db.Text
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  exhibits              DepositionExhibit[]
+  annotations           DepositionAnnotation[]
+
+  @@index([provider])
+  @@index([externalSessionId])
+  @@index([matterId])
+  @@index([deponentName])
+  @@index([depositionDate])
+  @@index([status])
+}
+
+model DepositionExhibit {
+  id                        String                  @id @default(cuid())
+  sessionId                 String
+  session                   DepositionSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  externalExhibitId         String?
+  exhibitNumber             String
+  title                     String
+  description               String?
+  documentId                String?
+  externalDocUrl            String?
+  fileType                  String?
+  pageCount                 Int?
+  markedBy                  String?
+  markedAt                  DateTime?
+  offeredIntoEvidence       Boolean                 @default(false)
+  admissionStatus           ExhibitAdmissionStatus?
+  objection                 String?
+  stampedPageRanges         String?                 @db.Text
+  annotations               String?                 @db.Text
+  linkedTranscriptPages     String?                 @db.Text
+  isConfidential            Boolean                 @default(false)
+  confidentialityDesignation String?
+  notes                     String?                 @db.Text
+  position                  Int                     @default(0)
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+
+  @@index([sessionId])
+  @@index([exhibitNumber])
+  @@index([documentId])
+  @@index([admissionStatus])
+}
+
+model DepositionAnnotation {
+  id              String                @id @default(cuid())
+  sessionId       String
+  session         DepositionSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exhibitId       String?
+  transcriptPage  Int?
+  transcriptLine  Int?
+  annotationType  DepoAnnotationType    @default(TEXT_NOTE)
+  content         String?               @db.Text
+  color           String?
+  coordinates     String?               @db.Text
+  createdBy       String
+  isPrivate       Boolean               @default(true)
+  tags            String?               @db.Text
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([sessionId])
+  @@index([exhibitId])
+  @@index([annotationType])
+  @@index([createdBy])
+}
+
+model PresentationBoard {
+  id                String              @id @default(cuid())
+  matterId          String
+  matter            Matter              @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  title             String
+  description       String?
+  boardType         PresentationBoardType @default(CUSTOM)
+  slides            String              @db.Text
+  slideCount        Int                 @default(0)
+  currentSlideIndex Int                 @default(0)
+  theme             String?             @db.Text
+  status            PresentationStatus  @default(DRAFT)
+  sharedUrl         String?
+  sharedPassword    String?
+  presenterNotes    String?             @db.Text
+  lastPresentedAt   DateTime?
+  exportDocIds      String?             @db.Text
+  createdBy         String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([matterId])
+  @@index([boardType])
+  @@index([status])
 }
