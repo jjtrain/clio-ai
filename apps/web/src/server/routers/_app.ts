@@ -63,6 +63,7 @@ import { investigationsRouter } from "./investigations";
 import { visualsRouter } from "./visuals";
 import { mailRouter } from "./mail";
 import { immigrationRouter } from "./immigration";
+import { conveyancingRouter } from "./conveyancing";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -129,6 +130,7 @@ export const appRouter = router({
   visuals: visualsRouter,
   mail: mailRouter,
   immigration: immigrationRouter,
+  conveyancing: conveyancingRouter,
 });
 
 export type AppRouter = typeof appRouter;

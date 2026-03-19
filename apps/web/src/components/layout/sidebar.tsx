@@ -61,6 +61,7 @@ import {
   Share2,
   Lightbulb,
   Video,
+  Home as HomeIcon,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -97,6 +98,7 @@ const mainNavigation = [
   { name: "Discovery", href: "/discovery", icon: FileQuestion },
   { name: "Family Law", href: "/family", icon: Heart },
   { name: "Immigration", href: "/immigration", icon: Globe },
+  { name: "Conveyancing", href: "/conveyancing", icon: HomeIcon },
   { name: "Filing & Service", href: "/filing", icon: Send },
   { name: "Service & Reporters", href: "/process-serving", icon: Truck },
   { name: "Docket Search", href: "/docket-search", icon: SearchCode },

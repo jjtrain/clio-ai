@@ -43,6 +43,10 @@
     {
       "path": "/api/cron/immigration",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/conveyancing",
+      "schedule": "0 7 * * *"
     }
   ]
 }
