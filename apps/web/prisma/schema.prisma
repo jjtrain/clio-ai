@@ -8361,3 +8361,221 @@ model ConveyancingActivity {
   @@index([activityType])
   @@index([createdAt])
 }
+
+// ─── Email (Gmail, Outlook) ────────────────────────────
+
+enum EmailProvider {
+  GMAIL
+  OUTLOOK
+}
+
+enum EmailSyncDirection {
+  INBOUND_ONLY
+  OUTBOUND_ONLY
+  BIDIRECTIONAL
+}
+
+enum EmailScheduleStatus {
+  SCHEDULED
+  SENT
+  FAILED
+  CANCELLED
+}
+
+model EmailIntegration {
+  id                    String              @id @default(cuid())
+  provider              EmailProvider        @unique
+  isEnabled             Boolean             @default(false)
+  displayName           String
+  emailAddress          String?
+  accessToken           String?
+  refreshToken          String?
+  tokenExpiresAt        DateTime?
+  accountId             String?
+  tenantId              String?
+  clientId              String?
+  clientSecret          String?
+  webhookUrl            String?
+  webhookSecret         String?
+  historyId             String?
+  deltaLink             String?
+  syncEnabled           Boolean             @default(true)
+  syncDirection         EmailSyncDirection  @default(BIDIRECTIONAL)
+  syncFolders           String?             @db.Text
+  autoFileEnabled       Boolean             @default(false)
+  autoFileConfidence    String              @default("high")
+  signatureHtml         String?             @db.Text
+  defaultFromName       String?
+  lastSyncAt            DateTime?
+  lastSyncStatus        String?
+  lastSyncError         String?
+  settings              String?             @db.Text
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+}
+
+model EmailMessage {
+  id                    String          @id @default(cuid())
+  provider              EmailProvider
+  externalMessageId     String
+  externalThreadId      String?
+  matterId              String?
+  clientId              String?
+  leadId                String?
+  from                  String
+  fromName              String?
+  to                    String          @db.Text
+  cc                    String?         @db.Text
+  bcc                   String?         @db.Text
+  replyTo               String?
+  subject               String
+  bodyText              String?         @db.Text
+  bodyHtml              String?         @db.Text
+  snippet               String?
+  date                  DateTime
+  isRead                Boolean         @default(false)
+  isStarred             Boolean         @default(false)
+  isDraft               Boolean         @default(false)
+  isSent                Boolean         @default(false)
+  isInbound             Boolean         @default(true)
+  hasAttachments        Boolean         @default(false)
+  attachmentCount       Int             @default(0)
+  attachments           String?         @db.Text
+  labels                String?         @db.Text
+  folder                String?
+  importance            String          @default("normal")
+  categories            String?         @db.Text
+  filedAt               DateTime?
+  filedBy               String?
+  autoFiled             Boolean         @default(false)
+  autoFileConfidence    String?
+  timeEntryId           String?
+  billedMinutes         Int?
+  isArchived            Boolean         @default(false)
+  rawPayload            String?         @db.Text
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  emailAttachments      EmailAttachment[]
+
+  @@unique([provider, externalMessageId])
+  @@index([externalThreadId])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([from])
+  @@index([date])
+  @@index([isRead])
+  @@index([isSent])
+  @@index([folder])
+  @@index([subject])
+}
+
+model EmailThread {
+  id                    String          @id @default(cuid())
+  provider              EmailProvider
+  externalThreadId      String
+  matterId              String?
+  clientId              String?
+  subject               String
+  participants          String          @db.Text
+  messageCount          Int             @default(0)
+  unreadCount           Int             @default(0)
+  lastMessageDate       DateTime
+  lastMessageSnippet    String?
+  lastMessageFrom       String?
+  isStarred             Boolean         @default(false)
+  labels                String?         @db.Text
+  folder                String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@unique([provider, externalThreadId])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([lastMessageDate])
+  @@index([subject])
+}
+
+model EmailAttachment {
+  id                    String          @id @default(cuid())
+  messageId             String
+  message               EmailMessage    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  externalAttachmentId  String?
+  fileName              String
+  mimeType              String?
+  size                  Int?
+  documentId            String?
+  savedAt               DateTime?
+  savedBy               String?
+  isInline              Boolean         @default(false)
+  contentId             String?
+  createdAt             DateTime        @default(now())
+
+  @@index([messageId])
+  @@index([documentId])
+  @@index([fileName])
+}
+
+model EmailLabel {
+  id                    String          @id @default(cuid())
+  provider              EmailProvider
+  externalLabelId       String
+  name                  String
+  type                  String?
+  color                 String?
+  isSystem              Boolean         @default(false)
+  matterId              String?
+  messageCount          Int             @default(0)
+  unreadCount           Int             @default(0)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@unique([provider, externalLabelId])
+  @@index([matterId])
+}
+
+model EmailComposeTemplate {
+  id                    String          @id @default(cuid())
+  name                  String
+  subject               String
+  bodyHtml              String          @db.Text
+  bodyText              String?         @db.Text
+  category              String?
+  variables             String?         @db.Text
+  attachmentDocIds      String?         @db.Text
+  isActive              Boolean         @default(true)
+  usageCount            Int             @default(0)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+}
+
+model EmailSchedule {
+  id                    String              @id @default(cuid())
+  provider              EmailProvider
+  messageData           String              @db.Text
+  matterId              String?
+  scheduledFor          DateTime
+  status                EmailScheduleStatus @default(SCHEDULED)
+  sentAt                DateTime?
+  externalMessageId     String?
+  error                 String?
+  createdBy             String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+model EmailRule {
+  id                    String          @id @default(cuid())
+  name                  String
+  isActive              Boolean         @default(true)
+  priority              Int             @default(0)
+  conditions            String          @db.Text
+  conditionLogic        String          @default("AND")
+  actions               String          @db.Text
+  matchCount            Int             @default(0)
+  lastMatchedAt         DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+}

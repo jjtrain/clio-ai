@@ -69,6 +69,7 @@ const mainNavigation = [
   { name: "Clients", href: "/clients", icon: Users },
   { name: "Matters", href: "/matters", icon: Briefcase },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
+  { name: "Email", href: "/email", icon: Inbox },
   { name: "Time Tracking", href: "/time", icon: Clock },
   { name: "Billing", href: "/billing", icon: Receipt },
   { name: "Trust Accounting", href: "/trust", icon: Landmark },

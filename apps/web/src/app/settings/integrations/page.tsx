@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video, ShieldCheck, Search, Radar, Eye, GanttChart, Presentation, MailOpen, Globe2, Home } from "lucide-react";
+import { Scale, Bell, BookOpen, Clock, FileText, Plug, CheckCircle, XCircle, Copy, BarChart3, Lightbulb, Video, ShieldCheck, Search, Radar, Eye, GanttChart, Presentation, MailOpen, Globe2, Home, Inbox } from "lucide-react";
 
 const PROVIDERS = [
   { provider: "CASETEXT", name: "Casetext CoCounsel", desc: "AI legal research by Thomson Reuters", icon: Scale, color: "text-blue-600" },
@@ -109,6 +109,22 @@ export default function IntegrationSettingsPage() {
 
       {/* Conveyancing */}
       <LCSSection webhookBase={webhookBase} />
+
+      {/* Email */}
+      <div>
+        <h2 className="text-lg font-bold mt-8 mb-1">Email</h2>
+        <p className="text-sm text-slate-500 mb-4">Connect Gmail or Outlook for full email integration</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader><div className="flex items-center gap-3"><Inbox className="h-6 w-6 text-red-600" /><div><CardTitle className="text-sm">Gmail</CardTitle><CardDescription className="text-xs">Full Gmail integration. Read, send, and file emails to matters. Sync threads, labels, and attachments.</CardDescription></div></div></CardHeader>
+          <CardContent><p className="text-xs text-gray-400 mb-3">Connect your Gmail account via OAuth. Requires Gmail API access.</p><Button size="sm" variant="outline">Connect Gmail</Button></CardContent>
+        </Card>
+        <Card>
+          <CardHeader><div className="flex items-center gap-3"><Inbox className="h-6 w-6 text-blue-600" /><div><CardTitle className="text-sm">Outlook / Office 365</CardTitle><CardDescription className="text-xs">Full Outlook integration via Microsoft 365. Read, send, and organize emails. File to matters.</CardDescription></div></div></CardHeader>
+          <CardContent><p className="text-xs text-gray-400 mb-3">Connect your Microsoft 365 account via OAuth.</p><Button size="sm" variant="outline">Connect Outlook</Button></CardContent>
+        </Card>
+      </div>
 
       {/* Webhook URLs */}
       <Card>
