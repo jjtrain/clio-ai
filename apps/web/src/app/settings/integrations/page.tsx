@@ -150,6 +150,44 @@ export default function IntegrationSettingsPage() {
         </Card>
       </div>
 
+      {/* AI Providers */}
+      <div>
+        <h2 className="text-lg font-bold mt-8 mb-1">AI Providers</h2>
+        <p className="text-sm text-slate-500 mb-4">Configure AI engines for legal reasoning, document search, transcription, and more</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Scale className="h-6 w-6 text-purple-600" />
+              <div>
+                <CardTitle className="text-sm">Anthropic (Claude)</CardTitle>
+                <CardDescription className="text-xs">Claude powers Clio AI&apos;s core legal reasoning, document review, research, and analysis. Claude excels at long-form legal analysis, nuanced reasoning, and attorney-quality writing.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-gray-400 mb-3">Always configured via ANTHROPIC_API_KEY environment variable. Current model: claude-sonnet-4.</p>
+            <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500" /><span className="text-xs text-green-700 font-medium">Active — Primary provider</span></div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Lightbulb className="h-6 w-6 text-emerald-600" />
+              <div>
+                <CardTitle className="text-sm">OpenAI</CardTitle>
+                <CardDescription className="text-xs">Add OpenAI for embeddings-powered semantic document search, Whisper audio transcription, DALL-E image generation, and GPT models as an alternative AI engine.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-gray-400 mb-3">OpenAI complements Claude by providing embeddings for semantic search, Whisper for transcription, and DALL-E for images.</p>
+            <Button size="sm" variant="outline">Configure OpenAI</Button>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Webhook URLs */}
       <Card>
         <CardHeader><CardTitle className="text-sm">Webhook URLs</CardTitle><CardDescription>Add these to your provider dashboards for real-time alerts</CardDescription></CardHeader>

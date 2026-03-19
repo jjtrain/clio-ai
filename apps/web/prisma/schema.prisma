@@ -118,6 +118,8 @@ model Matter {
   mailJobs            MailJob[]
   immigrationCases    ImmigrationCase[]
   conveyancingMatters ConveyancingMatter[]
+  aiUsageLogs         AIUsageLog[]        @relation("AIUsageMatter")
+  documentEmbeddings  DocumentEmbedding[] @relation("EmbeddingMatter")
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -171,6 +173,7 @@ model Document {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   signatureRequests SignatureRequest[]
+  embeddings        DocumentEmbedding[]
 
   @@index([matterId])
 }
@@ -9011,4 +9014,149 @@ model FirmHoliday {
 
   @@index([date])
   @@index([year])
+}
+
+// ── OpenAI / AI Provider Integration ──────────────────────────────────
+
+enum AIProvider {
+  ANTHROPIC
+  OPENAI
+}
+
+enum AIRequestType {
+  COMPLETION
+  CHAT
+  EMBEDDING
+  TRANSCRIPTION
+  IMAGE_GENERATION
+  MODERATION
+  STRUCTURED_OUTPUT
+}
+
+enum AIRequestStatus {
+  SUCCESS
+  FAILED
+  RATE_LIMITED
+  TIMEOUT
+  CONTENT_FILTERED
+}
+
+model AIIntegration {
+  id                    String      @id @default(cuid())
+  provider              AIProvider  @unique
+  isEnabled             Boolean     @default(false)
+  displayName           String
+  apiKey                String?
+  organizationId        String?
+  projectId             String?
+  defaultModel          String?
+  defaultEmbeddingModel String?
+  defaultWhisperModel   String?
+  defaultImageModel     String?
+  maxTokensPerRequest   Int         @default(4096)
+  temperatureDefault    Decimal?    @db.Decimal(3, 2)
+  monthlyBudgetCap      Decimal?    @db.Decimal(10, 2)
+  currentMonthSpend     Decimal?    @db.Decimal(10, 2) @default(0)
+  rateLimitRPM          Int?
+  rateLimitTPM          Int?
+  enabledFeatures       String?     @db.Text
+  routingStrategy       String      @default("anthropic_primary")
+  settings              String?     @db.Text
+  lastUsedAt            DateTime?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+}
+
+model AIUsageLog {
+  id                  String          @id @default(cuid())
+  provider            AIProvider
+  model               String
+  feature             String
+  matterId            String?
+  matter              Matter?         @relation("AIUsageMatter", fields: [matterId], references: [id], onDelete: SetNull)
+  requestType         AIRequestType
+  inputTokens         Int             @default(0)
+  outputTokens        Int             @default(0)
+  totalTokens         Int             @default(0)
+  embeddingDimensions Int?
+  audioDurationSeconds Int?
+  imageCount          Int?
+  cost                Decimal?        @db.Decimal(10, 6)
+  latencyMs           Int?
+  status              AIRequestStatus
+  errorMessage        String?
+  metadata            String?         @db.Text
+  createdAt           DateTime        @default(now())
+
+  @@index([provider])
+  @@index([model])
+  @@index([feature])
+  @@index([matterId])
+  @@index([requestType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AIPromptTemplate {
+  id                  String      @id @default(cuid())
+  name                String
+  feature             String
+  systemPrompt        String      @db.Text
+  userPromptTemplate  String?     @db.Text
+  preferredProvider   AIProvider?
+  preferredModel      String?
+  temperature         Decimal?    @db.Decimal(3, 2)
+  maxTokens           Int?
+  responseFormat      String?
+  responseSchema      String?     @db.Text
+  isActive            Boolean     @default(true)
+  version             Int         @default(1)
+  testInputs          String?     @db.Text
+  testExpectedOutput  String?     @db.Text
+  averageLatencyMs    Int?
+  averageCost         Decimal?    @db.Decimal(10, 6)
+  usageCount          Int         @default(0)
+  lastUsedAt          DateTime?
+  notes               String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([name])
+  @@index([feature])
+  @@index([preferredProvider])
+  @@index([isActive])
+}
+
+model DocumentEmbedding {
+  id                  String    @id @default(cuid())
+  documentId          String
+  document            Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  matterId            String?
+  matter              Matter?   @relation("EmbeddingMatter", fields: [matterId], references: [id], onDelete: SetNull)
+  chunkIndex          Int
+  chunkText           String    @db.Text
+  chunkTokens         Int?
+  embedding           String    @db.Text
+  embeddingModel      String
+  embeddingDimensions Int
+  metadata            String?   @db.Text
+  createdAt           DateTime  @default(now())
+
+  @@index([documentId])
+  @@index([matterId])
+  @@index([chunkIndex])
+}
+
+model SemanticSearchResult {
+  id              String    @id @default(cuid())
+  query           String
+  queryEmbedding  String?   @db.Text
+  matterId        String?
+  results         String    @db.Text
+  resultCount     Int
+  searchTimeMs    Int?
+  createdAt       DateTime  @default(now())
+
+  @@index([matterId])
+  @@index([createdAt])
 }

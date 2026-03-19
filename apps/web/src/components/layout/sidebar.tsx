@@ -62,6 +62,7 @@ import {
   Lightbulb,
   Video,
   Home as HomeIcon,
+  Brain,
 } from "lucide-react";
 
 const mainNavigation = [
@@ -126,6 +127,7 @@ const mainNavigation = [
   { name: "Reviews", href: "/marketing/reviews", icon: Megaphone },
   { name: "Scheduling", href: "/scheduling", icon: CalendarRange },
   { name: "HR", href: "/hr", icon: Users },
+  { name: "AI", href: "/ai", icon: Brain },
   { name: "Time Review", href: "/time-tracking/review", icon: Clock },
 ];
 

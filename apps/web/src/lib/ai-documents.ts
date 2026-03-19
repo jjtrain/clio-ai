@@ -1,4 +1,4 @@
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
+import * as aiRouter from "@/lib/ai-router";
 
 async function callClaude(params: {
   system: string;
@@ -6,32 +6,13 @@ async function callClaude(params: {
   model?: string;
   maxTokens?: number;
 }): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
-
-  const response = await fetch(ANTHROPIC_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: params.model || "claude-sonnet-4-20250514",
-      max_tokens: params.maxTokens || 4000,
-      system: params.system,
-      messages: [{ role: "user", content: params.userMessage }],
-    }),
+  const result = await aiRouter.complete({
+    feature: "document_generation",
+    systemPrompt: params.system,
+    userPrompt: params.userMessage,
+    maxTokens: params.maxTokens || 4000,
   });
-
-  if (!response.ok) {
-    const text = await response.text();
-    console.error("[AI Documents] API error:", response.status, text);
-    throw new Error(`Anthropic API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.content?.[0]?.text || "";
+  return result.content;
 }
 
 function parseJson<T>(raw: string, fallback: T): T {
