@@ -9160,3 +9160,566 @@ model SemanticSearchResult {
   @@index([matterId])
   @@index([createdAt])
 }
+
+// ── Security & Compliance Framework ───────────────────────────────────
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  LOGIN_FAILED
+  PASSWORD_CHANGED
+  PASSWORD_RESET
+  TWO_FACTOR_ENABLED
+  TWO_FACTOR_DISABLED
+  TWO_FACTOR_FAILED
+  SESSION_EXPIRED
+  SESSION_TERMINATED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  SEC_CREATE
+  SEC_READ
+  SEC_UPDATE
+  SEC_DELETE
+  SEC_EXPORT
+  SEC_IMPORT
+  SEC_DOWNLOAD
+  SEC_UPLOAD
+  SEC_PRINT
+  SEC_SHARE
+  SEC_UNSHARE
+  EMAIL_SENT
+  PERMISSION_GRANTED
+  PERMISSION_REVOKED
+  ROLE_CHANGED
+  SETTINGS_CHANGED
+  API_KEY_CREATED
+  API_KEY_REVOKED
+  INTEGRATION_CONNECTED
+  INTEGRATION_DISCONNECTED
+  DATA_EXPORTED
+  DATA_DELETED
+  BACKUP_CREATED
+  BACKUP_RESTORED
+  ENCRYPTION_KEY_ROTATED
+  SECURITY_POLICY_CHANGED
+  COMPLIANCE_CHECK_RUN
+  INCIDENT_CREATED
+  INCIDENT_RESOLVED
+  BULK_OPERATION
+  PRIVILEGED_ACTION
+  SYSTEM_CONFIG_CHANGED
+}
+
+enum AuditCategory {
+  AUTHENTICATION
+  AUTHORIZATION
+  DATA_ACCESS
+  DATA_MODIFICATION
+  DATA_EXPORT
+  SYSTEM_ADMIN
+  SECURITY
+  SEC_COMPLIANCE
+  SEC_INTEGRATION
+  SEC_BILLING
+  COMMUNICATION
+  USER_MANAGEMENT
+  DOCUMENT_ACCESS
+  CLIENT_DATA
+  MATTER_DATA
+  FINANCIAL_DATA
+  PHI_ACCESS
+}
+
+enum AuditSeverity {
+  SEC_DEBUG
+  SEC_INFO
+  SEC_WARNING
+  SEC_ERROR
+  SEC_CRITICAL
+}
+
+enum RiskLevel {
+  RISK_NONE
+  RISK_LOW
+  RISK_MEDIUM
+  RISK_HIGH
+  RISK_CRITICAL
+}
+
+enum SecurityIncidentType {
+  DATA_BREACH
+  UNAUTHORIZED_ACCESS
+  SEC_MALWARE
+  SEC_PHISHING
+  INSIDER_THREAT
+  LOST_DEVICE
+  POLICY_VIOLATION
+  SUSPICIOUS_ACTIVITY
+  SYSTEM_COMPROMISE
+  DENIAL_OF_SERVICE
+  SEC_DATA_LOSS
+  SEC_MISCONFIGURATION
+  VENDOR_BREACH
+  SEC_OTHER
+}
+
+enum IncidentStatus {
+  DETECTED
+  INVESTIGATING
+  CONTAINED
+  ERADICATED
+  RECOVERED
+  INCIDENT_CLOSED
+  FALSE_POSITIVE
+}
+
+enum DataClassificationLevel {
+  DC_PUBLIC
+  DC_INTERNAL
+  DC_CONFIDENTIAL
+  DC_RESTRICTED
+  DC_PRIVILEGED
+}
+
+enum ComplianceFrameworkType {
+  SOC2
+  ISO27001
+  HIPAA
+  PCI_DSS
+}
+
+enum ControlStatus {
+  CTRL_NOT_STARTED
+  CTRL_PLANNING
+  CTRL_IN_PROGRESS
+  CTRL_IMPLEMENTED
+  CTRL_TESTED
+  CTRL_CERTIFIED
+  CTRL_NOT_APPLICABLE
+}
+
+enum AssessmentType {
+  SELF_ASSESSMENT
+  INTERNAL_AUDIT
+  EXTERNAL_AUDIT
+  GAP_ANALYSIS
+  READINESS_CHECK
+  PENETRATION_TEST
+  VULNERABILITY_SCAN
+}
+
+enum SecurityAssessmentStatus {
+  SA_PLANNED
+  SA_IN_PROGRESS
+  SA_COMPLETED
+  SA_REMEDIATION_REQUIRED
+  SA_CERTIFIED
+}
+
+enum EncryptionKeyType {
+  EK_MASTER
+  EK_DATA
+  EK_FIELD
+  EK_BACKUP
+  EK_INTEGRATION
+}
+
+enum KeyStatus {
+  KEY_ACTIVE
+  KEY_ROTATING
+  KEY_RETIRED
+  KEY_COMPROMISED
+}
+
+enum RetentionAction {
+  RET_DELETE
+  RET_ARCHIVE
+  RET_ANONYMIZE
+  RET_REVIEW
+}
+
+enum LegalHoldStatus {
+  HOLD_ACTIVE
+  HOLD_RELEASED
+  HOLD_EXPIRED
+}
+
+enum ConsentType {
+  CONSENT_DATA_PROCESSING
+  CONSENT_DATA_SHARING
+  CONSENT_MARKETING
+  CONSENT_THIRD_PARTY
+  CONSENT_PHI_ACCESS
+  CONSENT_ELECTRONIC_COMM
+  CONSENT_RECORDING
+  CONSENT_TOS
+}
+
+enum ConsentStatus {
+  CS_GRANTED
+  CS_DENIED
+  CS_WITHDRAWN
+  CS_EXPIRED
+}
+
+model SecurityModule {
+  id                          String    @id @default(cuid())
+  isEnabled                   Boolean   @default(true)
+  twoFactorRequired           Boolean   @default(false)
+  twoFactorMethod             String    @default("totp")
+  passwordMinLength           Int       @default(12)
+  passwordRequireUppercase    Boolean   @default(true)
+  passwordRequireLowercase    Boolean   @default(true)
+  passwordRequireNumber       Boolean   @default(true)
+  passwordRequireSpecial      Boolean   @default(true)
+  passwordExpiryDays          Int       @default(90)
+  passwordHistoryCount        Int       @default(5)
+  sessionTimeoutMinutes       Int       @default(60)
+  maxConcurrentSessions       Int       @default(3)
+  ipWhitelistEnabled          Boolean   @default(false)
+  ipWhitelist                 String?   @db.Text
+  geoRestrictionEnabled       Boolean   @default(false)
+  allowedCountries            String?   @db.Text
+  loginAttemptsBeforeLockout  Int       @default(5)
+  lockoutDurationMinutes      Int       @default(30)
+  apiRateLimitPerMinute       Int       @default(100)
+  encryptionAtRest            Boolean   @default(true)
+  encryptionInTransit         Boolean   @default(true)
+  dataRetentionDays           Int       @default(2555)
+  auditLogRetentionDays       Int       @default(2555)
+  backupFrequency             String    @default("daily")
+  backupRetentionDays         Int       @default(90)
+  lastSecurityReviewDate      DateTime?
+  nextSecurityReviewDate      DateTime?
+  complianceFrameworks        String?   @db.Text
+  dataClassificationEnabled   Boolean   @default(true)
+  dlpEnabled                  Boolean   @default(false)
+  incidentResponsePlanDocId   String?
+  businessContinuityPlanDocId String?
+  settings                    String?   @db.Text
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+}
+
+model AuditLog {
+  id                  String        @id @default(cuid())
+  timestamp           DateTime      @default(now())
+  userId              String?
+  userName            String?
+  userEmail           String?
+  userIp              String?
+  userAgent           String?
+  sessionId           String?
+  action              AuditAction
+  category            AuditCategory
+  resource            String
+  resourceId          String?
+  resourceName        String?
+  description         String
+  previousValue       String?       @db.Text
+  newValue            String?       @db.Text
+  metadata            String?       @db.Text
+  severity            AuditSeverity @default(SEC_INFO)
+  isCompliance        Boolean       @default(false)
+  complianceFramework String?
+  riskLevel           RiskLevel?
+  geoLocation         String?
+  success             Boolean       @default(true)
+  failureReason       String?
+  createdAt           DateTime      @default(now())
+
+  @@index([timestamp])
+  @@index([userId])
+  @@index([action])
+  @@index([category])
+  @@index([resource])
+  @@index([resourceId])
+  @@index([severity])
+  @@index([isCompliance])
+  @@index([success])
+}
+
+model SecurityIncident {
+  id                       String               @id @default(cuid())
+  incidentNumber           String               @unique
+  title                    String
+  description              String               @db.Text
+  incidentType             SecurityIncidentType
+  severity                 RiskLevel
+  status                   IncidentStatus       @default(DETECTED)
+  detectedAt               DateTime
+  detectedBy               String
+  detectionMethod          String?
+  containedAt              DateTime?
+  resolvedAt               DateTime?
+  closedAt                 DateTime?
+  affectedSystems          String?              @db.Text
+  affectedDataTypes        String?              @db.Text
+  affectedRecordCount      Int?
+  affectedClientIds        String?              @db.Text
+  rootCause                String?              @db.Text
+  containmentActions       String?              @db.Text
+  remediationActions       String?              @db.Text
+  lessonsLearned           String?              @db.Text
+  notificationRequired     Boolean              @default(false)
+  notificationsSent        String?              @db.Text
+  regulatoryReportRequired Boolean              @default(false)
+  regulatoryReportFiled    Boolean              @default(false)
+  regulatoryReportDate     DateTime?
+  regulatoryBody           String?
+  assignedTo               String?
+  timeline                 String?              @db.Text
+  documentIds              String?              @db.Text
+  createdBy                String
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+
+  @@index([incidentNumber])
+  @@index([incidentType])
+  @@index([severity])
+  @@index([status])
+  @@index([detectedAt])
+}
+
+model AccessPolicy {
+  id                      String    @id @default(cuid())
+  name                    String
+  description             String?
+  roleLevel               String?
+  permissions             String    @db.Text
+  dataAccessScope         String    @default("assigned")
+  matterAccess            String    @default("assigned")
+  clientAccess            String    @default("assigned")
+  financialAccess         Boolean   @default(false)
+  adminAccess             Boolean   @default(false)
+  canExportData           Boolean   @default(false)
+  canDeleteRecords        Boolean   @default(false)
+  canAccessAuditLogs      Boolean   @default(false)
+  canManageUsers          Boolean   @default(false)
+  canManageIntegrations   Boolean   @default(false)
+  canAccessTrustAccounts  Boolean   @default(false)
+  requireTwoFactor        Boolean   @default(false)
+  ipRestriction           String?   @db.Text
+  timeRestriction         String?   @db.Text
+  isDefault               Boolean   @default(false)
+  isActive                Boolean   @default(true)
+  userCount               Int       @default(0)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
+
+model DataClassification {
+  id                  String                  @id @default(cuid())
+  resource            String
+  resourceId          String
+  classification      DataClassificationLevel
+  containsPII         Boolean                 @default(false)
+  containsPHI         Boolean                 @default(false)
+  containsFinancial   Boolean                 @default(false)
+  containsPrivileged  Boolean                 @default(false)
+  containsMinorData   Boolean                 @default(false)
+  retentionPolicy     String?
+  encryptionRequired  Boolean                 @default(true)
+  accessRestriction   String?                 @db.Text
+  lastReviewedAt      DateTime?
+  lastReviewedBy      String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  @@index([resource])
+  @@index([resourceId])
+  @@index([classification])
+  @@index([containsPII])
+  @@index([containsPHI])
+}
+
+model ComplianceControl {
+  id                    String                 @id @default(cuid())
+  framework             ComplianceFrameworkType
+  controlId             String
+  controlName           String
+  controlDescription    String                 @db.Text
+  category              String
+  implementationStatus  ControlStatus          @default(CTRL_NOT_STARTED)
+  implementationDetails String?                @db.Text
+  evidenceDocIds        String?                @db.Text
+  evidenceDescription   String?                @db.Text
+  automatedCheck        Boolean                @default(false)
+  lastCheckDate         DateTime?
+  lastCheckResult       String?
+  lastCheckDetails      String?                @db.Text
+  owner                 String?
+  reviewFrequency       String?
+  nextReviewDate        DateTime?
+  riskIfMissing         String?
+  remediationPlan       String?                @db.Text
+  remediationDeadline   DateTime?
+  notes                 String?                @db.Text
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([framework])
+  @@index([controlId])
+  @@index([category])
+  @@index([implementationStatus])
+  @@index([nextReviewDate])
+}
+
+model ComplianceAssessment {
+  id                   String                   @id @default(cuid())
+  framework            ComplianceFrameworkType
+  assessmentType       AssessmentType
+  title                String
+  description          String?
+  assessor             String?
+  assessorOrganization String?
+  startDate            DateTime
+  endDate              DateTime?
+  status               SecurityAssessmentStatus @default(SA_PLANNED)
+  overallResult        String?
+  score                Decimal?                 @db.Decimal(5, 2)
+  findings             String?                  @db.Text
+  findingCount         Int                      @default(0)
+  criticalCount        Int                      @default(0)
+  highCount            Int                      @default(0)
+  mediumCount          Int                      @default(0)
+  lowCount             Int                      @default(0)
+  remediatedCount      Int                      @default(0)
+  certificateDocId     String?
+  reportDocId          String?
+  certificateExpiresAt DateTime?
+  nextAssessmentDate   DateTime?
+  notes                String?                  @db.Text
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  @@index([framework])
+  @@index([assessmentType])
+  @@index([status])
+  @@index([startDate])
+}
+
+model EncryptionKey {
+  id                   String            @id @default(cuid())
+  keyAlias             String
+  keyType              EncryptionKeyType
+  algorithm            String            @default("AES-256-GCM")
+  keyFingerprint       String
+  status               KeyStatus         @default(KEY_ACTIVE)
+  activatedAt          DateTime?
+  rotatedAt            DateTime?
+  retiredAt            DateTime?
+  rotationScheduleDays Int               @default(365)
+  nextRotationDate     DateTime?
+  rotationCount        Int               @default(0)
+  keyVault             String?
+  keyVaultReference    String?
+  usedForResources     String?           @db.Text
+  createdBy            String
+  notes                String?
+  createdAt            DateTime          @default(now())
+
+  @@index([keyAlias])
+  @@index([keyType])
+  @@index([status])
+  @@index([nextRotationDate])
+}
+
+model DataRetentionPolicy {
+  id                      String                   @id @default(cuid())
+  name                    String
+  resource                String
+  retentionDays           Int
+  retentionReason         String
+  actionOnExpiry          RetentionAction
+  isActive                Boolean                  @default(true)
+  appliesToClassification DataClassificationLevel?
+  excludeLegalHold        Boolean                  @default(true)
+  lastEnforcedAt          DateTime?
+  recordsProcessed        Int                      @default(0)
+  recordsDeleted          Int                      @default(0)
+  recordsArchived         Int                      @default(0)
+  notes                   String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+}
+
+model LegalHold {
+  id                  String          @id @default(cuid())
+  matterId            String?
+  clientId            String?
+  holdName            String
+  reason              String          @db.Text
+  issuedBy            String
+  issuedDate          DateTime
+  releasedDate        DateTime?
+  releasedBy          String?
+  status              LegalHoldStatus @default(HOLD_ACTIVE)
+  scope               String          @db.Text
+  affectedRecordCount Int             @default(0)
+  notificationsSent   String?         @db.Text
+  notes               String?         @db.Text
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([matterId])
+  @@index([clientId])
+  @@index([status])
+  @@index([issuedDate])
+}
+
+model ConsentRecord {
+  id          String        @id @default(cuid())
+  clientId    String
+  consentType ConsentType
+  status      ConsentStatus @default(CS_GRANTED)
+  grantedAt   DateTime?
+  withdrawnAt DateTime?
+  expiresAt   DateTime?
+  scope       String?       @db.Text
+  method      String?
+  documentId  String?
+  ipAddress   String?
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([clientId])
+  @@index([consentType])
+  @@index([status])
+}
+
+model VendorRiskAssessment {
+  id                  String                  @id @default(cuid())
+  vendorName          String
+  vendorCategory      String
+  dataShared          String                  @db.Text
+  dataClassification  DataClassificationLevel @default(DC_CONFIDENTIAL)
+  hasBAA              Boolean                 @default(false)
+  hasDPA              Boolean                 @default(false)
+  hasSLA              Boolean                 @default(false)
+  soc2Certified       Boolean                 @default(false)
+  iso27001Certified   Boolean                 @default(false)
+  hipaaCompliant      Boolean                 @default(false)
+  pciCompliant        Boolean                 @default(false)
+  encryptionInTransit Boolean                 @default(true)
+  encryptionAtRest    Boolean                 @default(false)
+  dataResidency       String?
+  riskLevel           RiskLevel               @default(RISK_MEDIUM)
+  riskAssessmentDate  DateTime?
+  nextReviewDate      DateTime?
+  remediationItems    String?                 @db.Text
+  contractDocId       String?
+  baaDocId            String?
+  assessmentNotes     String?                 @db.Text
+  isApproved          Boolean                 @default(false)
+  approvedBy          String?
+  approvedAt          DateTime?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  @@index([vendorName])
+  @@index([riskLevel])
+  @@index([nextReviewDate])
+  @@index([isApproved])
+}

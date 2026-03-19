@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
+import { logAudit } from "@/lib/security-engine";
 
 const documentInput = z.object({
   matterId: z.string().min(1, "Matter is required"),
@@ -100,6 +101,8 @@ export const documentsRouter = router({
           path: input.path,
         },
       });
+
+      logAudit({ action: "SEC_UPLOAD", category: "DOCUMENT_ACCESS", resource: "Document", resourceId: document.id, resourceName: document.name, description: `Uploaded document "${document.name}"`, isCompliance: true });
 
       return document;
     }),

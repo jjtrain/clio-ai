@@ -68,6 +68,7 @@ import { emailRouter } from "./email";
 import { lsaRouter } from "./lsa";
 import { hrRouter } from "./hr";
 import { aiIntegrationRouter } from "./ai";
+import { securityRouter } from "./security";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -139,6 +140,7 @@ export const appRouter = router({
   lsa: lsaRouter,
   hr: hrRouter,
   ai: aiIntegrationRouter,
+  security: securityRouter,
 });
 
 export type AppRouter = typeof appRouter;

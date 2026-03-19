@@ -128,6 +128,7 @@ const mainNavigation = [
   { name: "Scheduling", href: "/scheduling", icon: CalendarRange },
   { name: "HR", href: "/hr", icon: Users },
   { name: "AI", href: "/ai", icon: Brain },
+  { name: "Security", href: "/security", icon: ShieldCheck },
   { name: "Time Review", href: "/time-tracking/review", icon: Clock },
 ];
 

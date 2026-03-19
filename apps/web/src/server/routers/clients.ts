@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
 import { ClientStatus } from "@prisma/client";
+import { logAudit } from "@/lib/security-engine";
 
 const clientInput = z.object({
   name: z.string().min(1, "Name is required"),
@@ -88,6 +89,8 @@ export const clientsRouter = router({
           notes: input.notes || null,
         },
       });
+
+      logAudit({ action: "SEC_CREATE", category: "CLIENT_DATA", resource: "Client", resourceId: client.id, resourceName: client.name, description: `Created client "${client.name}"`, newValue: input, isCompliance: true });
 
       return client;
     }),

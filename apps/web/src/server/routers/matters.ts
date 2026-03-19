@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
 import { MatterStatus, PipelineStage, MatterActivityType } from "@prisma/client";
 import { generateMatterNumber } from "@/lib/utils";
+import { logAudit } from "@/lib/security-engine";
 
 const matterInput = z.object({
   clientId: z.string().min(1, "Client is required"),
@@ -132,6 +133,8 @@ export const mattersRouter = router({
         },
       });
 
+      logAudit({ action: "SEC_CREATE", category: "MATTER_DATA", resource: "Matter", resourceId: matter.id, resourceName: matter.name, description: `Created matter "${matter.name}"`, newValue: input });
+
       return matter;
     }),
 
@@ -147,6 +150,8 @@ export const mattersRouter = router({
         where: { id: input.id },
         data: input.data,
       });
+
+      logAudit({ action: "SEC_UPDATE", category: "MATTER_DATA", resource: "Matter", resourceId: input.id, resourceName: matter.name, description: `Updated matter "${matter.name}"`, newValue: input.data });
 
       return matter;
     }),
