@@ -129,6 +129,7 @@ const mainNavigation = [
   { name: "HR", href: "/hr", icon: Users },
   { name: "AI", href: "/ai", icon: Brain },
   { name: "Security", href: "/security", icon: ShieldCheck },
+  { name: "Practice Areas", href: "/practice-areas", icon: Lightbulb },
   { name: "Time Review", href: "/time-tracking/review", icon: Clock },
 ];
 

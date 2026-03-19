@@ -120,6 +120,14 @@ model Matter {
   conveyancingMatters ConveyancingMatter[]
   aiUsageLogs         AIUsageLog[]        @relation("AIUsageMatter")
   documentEmbeddings  DocumentEmbedding[] @relation("EmbeddingMatter")
+  currentStage        String?
+  stageEnteredAt      DateTime?
+  party1Label         String?
+  party2Label         String?
+  party1Name          String?
+  party2Name          String?
+  matterStageHistory  MatterStageHistory[]
+  customFields        CustomField[]
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -9722,4 +9730,118 @@ model VendorRiskAssessment {
   @@index([riskLevel])
   @@index([nextReviewDate])
   @@index([isApproved])
+}
+
+// ── Practice Area Configuration ───────────────────────────────────────
+
+enum PracticeAreaType {
+  FAMILY_MATRIMONIAL
+  PERSONAL_INJURY
+  CRIMINAL_DEFENSE
+  PA_IMMIGRATION
+  INTELLECTUAL_PROPERTY
+  REAL_ESTATE
+  CORPORATE_BUSINESS
+  PA_BANKRUPTCY
+  EMPLOYMENT_LABOR
+  ESTATE_PLANNING
+  PA_PROBATE
+  PA_TAX
+  ELDER_LAW
+  CIVIL_LITIGATION
+  COMMERCIAL_LITIGATION
+  MEDICAL_MALPRACTICE
+  PA_CONSTRUCTION
+  PA_ENVIRONMENTAL
+  PA_EDUCATION
+  PA_ENTERTAINMENT
+  PA_SECURITIES
+  INSURANCE_DEFENSE
+  LANDLORD_TENANT
+  CONSUMER_PROTECTION
+  SOCIAL_SECURITY_DISABILITY
+  WORKERS_COMPENSATION
+  GOVERNMENT_MUNICIPAL
+  PA_APPELLATE
+  ADR_MEDIATION
+  GENERAL_PRACTICE
+  PA_CUSTOM
+}
+
+model PracticeAreaConfig {
+  id                    String            @id @default(cuid())
+  practiceArea          PracticeAreaType  @unique
+  isEnabled             Boolean           @default(false)
+  isPrimary             Boolean           @default(false)
+  displayName           String
+  icon                  String?
+  color                 String?
+  terminology           String            @db.Text
+  matterStages          String            @db.Text
+  matterFields          String?           @db.Text
+  intakeFields          String?           @db.Text
+  documentTemplates     String?           @db.Text
+  billingDefaults       String?           @db.Text
+  courtTypes            String?           @db.Text
+  deadlineRules         String?           @db.Text
+  dashboardWidgets      String?           @db.Text
+  sidebarModules        String?           @db.Text
+  workflowTemplates     String?           @db.Text
+  relatedModules        String?           @db.Text
+  hiddenModules         String?           @db.Text
+  checklistTemplates    String?           @db.Text
+  reportTemplates       String?           @db.Text
+  aiPromptOverrides     String?           @db.Text
+  isCustom              Boolean           @default(false)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+}
+
+model UserPracticeAreaPreference {
+  id                    String            @id @default(cuid())
+  userId                String            @unique
+  activePracticeArea    PracticeAreaType?
+  enabledPracticeAreas  String            @db.Text
+  customTerminology     String?           @db.Text
+  customDashboardLayout String?           @db.Text
+  customSidebarOrder    String?           @db.Text
+  lastSwitchedAt        DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+}
+
+model MatterStageHistory {
+  id                      String    @id @default(cuid())
+  matterId                String
+  matter                  Matter    @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  fromStage               String?
+  toStage                 String
+  changedBy               String?
+  changedAt               DateTime
+  durationInPreviousStage Int?
+  notes                   String?
+  autoTriggered           Boolean   @default(false)
+  createdAt               DateTime  @default(now())
+
+  @@index([matterId])
+  @@index([toStage])
+  @@index([changedAt])
+}
+
+model CustomField {
+  id            String            @id @default(cuid())
+  matterId      String
+  matter        Matter            @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  practiceArea  PracticeAreaType
+  fieldName     String
+  fieldLabel    String
+  fieldType     String
+  fieldValue    String?           @db.Text
+  section       String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([matterId])
+  @@index([practiceArea])
+  @@index([fieldName])
 }
