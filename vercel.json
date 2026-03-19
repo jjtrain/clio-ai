@@ -51,6 +51,10 @@
     {
       "path": "/api/cron/email-sync",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/lsa-sync",
+      "schedule": "0 12 * * *"
     }
   ]
 }

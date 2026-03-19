@@ -8579,3 +8579,171 @@ model EmailRule {
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 }
+
+// ─── Google Local Services Ads (LSA) ────────────────────
+
+enum LSAProvider {
+  GOOGLE_LSA
+}
+
+enum LSALeadType {
+  PHONE_CALL
+  MESSAGE
+  BOOKING
+}
+
+enum LSALeadStatus {
+  NEW
+  ACTIVE
+  BOOKED
+  COMPLETED
+  ARCHIVED
+  DISPUTED
+  CHARGED_BACK
+}
+
+enum LSAChargeStatus {
+  CHARGED
+  NOT_CHARGED
+  DISPUTED
+  REFUNDED
+  PENDING
+}
+
+model LSAIntegration {
+  id                      String        @id @default(cuid())
+  provider                LSAProvider    @unique
+  isEnabled               Boolean       @default(false)
+  displayName             String
+  googleAdsCustomerId     String?
+  accessToken             String?
+  refreshToken            String?
+  tokenExpiresAt          DateTime?
+  clientId                String?
+  clientSecret            String?
+  accountEmail            String?
+  businessName            String?
+  businessPhone           String?
+  businessCategories      String?       @db.Text
+  badgeStatus             String?
+  badgeExpiresAt          DateTime?
+  weeklyBudget            Decimal?      @db.Decimal(10, 2)
+  monthlyBudgetCap        Decimal?      @db.Decimal(10, 2)
+  autoCreateLead          Boolean       @default(true)
+  autoAssignTo            String?
+  autoSendReply           Boolean       @default(false)
+  autoReplyTemplate       String?       @db.Text
+  leadNotificationEmail   String?
+  leadNotificationSms     String?
+  webhookUrl              String?
+  webhookSecret           String?
+  settings                String?       @db.Text
+  lastSyncAt              DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+}
+
+model LSALead {
+  id                    String          @id @default(cuid())
+  provider              LSAProvider     @default(GOOGLE_LSA)
+  externalLeadId        String
+  leadId                String?
+  matterId              String?
+  clientId              String?
+  leadType              LSALeadType
+  status                LSALeadStatus   @default(NEW)
+  chargeStatus          LSAChargeStatus @default(PENDING)
+  consumerName          String?
+  consumerPhone         String?
+  consumerEmail         String?
+  consumerCity          String?
+  consumerZip           String?
+  categoryName          String?
+  serviceName           String?
+  callDuration          Int?
+  callRecordingUrl      String?
+  callRecordingDocId    String?
+  callTranscript        String?         @db.Text
+  messageText           String?         @db.Text
+  messageReply          String?         @db.Text
+  messageReplyDate      DateTime?
+  bookingDate           DateTime?
+  bookingNotes          String?
+  leadCost              Decimal?        @db.Decimal(10, 2)
+  geoLocation           String?
+  leadCreatedAt         DateTime
+  disputeReason         String?
+  disputeDate           DateTime?
+  disputeResolution     String?
+  conversionDate        DateTime?
+  conversionValue       Decimal?        @db.Decimal(14, 2)
+  aiQualityScore        Int?
+  aiSummary             String?         @db.Text
+  aiRecommendation      String?
+  responseTimeSeconds   Int?
+  notes                 String?         @db.Text
+  rawPayload            String?         @db.Text
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([provider])
+  @@index([externalLeadId])
+  @@index([leadId])
+  @@index([status])
+  @@index([chargeStatus])
+  @@index([leadType])
+  @@index([categoryName])
+  @@index([leadCreatedAt])
+  @@index([consumerPhone])
+  @@index([consumerEmail])
+}
+
+model LSAReview {
+  id                  String    @id @default(cuid())
+  externalReviewId    String?
+  reviewerName        String?
+  rating              Int
+  reviewText          String?   @db.Text
+  reviewDate          DateTime
+  replyText           String?   @db.Text
+  replyDate           DateTime?
+  source              String    @default("google_lsa")
+  isVisible           Boolean   @default(true)
+  matterId            String?
+  aiSuggestedReply    String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([rating])
+  @@index([reviewDate])
+  @@index([source])
+}
+
+model LSAPerformanceSnapshot {
+  id                    String    @id @default(cuid())
+  snapshotDate          DateTime
+  period                String
+  impressions           Int       @default(0)
+  totalLeads            Int       @default(0)
+  phoneLeads            Int       @default(0)
+  messageLeads          Int       @default(0)
+  bookingLeads          Int       @default(0)
+  chargedLeads          Int       @default(0)
+  disputedLeads         Int       @default(0)
+  totalSpend            Decimal   @default(0) @db.Decimal(10, 2)
+  averageCostPerLead    Decimal?  @db.Decimal(10, 2)
+  budgetUtilization     Decimal?  @db.Decimal(5, 2)
+  responseRate          Decimal?  @db.Decimal(5, 2)
+  averageResponseTime   Int?
+  conversionCount       Int       @default(0)
+  conversionRate        Decimal?  @db.Decimal(5, 2)
+  totalConversionValue  Decimal?  @db.Decimal(14, 2)
+  costPerConversion     Decimal?  @db.Decimal(10, 2)
+  roi                   Decimal?  @db.Decimal(8, 2)
+  byCategory            String?   @db.Text
+  badgeStatus           String?
+  createdAt             DateTime  @default(now())
+
+  @@index([snapshotDate])
+  @@index([period])
+}

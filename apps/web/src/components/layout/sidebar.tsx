@@ -79,6 +79,7 @@ const mainNavigation = [
   { name: "Appointments", href: "/appointments", icon: CalendarClock },
   { name: "Intake Forms", href: "/intake-forms", icon: ClipboardList },
   { name: "Lead Inbox", href: "/leads", icon: Inbox },
+  { name: "Google LSA", href: "/lsa", icon: SearchCode },
   { name: "Conflict Check", href: "/conflicts", icon: ShieldAlert },
   { name: "E-Signatures", href: "/signatures", icon: PenTool },
   { name: "Reports", href: "/reports", icon: FileBarChart },

@@ -126,6 +126,18 @@ export default function IntegrationSettingsPage() {
         </Card>
       </div>
 
+      {/* Google Local Services */}
+      <div>
+        <h2 className="text-lg font-bold mt-8 mb-1">Google Local Services Ads</h2>
+        <p className="text-sm text-slate-500 mb-4">Pay-per-lead advertising from Google Search</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader><div className="flex items-center gap-3"><Search className="h-6 w-6 text-green-600" /><div><CardTitle className="text-sm">Google LSA</CardTitle><CardDescription className="text-xs">Connect your Google Local Services Ads to receive leads directly in Clio AI. Phone calls with recordings, messages with auto-reply, and booking requests. Track ROI and dispute invalid leads.</CardDescription></div></div></CardHeader>
+          <CardContent><p className="text-xs text-gray-400 mb-3">Your Google Screened badge builds trust. Response time affects ranking — aim to respond within 15 minutes.</p><Button size="sm" variant="outline">Connect Google LSA</Button></CardContent>
+        </Card>
+      </div>
+
       {/* Webhook URLs */}
       <Card>
         <CardHeader><CardTitle className="text-sm">Webhook URLs</CardTitle><CardDescription>Add these to your provider dashboards for real-time alerts</CardDescription></CardHeader>
