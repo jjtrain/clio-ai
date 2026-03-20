@@ -313,3 +313,4 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     </div>
   );
 }
+
