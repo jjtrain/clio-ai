@@ -10173,3 +10173,209 @@ model MatterCustomFieldValue {
   @@index([matterId])
   @@index([fieldId])
 }
+
+// ── Template Marketplace ──────────────────────────────────────────────
+
+enum TemplatePackCategory {
+  TPC_MOTIONS
+  TPC_AGREEMENTS
+  TPC_CHECKLISTS
+  TPC_FORMS
+  TPC_LETTERS
+  TPC_DISCOVERY
+  TPC_PLEADINGS
+  TPC_GUIDES
+  TPC_MIXED
+}
+
+enum PackageStatus {
+  PKG_DRAFT
+  PKG_SUBMITTED
+  PKG_IN_REVIEW
+  PKG_PUBLISHED
+  PKG_SUSPENDED
+  PKG_ARCHIVED
+}
+
+enum PurchasePaymentStatus {
+  PAY_PENDING
+  PAY_COMPLETED
+  PAY_REFUNDED
+  PAY_FAILED
+}
+
+enum ReviewApprovalStatus {
+  REV_PENDING
+  REV_APPROVED
+  REV_REJECTED
+  REV_FLAGGED
+}
+
+model TemplatePackage {
+  id                String              @id @default(cuid())
+  publisherId       String
+  publisherName     String
+  publisherFirm     String?
+  publisherBio      String?             @db.Text
+  publisherAvatar   String?
+  publisherBarState String?
+  publisherVerified Boolean             @default(false)
+  name              String
+  slug              String              @unique
+  description       String              @db.Text
+  longDescription   String?             @db.Text
+  practiceArea      String
+  jurisdiction      String?
+  category          TemplatePackCategory
+  tags              String?             @db.Text
+  price             Decimal             @db.Decimal(8, 2) @default(0)
+  currency          String              @default("USD")
+  isFree            Boolean             @default(false)
+  templateCount     Int                 @default(0)
+  coverImage        String?
+  previewContent    String?             @db.Text
+  status            PackageStatus       @default(PKG_DRAFT)
+  submittedAt       DateTime?
+  publishedAt       DateTime?
+  suspendedAt       DateTime?
+  suspendedReason   String?
+  version           String              @default("1.0")
+  changeLog         String?             @db.Text
+  totalSales        Int                 @default(0)
+  totalRevenue      Decimal             @db.Decimal(12, 2) @default(0)
+  averageRating     Decimal?            @db.Decimal(3, 2)
+  reviewCount       Int                 @default(0)
+  downloadCount     Int                 @default(0)
+  isFeatured        Boolean             @default(false)
+  featuredOrder     Int?
+  items             TemplateItem[]
+  purchases         TemplatePurchase[]
+  reviews           TemplateReview[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([practiceArea])
+  @@index([jurisdiction])
+  @@index([category])
+  @@index([status])
+  @@index([publisherId])
+  @@index([isFeatured])
+}
+
+model TemplateItem {
+  id              String          @id @default(cuid())
+  packageId       String
+  package         TemplatePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  documentType    String
+  content         String          @db.Text
+  variables       String?         @db.Text
+  displayOrder    Int             @default(0)
+  previewSnippet  String?         @db.Text
+  pageCount       Int?
+  wordCount       Int?
+  lastUpdated     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([packageId])
+  @@index([displayOrder])
+}
+
+model TemplatePurchase {
+  id              String                @id @default(cuid())
+  packageId       String
+  package         TemplatePackage       @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  buyerId         String
+  buyerEmail      String
+  buyerName       String?
+  price           Decimal               @db.Decimal(8, 2)
+  platformFee     Decimal               @db.Decimal(8, 2) @default(0)
+  publisherPayout Decimal               @db.Decimal(8, 2) @default(0)
+  paymentStatus   PurchasePaymentStatus @default(PAY_PENDING)
+  paymentMethod   String?
+  transactionId   String?
+  refundedAt      DateTime?
+  refundReason    String?
+  downloadedAt    DateTime?
+  installedAt     DateTime?
+  purchasedAt     DateTime              @default(now())
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@unique([packageId, buyerId])
+  @@index([packageId])
+  @@index([buyerId])
+  @@index([paymentStatus])
+  @@index([purchasedAt])
+}
+
+model TemplateReview {
+  id                    String               @id @default(cuid())
+  packageId             String
+  package               TemplatePackage      @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  reviewerId            String
+  reviewerName          String
+  reviewerFirm          String?
+  purchaseId            String?
+  rating                Int
+  title                 String?
+  content               String?              @db.Text
+  practiceAreaRelevance Int?
+  qualityRating         Int?
+  valueRating           Int?
+  isVerifiedPurchase    Boolean              @default(true)
+  isHelpful             Int                  @default(0)
+  status                ReviewApprovalStatus @default(REV_APPROVED)
+  publisherResponse     String?              @db.Text
+  publisherResponseAt   DateTime?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@unique([packageId, reviewerId])
+  @@index([packageId])
+  @@index([reviewerId])
+  @@index([rating])
+  @@index([status])
+}
+
+model PublisherProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  displayName     String
+  firmName        String?
+  bio             String?   @db.Text
+  avatar          String?
+  barState        String?
+  barNumber       String?
+  isVerified      Boolean   @default(false)
+  verifiedAt      DateTime?
+  practiceAreas   String?   @db.Text
+  yearsExperience Int?
+  website         String?
+  linkedIn        String?
+  packageCount    Int       @default(0)
+  totalSales      Int       @default(0)
+  totalRevenue    Decimal   @db.Decimal(12, 2) @default(0)
+  averageRating   Decimal?  @db.Decimal(3, 2)
+  totalReviews    Int       @default(0)
+  payoutMethod    String?
+  payoutDetails   String?   @db.Text
+  pendingPayout   Decimal   @db.Decimal(10, 2) @default(0)
+  totalPaidOut    Decimal   @db.Decimal(12, 2) @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model MarketplaceCollection {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  slug          String    @unique
+  packageIds    String    @db.Text
+  isActive      Boolean   @default(true)
+  displayOrder  Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
