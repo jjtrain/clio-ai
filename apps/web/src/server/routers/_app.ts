@@ -73,6 +73,7 @@ import { practiceAreaRouter } from "./practiceArea";
 import { practiceAreaFieldsRouter } from "./practiceAreaFields";
 import { marketplaceRouter } from "./marketplace";
 import { departmentsRouter } from "./departments";
+import { jurisdictionsRouter } from "./jurisdictions";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -149,6 +150,7 @@ export const appRouter = router({
   practiceAreaFields: practiceAreaFieldsRouter,
   marketplace: marketplaceRouter,
   departments: departmentsRouter,
+  jurisdictions: jurisdictionsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -10536,3 +10536,146 @@ model DepartmentAnnouncement {
   @@index([isPinned])
   @@index([createdAt])
 }
+
+// ── Jurisdiction Overlays ─────────────────────────────────────────────
+
+enum JurisdictionType {
+  JUR_STATE
+  JUR_FEDERAL_DISTRICT
+  JUR_FEDERAL_CIRCUIT
+  JUR_COUNTY
+  JUR_MUNICIPAL
+  JUR_TRIBAL
+}
+
+enum CalendarDayType {
+  CDT_CALENDAR
+  CDT_BUSINESS
+}
+
+model JurisdictionProfile {
+  id                  String              @id @default(cuid())
+  jurisdiction        String              @unique
+  jurisdictionName    String
+  jurisdictionType    JurisdictionType
+  parentJurisdiction  String?
+  state               String?
+  timezone            String              @default("America/New_York")
+  courtSystem         String?             @db.Text
+  filingFees          String?             @db.Text
+  efiling             String?             @db.Text
+  barRequirements     String?             @db.Text
+  isActive            Boolean             @default(true)
+  configs             PracticeAreaJurisdiction[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([jurisdictionType])
+  @@index([state])
+  @@index([isActive])
+}
+
+model PracticeAreaJurisdiction {
+  id                    String              @id @default(cuid())
+  practiceArea          String
+  jurisdictionId        String
+  jurisdiction          JurisdictionProfile @relation(fields: [jurisdictionId], references: [id], onDelete: Cascade)
+  displayName           String
+  statuteReferences     String?             @db.Text
+  filingRequirements    String?             @db.Text
+  courtRules            String?             @db.Text
+  standardForms         String?             @db.Text
+  deadlineRules         String?             @db.Text
+  defaultFields         String?             @db.Text
+  terminologyMap        String?             @db.Text
+  localResources        String?             @db.Text
+  limitationsPeriodsStr String?             @db.Text
+  serviceRules          String?             @db.Text
+  discoveryRules        String?             @db.Text
+  trialProcedures       String?             @db.Text
+  appealRules           String?             @db.Text
+  feeSchedule           String?             @db.Text
+  aiPromptContext       String?             @db.Text
+  isActive              Boolean             @default(true)
+  lastUpdated           DateTime?
+  updatedBy             String?
+  forms                 JurisdictionForm[]
+  deadlines             JurisdictionDeadline[]
+  overlays              MatterJurisdictionOverlay[]
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@unique([practiceArea, jurisdictionId])
+  @@index([practiceArea])
+  @@index([jurisdictionId])
+}
+
+model JurisdictionForm {
+  id                          String                    @id @default(cuid())
+  practiceAreaJurisdictionId  String
+  practiceAreaJurisdiction    PracticeAreaJurisdiction   @relation(fields: [practiceAreaJurisdictionId], references: [id], onDelete: Cascade)
+  formNumber                  String
+  formName                    String
+  category                    String
+  description                 String?                   @db.Text
+  formUrl                     String?
+  templateId                  String?
+  isRequired                  Boolean                   @default(false)
+  requiredWhen                String?
+  filingFee                   Decimal?                  @db.Decimal(8, 2)
+  filingLocation              String?
+  instructions                String?                   @db.Text
+  lastVerified                DateTime?
+  isActive                    Boolean                   @default(true)
+  displayOrder                Int                       @default(0)
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
+
+  @@index([practiceAreaJurisdictionId])
+  @@index([category])
+  @@index([isRequired])
+  @@index([displayOrder])
+}
+
+model JurisdictionDeadline {
+  id                          String                    @id @default(cuid())
+  practiceAreaJurisdictionId  String
+  practiceAreaJurisdiction    PracticeAreaJurisdiction   @relation(fields: [practiceAreaJurisdictionId], references: [id], onDelete: Cascade)
+  name                        String
+  description                 String?
+  triggerEvent                String
+  days                        Int
+  calendarType                CalendarDayType           @default(CDT_CALENDAR)
+  statute                     String?
+  isDefault                   Boolean                   @default(true)
+  priority                    String                    @default("MEDIUM")
+  category                    String?
+  notes                       String?                   @db.Text
+  displayOrder                Int                       @default(0)
+  isActive                    Boolean                   @default(true)
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
+
+  @@index([practiceAreaJurisdictionId])
+  @@index([triggerEvent])
+  @@index([isDefault])
+  @@index([displayOrder])
+}
+
+model MatterJurisdictionOverlay {
+  id                          String                    @id @default(cuid())
+  matterId                    String                    @unique
+  practiceAreaJurisdictionId  String
+  practiceAreaJurisdiction    PracticeAreaJurisdiction   @relation(fields: [practiceAreaJurisdictionId], references: [id])
+  appliedAt                   DateTime                  @default(now())
+  appliedBy                   String?
+  deadlinesCreated            Boolean                   @default(false)
+  formsLoaded                 Boolean                   @default(false)
+  fieldsApplied               Boolean                   @default(false)
+  terminologyApplied          Boolean                   @default(false)
+  customOverrides             String?                   @db.Text
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
+
+  @@index([practiceAreaJurisdictionId])
+}
