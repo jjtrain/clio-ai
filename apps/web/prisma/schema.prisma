@@ -10894,3 +10894,136 @@ model SOLSettings {
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt
 }
+
+// ── Practice KPI Dashboards ───────────────────────────────────────────
+
+enum KPIType {
+  KPI_CURRENCY
+  KPI_PERCENTAGE
+  KPI_NUMBER
+  KPI_DURATION_DAYS
+  KPI_RATIO
+  KPI_COUNT
+  KPI_RATE
+}
+
+enum KPICalcMethod {
+  KPI_QUERY
+  KPI_FORMULA
+  KPI_AI_DERIVED
+  KPI_MANUAL
+}
+
+enum TargetDirection {
+  TD_HIGHER_IS_BETTER
+  TD_LOWER_IS_BETTER
+  TD_TARGET_EXACT
+}
+
+enum KPIWidgetType {
+  KW_STAT_CARD
+  KW_GAUGE
+  KW_LINE_CHART
+  KW_BAR_CHART
+  KW_PIE_CHART
+  KW_TREND_SPARKLINE
+  KW_PROGRESS_BAR
+  KW_HEATMAP
+  KW_FUNNEL
+  KW_TABLE
+  KW_COUNTDOWN
+  KW_COMPARISON
+}
+
+enum ChangeDirection {
+  CD_UP
+  CD_DOWN
+  CD_FLAT
+}
+
+enum KPIStatus {
+  KS_ON_TRACK
+  KS_AT_RISK
+  KS_BEHIND
+  KS_EXCEEDING
+  KS_NO_DATA
+}
+
+model PracticeKPIDashboard {
+  id            String          @id @default(cuid())
+  practiceArea  String
+  departmentId  String?
+  name          String
+  description   String?
+  isDefault     Boolean         @default(false)
+  isActive      Boolean         @default(true)
+  kpis          KPIDefinition[]
+  snapshots     KPISnapshot[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([practiceArea])
+  @@index([departmentId])
+  @@index([isDefault])
+  @@index([isActive])
+}
+
+model KPIDefinition {
+  id                  String              @id @default(cuid())
+  dashboardId         String
+  dashboard           PracticeKPIDashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  name                String
+  description         String?             @db.Text
+  kpiType             KPIType
+  category            String
+  calculationMethod   KPICalcMethod       @default(KPI_QUERY)
+  queryDefinition     String?             @db.Text
+  formulaDefinition   String?             @db.Text
+  targetValue         Decimal?            @db.Decimal(14, 2)
+  targetDirection     TargetDirection     @default(TD_HIGHER_IS_BETTER)
+  warningThreshold    Decimal?            @db.Decimal(14, 2)
+  criticalThreshold   Decimal?            @db.Decimal(14, 2)
+  industryBenchmark   Decimal?            @db.Decimal(14, 2)
+  benchmarkSource     String?
+  displayFormat       String?
+  widgetType          KPIWidgetType       @default(KW_STAT_CARD)
+  widgetWidth         WidgetWidth         @default(WW_THIRD)
+  position            Int                 @default(0)
+  isVisible           Boolean             @default(true)
+  refreshFrequency    String              @default("daily")
+  aiInsightEnabled    Boolean             @default(false)
+  snapshots           KPISnapshot[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([dashboardId])
+  @@index([category])
+  @@index([position])
+  @@index([isVisible])
+}
+
+model KPISnapshot {
+  id              String              @id @default(cuid())
+  kpiId           String
+  kpi             KPIDefinition       @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  dashboardId     String
+  dashboard       PracticeKPIDashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  period          String
+  periodType      String              @default("MONTHLY")
+  value           Decimal?            @db.Decimal(14, 4)
+  previousValue   Decimal?            @db.Decimal(14, 4)
+  changePercent   Decimal?            @db.Decimal(7, 4)
+  changeDirection ChangeDirection?
+  vsTarget        Decimal?            @db.Decimal(7, 4)
+  vsBenchmark     Decimal?            @db.Decimal(7, 4)
+  status          KPIStatus           @default(KS_NO_DATA)
+  breakdown       String?             @db.Text
+  rawData         String?             @db.Text
+  aiInsight       String?             @db.Text
+  calculatedAt    DateTime            @default(now())
+  createdAt       DateTime            @default(now())
+
+  @@index([kpiId])
+  @@index([period])
+  @@index([calculatedAt])
+}
