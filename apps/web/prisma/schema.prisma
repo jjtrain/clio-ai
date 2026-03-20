@@ -128,6 +128,7 @@ model Matter {
   party2Name          String?
   matterStageHistory  MatterStageHistory[]
   customFields        CustomField[]
+  customFieldValues   MatterCustomFieldValue[] @relation("MatterCustomValues")
 
   @@index([clientId])
   @@index([pipelineStage])
@@ -10114,4 +10115,61 @@ model IntakeFormABTest {
   confidenceLevel         Decimal?      @db.Decimal(5, 2)
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
+}
+
+// ── Practice Area Conditional Fields ──────────────────────────────────
+
+enum CustomFieldType {
+  CFT_TEXT
+  CFT_TEXTAREA
+  CFT_NUMBER
+  CFT_DATE
+  CFT_SELECT
+  CFT_MULTI_SELECT
+  CFT_BOOLEAN
+  CFT_CURRENCY
+  CFT_URL
+  CFT_EMAIL
+  CFT_PHONE
+}
+
+model PracticeAreaField {
+  id              String          @id @default(cuid())
+  practiceArea    String
+  fieldName       String
+  fieldLabel      String
+  fieldType       CustomFieldType
+  fieldOptions    String?         @db.Text
+  placeholder     String?
+  isRequired      Boolean         @default(false)
+  displayOrder    Int             @default(0)
+  section         String          @default("details")
+  isActive        Boolean         @default(true)
+  defaultValue    String?
+  validationRule  String?
+  helpText        String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  values          MatterCustomFieldValue[]
+
+  @@unique([practiceArea, fieldName])
+  @@index([practiceArea])
+  @@index([section])
+  @@index([displayOrder])
+  @@index([isActive])
+}
+
+model MatterCustomFieldValue {
+  id        String             @id @default(cuid())
+  matterId  String
+  matter    Matter             @relation("MatterCustomValues", fields: [matterId], references: [id], onDelete: Cascade)
+  fieldId   String
+  field     PracticeAreaField  @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  value     String?            @db.Text
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@unique([matterId, fieldId])
+  @@index([matterId])
+  @@index([fieldId])
 }

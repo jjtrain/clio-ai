@@ -141,6 +141,7 @@ const navGroups: NavGroup[] = [
       { label: "HR", href: "/hr", icon: Users },
       { label: "Integrations", href: "/integrations", icon: Plug },
       { label: "Security", href: "/security", icon: ShieldCheck },
+      { label: "Practice Fields", href: "/settings/practice-fields", icon: Settings },
       { label: "Settings", href: "/settings", icon: Settings },
       { label: "Help", href: "/help", icon: HelpCircle },
     ],

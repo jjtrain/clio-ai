@@ -70,6 +70,7 @@ import { hrRouter } from "./hr";
 import { aiIntegrationRouter } from "./ai";
 import { securityRouter } from "./security";
 import { practiceAreaRouter } from "./practiceArea";
+import { practiceAreaFieldsRouter } from "./practiceAreaFields";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -143,6 +144,7 @@ export const appRouter = router({
   ai: aiIntegrationRouter,
   security: securityRouter,
   practiceArea: practiceAreaRouter,
+  practiceAreaFields: practiceAreaFieldsRouter,
 });
 
 export type AppRouter = typeof appRouter;
