@@ -2,6 +2,7 @@ import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import * as paEngine from "@/lib/practice-area-engine";
+import * as cpEngine from "@/lib/community-pipeline-engine";
 
 export const practiceAreaRouter = router({
   // ── Configuration (1-10) ──────────────────────────────────────────
@@ -390,5 +391,188 @@ export const practiceAreaRouter = router({
     .input(z.object({ practiceArea: z.string().optional(), format: z.string().optional() }))
     .query(async ({ input }) => {
       return { status: "pending", practiceArea: input.practiceArea, format: input.format ?? "csv" };
+    }),
+
+  // ── Community Marketplace ─────────────────────────────────────────
+  "community.search": publicProcedure
+    .input(z.object({ query: z.string().optional(), practiceArea: z.string().optional(), jurisdiction: z.string().optional(), tags: z.array(z.string()).optional(), minRating: z.number().optional(), sortBy: z.string().optional(), page: z.number().optional(), mine: z.boolean().optional() }).optional())
+    .query(async ({ input }) => {
+      return cpEngine.searchTemplates(input ?? {});
+    }),
+
+  "community.browse": publicProcedure
+    .input(z.object({ practiceArea: z.string().optional() }).optional())
+    .query(async ({ input }) => {
+      return cpEngine.searchTemplates({ practiceArea: input?.practiceArea, sortBy: "downloads" });
+    }),
+
+  "community.getFeatured": publicProcedure.query(async () => {
+    return db.communityPipelineTemplate.findMany({ where: { isFeatured: true, isPublished: true }, orderBy: { downloadCount: "desc" }, take: 10 });
+  }),
+
+  "community.getOfficial": publicProcedure
+    .input(z.object({ practiceArea: z.string().optional() }).optional())
+    .query(async ({ input }) => {
+      return cpEngine.getOfficialTemplates(input?.practiceArea);
+    }),
+
+  "community.getPopular": publicProcedure
+    .input(z.object({ practiceArea: z.string().optional(), jurisdiction: z.string().optional(), limit: z.number().optional() }).optional())
+    .query(async () => {
+      return db.communityPipelineTemplate.findMany({ where: { isPublished: true }, orderBy: { downloadCount: "desc" }, take: 20 });
+    }),
+
+  "community.getTopRated": publicProcedure
+    .input(z.object({ practiceArea: z.string().optional(), limit: z.number().optional() }).optional())
+    .query(async () => {
+      return db.communityPipelineTemplate.findMany({ where: { isPublished: true, ratingCount: { gte: 1 } }, orderBy: { averageRating: "desc" }, take: 20 });
+    }),
+
+  "community.getRecommended": publicProcedure
+    .input(z.object({ practiceArea: z.string(), jurisdiction: z.string().optional() }))
+    .query(async ({ input }) => {
+      return cpEngine.getRecommendations(input.practiceArea, input.jurisdiction);
+    }),
+
+  "community.getByJurisdiction": publicProcedure
+    .input(z.object({ jurisdiction: z.string() }))
+    .query(async ({ input }) => {
+      return cpEngine.getPopularByJurisdiction(input.jurisdiction);
+    }),
+
+  "community.getCollections": publicProcedure
+    .input(z.object({ practiceArea: z.string().optional() }).optional())
+    .query(async () => {
+      return db.communityPipelineCollection.findMany({ orderBy: { downloadCount: "desc" } });
+    }),
+
+  "community.getTemplate": publicProcedure
+    .input(z.object({ templateId: z.string() }))
+    .query(async ({ input }) => {
+      return db.communityPipelineTemplate.findUniqueOrThrow({ where: { id: input.templateId }, include: { reviews: { orderBy: { createdAt: "desc" }, take: 20 }, _count: { select: { installs: true } } } });
+    }),
+
+  "community.preview": publicProcedure
+    .input(z.object({ templateId: z.string() }))
+    .query(async ({ input }) => {
+      return cpEngine.previewPipeline(input.templateId);
+    }),
+
+  "community.diff": publicProcedure
+    .input(z.object({ templateId1: z.string(), templateId2: z.string() }))
+    .query(async ({ input }) => {
+      return cpEngine.diffPipelines(input.templateId1, input.templateId2);
+    }),
+
+  "community.getVersionHistory": publicProcedure
+    .input(z.object({ templateId: z.string() }))
+    .query(async ({ input }) => {
+      const template = await db.communityPipelineTemplate.findUniqueOrThrow({ where: { id: input.templateId } });
+      return [{ version: template.version, changeLog: template.changeLog, createdAt: template.updatedAt }];
+    }),
+
+  "community.install": publicProcedure
+    .input(z.object({ templateId: z.string(), targetPracticeArea: z.string(), mergeStrategy: z.enum(["replace", "merge", "append"]) }))
+    .mutation(async ({ input }) => {
+      return cpEngine.installPipeline(input.templateId, input.targetPracticeArea, input.mergeStrategy);
+    }),
+
+  "community.uninstall": publicProcedure
+    .input(z.object({ installId: z.string() }))
+    .mutation(async ({ input }) => {
+      return cpEngine.uninstallPipeline(input.installId);
+    }),
+
+  "community.checkUpdates": publicProcedure.query(async () => {
+    return cpEngine.checkForUpdates();
+  }),
+
+  "community.update": publicProcedure
+    .input(z.object({ installId: z.string(), mergeStrategy: z.enum(["replace", "merge"]) }))
+    .mutation(async ({ input }) => {
+      return cpEngine.updateInstalledPipeline(input.installId, input.mergeStrategy);
+    }),
+
+  "community.getInstalled": publicProcedure
+    .input(z.object({ practiceArea: z.string().optional() }).optional())
+    .query(async ({ input }) => {
+      const where: any = { isActive: true };
+      if (input?.practiceArea) {
+        const config = await db.practiceAreaConfig.findFirst({ where: { practiceArea: input.practiceArea as any } });
+        if (config) where.practiceAreaConfigId = config.id;
+      }
+      return db.communityPipelineInstall.findMany({ where, include: { template: true }, orderBy: { installedAt: "desc" } });
+    }),
+
+  "community.publish": publicProcedure
+    .input(z.object({ practiceAreaConfigId: z.string(), title: z.string(), description: z.string(), jurisdiction: z.string().optional(), tags: z.array(z.string()).optional(), publisherName: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      return cpEngine.publishPipeline(input);
+    }),
+
+  "community.unpublish": publicProcedure
+    .input(z.object({ templateId: z.string() }))
+    .mutation(async ({ input }) => {
+      return db.communityPipelineTemplate.update({ where: { id: input.templateId }, data: { isPublished: false } });
+    }),
+
+  "community.updatePublished": publicProcedure
+    .input(z.object({ templateId: z.string(), changes: z.record(z.any()) }))
+    .mutation(async ({ input }) => {
+      const template = await db.communityPipelineTemplate.findUniqueOrThrow({ where: { id: input.templateId } });
+      return db.communityPipelineTemplate.update({ where: { id: input.templateId }, data: { ...input.changes, version: template.version + 1, changeLog: input.changes.changeLog || `Updated to v${template.version + 1}` } as any });
+    }),
+
+  "community.fork": publicProcedure
+    .input(z.object({ templateId: z.string(), newTitle: z.string() }))
+    .mutation(async ({ input }) => {
+      return cpEngine.forkPipeline(input.templateId, input.newTitle);
+    }),
+
+  "community.deprecate": publicProcedure
+    .input(z.object({ templateId: z.string(), reason: z.string(), replacementId: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      return cpEngine.deprecateTemplate(input.templateId, input.reason, input.replacementId);
+    }),
+
+  "community.getReviews": publicProcedure
+    .input(z.object({ templateId: z.string(), sortBy: z.string().optional() }))
+    .query(async ({ input }) => {
+      return db.communityPipelineReview.findMany({ where: { templateId: input.templateId }, orderBy: input.sortBy === "helpful" ? { isHelpful: "desc" } : { createdAt: "desc" } });
+    }),
+
+  "community.submitReview": publicProcedure
+    .input(z.object({ templateId: z.string(), rating: z.number().min(1).max(5), reviewText: z.string().optional(), reviewerName: z.string().optional(), reviewerFirm: z.string().optional(), jurisdiction: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      return cpEngine.ratePipeline(input.templateId, input);
+    }),
+
+  "community.markHelpful": publicProcedure
+    .input(z.object({ reviewId: z.string() }))
+    .mutation(async ({ input }) => {
+      return cpEngine.markReviewHelpful(input.reviewId);
+    }),
+
+  "community.export": publicProcedure
+    .input(z.object({ practiceAreaConfigId: z.string(), format: z.enum(["json", "yaml"]).optional() }))
+    .query(async ({ input }) => {
+      return cpEngine.exportPipeline(input.practiceAreaConfigId, input.format ?? "json");
+    }),
+
+  "community.import": publicProcedure
+    .input(z.object({ fileContent: z.string(), format: z.enum(["json", "yaml"]).optional(), targetPracticeArea: z.string() }))
+    .mutation(async ({ input }) => {
+      return cpEngine.importPipeline(input.fileContent, input.format ?? "json", input.targetPracticeArea);
+    }),
+
+  "community.getPublisherAnalytics": publicProcedure.query(async () => {
+    const templates = await db.communityPipelineTemplate.findMany({ where: { isPublished: true } });
+    return templates.map(t => ({ id: t.id, title: t.title, downloads: t.downloadCount, activeInstalls: t.activeInstallCount, averageRating: t.averageRating, reviewCount: t.ratingCount }));
+  }),
+
+  "community.getInstallAnalytics": publicProcedure
+    .input(z.object({ templateId: z.string() }))
+    .query(async ({ input }) => {
+      return cpEngine.getInstallAnalytics(input.templateId);
     }),
 });

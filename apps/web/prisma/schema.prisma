@@ -9845,3 +9845,108 @@ model CustomField {
   @@index([practiceArea])
   @@index([fieldName])
 }
+
+// ── Community Pipeline Marketplace ────────────────────────────────────
+
+model CommunityPipelineTemplate {
+  id                    String            @id @default(cuid())
+  publishedBy           String?
+  publishedByEmail      String?
+  isOfficial            Boolean           @default(false)
+  practiceArea          PracticeAreaType
+  title                 String
+  description           String            @db.Text
+  jurisdiction          String?
+  stages                String            @db.Text
+  stageCount            Int
+  customFields          String?           @db.Text
+  deadlineRules         String?           @db.Text
+  checklistTemplates    String?           @db.Text
+  billingDefaults       String?           @db.Text
+  terminology           String?           @db.Text
+  tags                  String?           @db.Text
+  version               Int               @default(1)
+  previousVersionId     String?
+  changeLog             String?           @db.Text
+  downloadCount         Int               @default(0)
+  activeInstallCount    Int               @default(0)
+  ratingSum             Int               @default(0)
+  ratingCount           Int               @default(0)
+  averageRating         Decimal?          @db.Decimal(3, 2)
+  isFeatured            Boolean           @default(false)
+  isPublished           Boolean           @default(true)
+  isDeprecated          Boolean           @default(false)
+  deprecatedReason      String?
+  replacedByTemplateId  String?
+  screenshotUrls        String?           @db.Text
+  previewData           String?           @db.Text
+  reviews               CommunityPipelineReview[]
+  installs              CommunityPipelineInstall[]
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@index([practiceArea])
+  @@index([jurisdiction])
+  @@index([downloadCount])
+  @@index([isOfficial])
+  @@index([isFeatured])
+  @@index([isPublished])
+}
+
+model CommunityPipelineReview {
+  id                      String                    @id @default(cuid())
+  templateId              String
+  template                CommunityPipelineTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  reviewerName            String?
+  reviewerFirm            String?
+  rating                  Int
+  reviewText              String?                   @db.Text
+  practiceAreaExperience   String?
+  jurisdiction            String?
+  isVerified              Boolean                   @default(false)
+  isHelpful               Int                       @default(0)
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  @@index([templateId])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+model CommunityPipelineInstall {
+  id                      String                    @id @default(cuid())
+  templateId              String
+  template                CommunityPipelineTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateVersion         Int
+  practiceAreaConfigId    String
+  installedAt             DateTime
+  customizedAfterInstall  Boolean                   @default(false)
+  isActive                Boolean                   @default(true)
+  uninstalledAt           DateTime?
+  updateAvailable         Boolean                   @default(false)
+  latestAvailableVersion  Int?
+  feedbackSubmitted       Boolean                   @default(false)
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  @@index([templateId])
+  @@index([practiceAreaConfigId])
+  @@index([isActive])
+}
+
+model CommunityPipelineCollection {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?   @db.Text
+  curatedBy       String?
+  isOfficial      Boolean   @default(false)
+  templateIds     String    @db.Text
+  templateCount   Int       @default(0)
+  tags            String?   @db.Text
+  downloadCount   Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([isOfficial])
+  @@index([downloadCount])
+}
