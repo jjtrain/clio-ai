@@ -9950,3 +9950,168 @@ model CommunityPipelineCollection {
   @@index([isOfficial])
   @@index([downloadCount])
 }
+
+// ── Public Intake Forms ───────────────────────────────────────────────
+
+enum IntakeSubmissionStatus {
+  INTAKE_NEW
+  INTAKE_REVIEWED
+  INTAKE_CONTACTED
+  INTAKE_CONVERTED
+  INTAKE_REJECTED
+  INTAKE_SPAM
+}
+
+enum ABTestStatus {
+  AB_DRAFT
+  AB_RUNNING
+  AB_PAUSED
+  AB_COMPLETED
+}
+
+model PublicIntakeForm {
+  id                        String    @id @default(cuid())
+  practiceArea              PracticeAreaType
+  name                      String
+  description               String?   @db.Text
+  slug                      String    @unique
+  isActive                  Boolean   @default(true)
+  isPublished               Boolean   @default(false)
+  requiresPassword          Boolean   @default(false)
+  password                  String?
+  sections                  String    @db.Text
+  fields                    String    @db.Text
+  styling                   String?   @db.Text
+  branding                  String?   @db.Text
+  legalText                 String?   @db.Text
+  consentCheckboxes         String?   @db.Text
+  confirmationMessage       String?   @db.Text
+  confirmationRedirectUrl   String?
+  confirmationEmailEnabled  Boolean   @default(true)
+  confirmationEmailSubject  String?
+  confirmationEmailBody     String?   @db.Text
+  notificationEmails        String?   @db.Text
+  notificationSmsNumbers    String?   @db.Text
+  autoCreateLead            Boolean   @default(true)
+  autoAssignTo              String?
+  leadSource                String?
+  autoSendFollowUp          Boolean   @default(false)
+  followUpDelayHours        Int       @default(24)
+  followUpTemplate          String?   @db.Text
+  captchaEnabled            Boolean   @default(true)
+  captchaType               String    @default("recaptcha_v3")
+  captchaSiteKey            String?
+  captchaSecretKey          String?
+  maxSubmissionsPerDay      Int?
+  ipRateLimitPerHour        Int       @default(5)
+  fileUploadMaxSizeMB       Int       @default(10)
+  fileUploadAllowedTypes    String    @default("pdf,jpg,jpeg,png,doc,docx")
+  analyticsEnabled          Boolean   @default(true)
+  totalSubmissions          Int       @default(0)
+  totalViews                Int       @default(0)
+  conversionRate            Decimal?  @db.Decimal(5, 2)
+  averageCompletionTime     Int?
+  lastSubmissionAt          DateTime?
+  embedCode                 String?   @db.Text
+  qrCodeUrl                 String?
+  expiresAt                 DateTime?
+  submissionLimit           Int?
+  submissions               IntakeSubmission[]
+  analytics                 IntakeFormAnalytics[]
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@index([practiceArea])
+  @@index([isActive])
+  @@index([isPublished])
+}
+
+model IntakeSubmission {
+  id                    String                  @id @default(cuid())
+  formId                String
+  form                  PublicIntakeForm         @relation(fields: [formId], references: [id], onDelete: Cascade)
+  leadId                String?
+  matterId              String?
+  clientId              String?
+  status                IntakeSubmissionStatus   @default(INTAKE_NEW)
+  submitterName         String?
+  submitterEmail        String?
+  submitterPhone        String?
+  submitterIp           String?
+  submitterUserAgent    String?
+  submitterGeoLocation  String?
+  responses             String                  @db.Text
+  responseSummary       String?                 @db.Text
+  fileUploads           String?                 @db.Text
+  consentRecords        String?                 @db.Text
+  qualityScore          Int?
+  qualityAnalysis       String?                 @db.Text
+  aiRecommendation      String?
+  contactedAt           DateTime?
+  contactedBy           String?
+  contactMethod         String?
+  responseTimeSeconds   Int?
+  rejectedReason        String?
+  conversionDate        DateTime?
+  conversionValue       Decimal?                @db.Decimal(14, 2)
+  referralSource        String?
+  utmSource             String?
+  utmMedium             String?
+  utmCampaign           String?
+  utmTerm               String?
+  utmContent            String?
+  sessionDuration       Int?
+  fieldsCompleted       Int?
+  abandonedFields       String?                 @db.Text
+  notes                 String?                 @db.Text
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  @@index([formId])
+  @@index([status])
+  @@index([submitterEmail])
+  @@index([qualityScore])
+  @@index([createdAt])
+  @@index([leadId])
+}
+
+model IntakeFormAnalytics {
+  id                  String          @id @default(cuid())
+  formId              String
+  form                PublicIntakeForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  date                DateTime
+  period              String          @default("daily")
+  views               Int             @default(0)
+  starts              Int             @default(0)
+  completions         Int             @default(0)
+  abandonments        Int             @default(0)
+  averageTimeSeconds  Int?
+  conversionRate      Decimal?        @db.Decimal(5, 2)
+  submissionsByHour   String?         @db.Text
+  topReferrers        String?         @db.Text
+  deviceBreakdown     String?         @db.Text
+  fieldDropoffRates   String?         @db.Text
+  createdAt           DateTime        @default(now())
+
+  @@index([formId])
+  @@index([date])
+}
+
+model IntakeFormABTest {
+  id                      String        @id @default(cuid())
+  formId                  String
+  variantFormId           String
+  name                    String
+  trafficSplit            Decimal       @db.Decimal(3, 2) @default(0.50)
+  status                  ABTestStatus  @default(AB_DRAFT)
+  startDate               DateTime?
+  endDate                 DateTime?
+  controlSubmissions      Int           @default(0)
+  variantSubmissions      Int           @default(0)
+  controlConversionRate   Decimal?      @db.Decimal(5, 2)
+  variantConversionRate   Decimal?      @db.Decimal(5, 2)
+  winner                  String?
+  confidenceLevel         Decimal?      @db.Decimal(5, 2)
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+}
