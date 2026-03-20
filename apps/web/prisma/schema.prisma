@@ -130,6 +130,7 @@ model Matter {
   customFields        CustomField[]
   customFieldValues   MatterCustomFieldValue[] @relation("MatterCustomValues")
   departmentId        String?
+  solEntries          StatuteOfLimitations[] @relation("MatterSOL")
 
   @@index([clientId])
   @@index([departmentId])
@@ -10678,4 +10679,218 @@ model MatterJurisdictionOverlay {
   updatedAt                   DateTime                  @updatedAt
 
   @@index([practiceAreaJurisdictionId])
+}
+
+// ── Statute of Limitations Tracker ────────────────────────────────────
+
+enum AccrualBasis {
+  AB_DATE_OF_INCIDENT
+  AB_DATE_OF_DISCOVERY
+  AB_DATE_OF_LAST_TREATMENT
+  AB_DATE_OF_TERMINATION
+  AB_DATE_OF_BREACH
+  AB_DATE_OF_PUBLICATION
+  AB_CUSTOM
+}
+
+enum SOLStatus {
+  SOL_ACTIVE
+  SOL_TOLLED
+  SOL_EXPIRED
+  SOL_FILED
+  SOL_EXTENDED
+  SOL_WAIVED
+  SOL_DISMISSED
+}
+
+enum SOLUrgency {
+  SOL_SAFE
+  SOL_MONITOR
+  SOL_WARNING
+  SOL_CRITICAL
+  SOL_URG_EXPIRED
+}
+
+enum SOLRiskLevel {
+  SRL_LOW
+  SRL_MEDIUM
+  SRL_HIGH
+  SRL_EXTREME
+}
+
+enum SOLAlertType {
+  SAT_DAY_365
+  SAT_DAY_180
+  SAT_DAY_90
+  SAT_DAY_60
+  SAT_DAY_30
+  SAT_DAY_14
+  SAT_DAY_7
+  SAT_DAY_3
+  SAT_DAY_1
+  SAT_EXPIRED
+  SAT_TOLLING_ENDED
+  SAT_NOTICE_DUE
+  SAT_CUSTOM
+}
+
+enum SOLAlertSeverity {
+  SAS_INFO
+  SAS_WARNING
+  SAS_URGENT
+  SAS_CRITICAL
+}
+
+enum SOLDeliveryMethod {
+  SDM_IN_APP
+  SDM_EMAIL
+  SDM_SMS
+  SDM_ALL
+}
+
+enum SOLDeliveryStatus {
+  SDS_PENDING
+  SDS_SENT
+  SDS_DELIVERED
+  SDS_FAILED
+  SDS_ACKNOWLEDGED
+}
+
+model StatuteOfLimitations {
+  id                      String        @id @default(cuid())
+  matterId                String
+  matter                  Matter        @relation("MatterSOL", fields: [matterId], references: [id], onDelete: Cascade)
+  clientId                String?
+  departmentId            String?
+  practiceArea            String
+  jurisdiction            String
+  jurisdictionProfileId   String?
+  causeOfAction           String
+  causeOfActionDetail     String?       @db.Text
+  accrualDate             DateTime
+  accrualBasis            AccrualBasis
+  accrualNotes            String?       @db.Text
+  limitationPeriod        String
+  limitationDays          Int
+  expirationDate          DateTime
+  statute                 String?
+  statuteDescription      String?       @db.Text
+  statuteUrl              String?
+  status                  SOLStatus     @default(SOL_ACTIVE)
+  daysRemaining           Int?
+  urgency                 SOLUrgency    @default(SOL_SAFE)
+  tollingApplied          Boolean       @default(false)
+  tollingReason           String?       @db.Text
+  tollingStartDate        DateTime?
+  tollingEndDate          DateTime?
+  tollingDays             Int           @default(0)
+  originalExpirationDate  DateTime?
+  filedDate               DateTime?
+  filedDocumentId         String?
+  filedDocketEntryId      String?
+  noticeOfClaimRequired   Boolean       @default(false)
+  noticeOfClaimDeadline   DateTime?
+  noticeOfClaimFiled      Boolean       @default(false)
+  noticeOfClaimDate       DateTime?
+  noticeOfClaimDocId      String?
+  relatedSOLIds           String?       @db.Text
+  alertSchedule           String?       @db.Text
+  lastAlertSent           DateTime?
+  lastAlertType           String?
+  assignedTo              String?
+  assignedToEmail         String?
+  notes                   String?       @db.Text
+  riskLevel               SOLRiskLevel  @default(SRL_LOW)
+  riskNotes               String?       @db.Text
+  alerts                  SOLAlert[]
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  @@index([matterId])
+  @@index([practiceArea])
+  @@index([jurisdiction])
+  @@index([expirationDate])
+  @@index([status])
+  @@index([urgency])
+  @@index([daysRemaining])
+  @@index([riskLevel])
+}
+
+model SOLAlert {
+  id              String            @id @default(cuid())
+  solId           String
+  sol             StatuteOfLimitations @relation(fields: [solId], references: [id], onDelete: Cascade)
+  matterId        String
+  alertType       SOLAlertType
+  severity        SOLAlertSeverity
+  title           String
+  message         String            @db.Text
+  recipientEmail  String?
+  recipientName   String?
+  deliveryMethod  SOLDeliveryMethod @default(SDM_ALL)
+  deliveredAt     DateTime?
+  deliveryStatus  SOLDeliveryStatus @default(SDS_PENDING)
+  acknowledgedAt  DateTime?
+  acknowledgedBy  String?
+  escalatedTo     String?
+  escalatedAt     DateTime?
+  createdAt       DateTime          @default(now())
+
+  @@index([solId])
+  @@index([alertType])
+  @@index([severity])
+  @@index([deliveryStatus])
+  @@index([createdAt])
+}
+
+model SOLTemplate {
+  id                      String        @id @default(cuid())
+  practiceArea            String
+  jurisdiction            String
+  causeOfAction           String
+  limitationPeriod        String
+  limitationDays          Int
+  statute                 String
+  statuteDescription      String?       @db.Text
+  accrualBasis            AccrualBasis
+  accrualDescription      String?
+  noticeOfClaimRequired   Boolean       @default(false)
+  noticeOfClaimDays       Int?
+  noticeOfClaimDescription String?
+  tollingExceptions       String?       @db.Text
+  relatedCausesOfAction   String?       @db.Text
+  aiContext               String?       @db.Text
+  isActive                Boolean       @default(true)
+  displayOrder            Int           @default(0)
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  @@unique([practiceArea, jurisdiction, causeOfAction])
+  @@index([practiceArea])
+  @@index([jurisdiction])
+  @@index([causeOfAction])
+}
+
+model SOLSettings {
+  id                      String            @id @default("default")
+  alertScheduleDays       String            @default("365,180,90,60,30,14,7,3,1")
+  escalationEnabled       Boolean           @default(true)
+  escalationAfterHours    Int               @default(24)
+  escalationRecipient     String?
+  defaultDeliveryMethod   SOLDeliveryMethod @default(SDM_ALL)
+  emailAlerts             Boolean           @default(true)
+  smsAlerts               Boolean           @default(true)
+  inAppAlerts             Boolean           @default(true)
+  dailyDigestEnabled      Boolean           @default(true)
+  dailyDigestTime         String            @default("08:00")
+  dailyDigestRecipients   String?           @db.Text
+  weeklyReportEnabled     Boolean           @default(true)
+  weeklyReportDay         String            @default("Monday")
+  criticalThresholdDays   Int               @default(90)
+  warningThresholdDays    Int               @default(180)
+  monitorThresholdDays    Int               @default(365)
+  autoCreateDocketEntry   Boolean           @default(true)
+  autoCreateFromMatter    Boolean           @default(false)
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
 }
