@@ -8,8 +8,8 @@ import { AppShell } from "@/components/layout/app-shell";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Clio AI - Legal Practice Management",
-  description: "Modern legal practice management system",
+  title: "Managal - Legal Practice Management",
+  description: "Modern legal practice management by Managal",
 };
 
 export default function RootLayout({

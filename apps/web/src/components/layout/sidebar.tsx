@@ -207,8 +207,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             <Scale className="h-5 w-5 text-white" />
           </div>
           <div>
-            <span className="text-lg font-semibold text-white">Clio AI v2</span>
-            <p className="text-xs text-slate-400">Legal Practice</p>
+            <span className="text-lg font-semibold text-white">Managal</span>
+            <p className="text-xs text-slate-400">Legal Practice Management</p>
           </div>
         </div>
         {onClose && (
