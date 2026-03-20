@@ -139,6 +139,7 @@ const navGroups: NavGroup[] = [
   {
     id: "firm", label: "Firm Management", icon: Building2,
     children: [
+      { label: "Departments", href: "/departments", icon: Building2 },
       { label: "HR", href: "/hr", icon: Users },
       { label: "Integrations", href: "/integrations", icon: Plug },
       { label: "Security", href: "/security", icon: ShieldCheck },

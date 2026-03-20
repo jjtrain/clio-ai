@@ -129,8 +129,10 @@ model Matter {
   matterStageHistory  MatterStageHistory[]
   customFields        CustomField[]
   customFieldValues   MatterCustomFieldValue[] @relation("MatterCustomValues")
+  departmentId        String?
 
   @@index([clientId])
+  @@index([departmentId])
   @@index([pipelineStage])
 }
 
@@ -10378,4 +10380,159 @@ model MarketplaceCollection {
   displayOrder  Int       @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+// ── Multi-Practice Firm Departments ───────────────────────────────────
+
+enum DepartmentRole {
+  DEPT_HEAD
+  DEPT_ATTORNEY
+  DEPT_PARALEGAL
+  DEPT_ASSOCIATE
+  DEPT_SECRETARY
+  DEPT_INTERN
+  DEPT_OF_COUNSEL
+}
+
+enum DashboardWidgetType {
+  WDG_MATTER_COUNT
+  WDG_REVENUE
+  WDG_TASKS_DUE
+  WDG_UPCOMING_DEADLINES
+  WDG_RECENT_ACTIVITY
+  WDG_PIPELINE_FUNNEL
+  WDG_BILLING_SUMMARY
+  WDG_TIME_TRACKED
+  WDG_LEAD_INBOX
+  WDG_CALENDAR
+  WDG_CUSTOM_CHART
+  WDG_KPI_CARD
+  WDG_TEAM_UTILIZATION
+  WDG_COLLECTION_RATE
+}
+
+enum WidgetWidth {
+  WW_QUARTER
+  WW_THIRD
+  WW_HALF
+  WW_TWO_THIRDS
+  WW_FULL
+}
+
+enum AnnouncementPriority {
+  ANN_NORMAL
+  ANN_IMPORTANT
+  ANN_URGENT
+}
+
+model FirmDepartment {
+  id                      String    @id @default(cuid())
+  name                    String
+  slug                    String    @unique
+  description             String?   @db.Text
+  practiceAreas           String    @db.Text
+  headAttorney            String?
+  headAttorneyEmail       String?
+  color                   String?
+  icon                    String?
+  isActive                Boolean   @default(true)
+  memberCount             Int       @default(0)
+  matterCount             Int       @default(0)
+  settings                String?   @db.Text
+  dashboardLayout         String?   @db.Text
+  defaultPipelineId       String?
+  defaultFolderTemplateId String?
+  defaultBillingRate      Decimal?  @db.Decimal(10, 2)
+  defaultBillingType      String?
+  defaultRetainerAmount   Decimal?  @db.Decimal(10, 2)
+  intakeFormIds           String?   @db.Text
+  emailSignature          String?   @db.Text
+  letterhead              String?   @db.Text
+  members                 DepartmentMember[]
+  workflows               DepartmentWorkflow[]
+  widgets                 DepartmentDashboardWidget[]
+  announcements           DepartmentAnnouncement[]
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model DepartmentMember {
+  id            String          @id @default(cuid())
+  departmentId  String
+  department    FirmDepartment  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  userId        String
+  userName      String
+  userEmail     String
+  role          DepartmentRole  @default(DEPT_ATTORNEY)
+  isPrimary     Boolean         @default(false)
+  billingRate   Decimal?        @db.Decimal(10, 2)
+  permissions   String?         @db.Text
+  joinedAt      DateTime        @default(now())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([departmentId, userId])
+  @@index([departmentId])
+  @@index([userId])
+  @@index([role])
+}
+
+model DepartmentWorkflow {
+  id                String          @id @default(cuid())
+  departmentId      String
+  department        FirmDepartment  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  name              String
+  description       String?
+  trigger           String
+  triggerConditions String?         @db.Text
+  actions           String          @db.Text
+  isActive          Boolean         @default(true)
+  executionCount    Int             @default(0)
+  lastExecutedAt    DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([departmentId])
+  @@index([trigger])
+  @@index([isActive])
+}
+
+model DepartmentDashboardWidget {
+  id            String              @id @default(cuid())
+  departmentId  String
+  department    FirmDepartment      @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  widgetType    DashboardWidgetType
+  title         String
+  position      Int                 @default(0)
+  width         WidgetWidth         @default(WW_THIRD)
+  config        String?             @db.Text
+  isVisible     Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([departmentId])
+  @@index([position])
+}
+
+model DepartmentAnnouncement {
+  id            String               @id @default(cuid())
+  departmentId  String?
+  department    FirmDepartment?      @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  title         String
+  content       String               @db.Text
+  priority      AnnouncementPriority @default(ANN_NORMAL)
+  authorName    String
+  isPinned      Boolean              @default(false)
+  expiresAt     DateTime?
+  readBy        String?              @db.Text
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([departmentId])
+  @@index([priority])
+  @@index([isPinned])
+  @@index([createdAt])
 }
