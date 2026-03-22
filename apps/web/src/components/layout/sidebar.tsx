@@ -73,6 +73,7 @@ const navGroups: NavGroup[] = [
       { label: "Mail", href: "/mail", icon: Send },
       { label: "Discovery", href: "/discovery", icon: FileQuestion },
       { label: "Doc Scanner", href: "/scanner", icon: ScanLine },
+      { label: "E-Sign", href: "/e-sign", icon: PenTool },
     ],
   },
   {
