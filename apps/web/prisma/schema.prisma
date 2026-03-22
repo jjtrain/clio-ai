@@ -201,6 +201,7 @@ model CalendarEvent {
   startTime     DateTime
   endTime       DateTime
   allDay        Boolean   @default(false)
+  isAllDay      Boolean   @default(false)
   location      String?
   googleEventId String?
   latitude      Float?
@@ -211,13 +212,19 @@ model CalendarEvent {
   color         String?
   reminders     String?   @db.Text
   recurrence    String?   @db.Text
+  sourceType    String?
+  sourceId      String?
+  geofenceId    String?
+  checkinStatus String?
   userId        String?
+  firmId        String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([matterId])
   @@index([userId])
   @@index([startTime])
+  @@index([sourceType, sourceId])
 }
 
 enum ClientStatus {
@@ -12161,7 +12168,9 @@ model TravelEstimate {
   routeSummary    String?
   trafficLevel    String?
   warningIssued   Boolean   @default(false)
+  geofenceArrival Boolean   @default(false)
   userId          String
+  firmId          String?
   calculatedAt    DateTime  @default(now())
 
   @@index([fromEventId])
@@ -12181,6 +12190,10 @@ model UserTravelPreference {
   officeLatitude  Float?
   officeLongitude Float?
   alertThreshold  Int       @default(30)
+  geofenceBuffer  Int       @default(10)
+  autoSyncMatters Boolean   @default(true)
+  autoSyncCourt   Boolean   @default(true)
+  firmId          String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
