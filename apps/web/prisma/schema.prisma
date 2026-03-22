@@ -11491,3 +11491,106 @@ model SwipeToBillSettings {
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
 }
+
+// ── Offline Mode & Sync ───────────────────────────────────────────────
+
+enum OfflineSyncType {
+  ST_FULL
+  ST_INCREMENTAL
+  ST_MANUAL
+  ST_CONFLICT_RESOLUTION
+}
+
+enum OfflineSyncDirection {
+  SD_DOWNLOAD
+  SD_UPLOAD
+  SD_BIDIRECTIONAL
+}
+
+enum OfflineSyncStatus {
+  SS_STARTED
+  SS_IN_PROGRESS
+  SS_COMPLETED
+  SS_FAILED
+  SS_PARTIAL
+}
+
+enum OfflineChangeType {
+  OC_CREATE
+  OC_UPDATE
+  OC_DELETE
+}
+
+enum OfflineChangeStatus {
+  OCS_PENDING
+  OCS_SYNCED
+  OCS_CONFLICT
+  OCS_FAILED
+  OCS_DISCARDED
+}
+
+model OfflineSyncLog {
+  id                  String            @id @default(cuid())
+  userId              String
+  syncType            OfflineSyncType
+  direction           OfflineSyncDirection @default(SD_BIDIRECTIONAL)
+  status              OfflineSyncStatus @default(SS_STARTED)
+  startedAt           DateTime      @default(now())
+  completedAt         DateTime?
+  mattersDownloaded   Int           @default(0)
+  mattersCached       Int           @default(0)
+  changesUploaded     Int           @default(0)
+  conflictsDetected   Int           @default(0)
+  conflictsResolved   Int           @default(0)
+  errorMessage        String?       @db.Text
+  bytesDownloaded     Int           @default(0)
+  bytesUploaded       Int           @default(0)
+  duration            Int?
+  deviceType          String?
+  createdAt           DateTime      @default(now())
+
+  @@index([userId])
+  @@index([syncType])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model OfflineChange {
+  id                  String              @id @default(cuid())
+  userId              String
+  matterId            String?
+  entityType          String
+  entityId            String?
+  changeType          OfflineChangeType
+  fieldChanges        String              @db.Text
+  status              OfflineChangeStatus @default(OCS_PENDING)
+  conflictDetails     String?             @db.Text
+  conflictResolution  String?
+  resolvedAt          DateTime?
+  resolvedBy          String?
+  syncedAt            DateTime?
+  syncLogId           String?
+  createdAt           DateTime            @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([matterId])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+model OfflineCacheConfig {
+  id                      String    @id @default("default")
+  maxCachedMatters         Int       @default(10)
+  cacheStrategy           String    @default("recent")
+  autoSyncOnReconnect     Boolean   @default(true)
+  autoSyncIntervalMinutes Int       @default(15)
+  cacheExpireHours        Int       @default(168)
+  conflictStrategy        String    @default("ask")
+  cacheSizeLimitMB        Int       @default(100)
+  cacheDocuments          Boolean   @default(false)
+  cacheVoiceNotes         Boolean   @default(false)
+  syncNotifications       Boolean   @default(true)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
