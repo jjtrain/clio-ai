@@ -131,6 +131,7 @@ model Matter {
   customFieldValues   MatterCustomFieldValue[] @relation("MatterCustomValues")
   departmentId        String?
   solEntries          StatuteOfLimitations[] @relation("MatterSOL")
+  voiceNotes          VoiceNote[] @relation("MatterVoiceNotes")
 
   @@index([clientId])
   @@index([departmentId])
@@ -11253,4 +11254,88 @@ model CourtRuleReminder {
   @@index([status])
   @@index([severity])
   @@index([dueDate])
+}
+
+// ── Voice Notes ───────────────────────────────────────────────────────
+
+enum TranscriptionStatus {
+  TS_RECORDING
+  TS_PROCESSING
+  TS_COMPLETED
+  TS_FAILED
+  TS_EDITED
+}
+
+enum VoiceNoteCategory {
+  VNC_CASE_UPDATE
+  VNC_COURT_APPEARANCE
+  VNC_CLIENT_CALL
+  VNC_DEPOSITION
+  VNC_MEETING
+  VNC_RESEARCH
+  VNC_STRATEGY
+  VNC_BILLING
+  VNC_GENERAL
+}
+
+model VoiceNote {
+  id                      String              @id @default(cuid())
+  matterId                String
+  matter                  Matter              @relation("MatterVoiceNotes", fields: [matterId], references: [id], onDelete: Cascade)
+  clientId                String?
+  authorName              String
+  authorEmail             String?
+  audioUrl                String?             @db.Text
+  audioDuration           Int?
+  audioFormat             String              @default("webm")
+  audioSizeBytes          Int?
+  transcription           String?             @db.Text
+  transcriptionStatus     TranscriptionStatus @default(TS_PROCESSING)
+  transcriptionEngine     String              @default("browser")
+  transcriptionConfidence Decimal?            @db.Decimal(5, 4)
+  editedTranscription     String?             @db.Text
+  summary                 String?             @db.Text
+  tags                    String?             @db.Text
+  autoDetectedEntities    String?             @db.Text
+  category                VoiceNoteCategory   @default(VNC_GENERAL)
+  isTimeBillable          Boolean             @default(false)
+  timeEntryId             String?
+  suggestedDuration       Int?
+  suggestedActivity       String?
+  isDocketRelevant        Boolean             @default(false)
+  suggestedDocketEntry    String?             @db.Text
+  isTaskRelevant          Boolean             @default(false)
+  suggestedTasks          String?             @db.Text
+  isPrivileged            Boolean             @default(false)
+  isPinned                Boolean             @default(false)
+  recordedAt              DateTime            @default(now())
+  location                String?
+  deviceType              String?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  @@index([matterId])
+  @@index([authorEmail])
+  @@index([transcriptionStatus])
+  @@index([category])
+  @@index([recordedAt])
+  @@index([isPinned])
+}
+
+model VoiceNoteSettings {
+  id                        String    @id @default("default")
+  defaultTranscriptionEngine String   @default("browser")
+  autoSummarize             Boolean   @default(true)
+  autoDetectEntities        Boolean   @default(true)
+  autoSuggestTimeEntry      Boolean   @default(true)
+  autoSuggestTasks          Boolean   @default(true)
+  autoSuggestDocket         Boolean   @default(true)
+  autoCategorizeTags        Boolean   @default(true)
+  defaultCategory           String    @default("VNC_GENERAL")
+  maxRecordingSeconds       Int       @default(600)
+  audioQuality              String    @default("standard")
+  saveAudio                 Boolean   @default(true)
+  whisperApiKey             String?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 }
