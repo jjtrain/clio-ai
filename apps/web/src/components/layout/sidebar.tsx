@@ -145,6 +145,7 @@ const navGroups: NavGroup[] = [
       { label: "Marketplace", href: "/marketplace", icon: ShoppingBag },
       { label: "KPI Dashboards", href: "/kpi", icon: BarChart3 },
       { label: "Voice Notes", href: "/voice-notes", icon: Mic },
+      { label: "AI Correspondence", href: "/correspondence", icon: PenTool },
     ],
   },
   {

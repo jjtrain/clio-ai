@@ -12197,3 +12197,101 @@ model UserTravelPreference {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
+
+model CorrespondenceDraft {
+  id                String   @id @default(cuid())
+  matterId          String
+  matterName        String?
+  correspondenceType String
+  recipientType     String
+  recipientName     String?
+  recipientEmail    String?
+  recipientAddress  String?
+  recipientFirm     String?
+  subject           String?
+  body              String   @db.Text
+  tone              String   @default("professional")
+  format            String   @default("email")
+  status            String   @default("draft")
+  aiPromptUsed      String?  @db.Text
+  aiContextSummary  String?  @db.Text
+  editedBody        String?  @db.Text
+  editNotes         String?
+  sentAt            DateTime?
+  sentVia           String?
+  parentDraftId     String?
+  version           Int      @default(1)
+  templateId        String?
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([userId])
+  @@index([status])
+}
+
+model CorrespondenceTemplate {
+  id                String   @id @default(cuid())
+  name              String
+  correspondenceType String
+  recipientType     String
+  tone              String   @default("professional")
+  format            String   @default("email")
+  promptTemplate    String   @db.Text
+  bodyTemplate      String?  @db.Text
+  practiceArea      String?
+  isDefault         Boolean  @default(false)
+  isShared          Boolean  @default(true)
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([correspondenceType])
+  @@index([practiceArea])
+}
+
+model CorrespondenceContact {
+  id            String   @id @default(cuid())
+  matterId      String?
+  contactType   String
+  name          String
+  email         String?
+  phone         String?
+  firm          String?
+  address       String?
+  barNumber     String?
+  courtName     String?
+  notes         String?
+  lastContacted DateTime?
+  userId        String
+  firmId        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([contactType])
+}
+
+model FirmLetterhead {
+  id            String   @id @default(cuid())
+  firmName      String
+  attorneyName  String
+  barNumber     String?
+  address       String
+  phone         String
+  fax           String?
+  email         String
+  website       String?
+  logoUrl       String?
+  isDefault     Boolean  @default(true)
+  userId        String
+  firmId        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([firmId])
+}

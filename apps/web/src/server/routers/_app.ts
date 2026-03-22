@@ -87,6 +87,7 @@ import { notificationsRouter } from "./notifications";
 import { locationRouter } from "./location";
 import { tapToCallRouter } from "./tapToCall";
 import { travelCalendarRouter } from "./travelCalendar";
+import { correspondenceRouter } from "./correspondence";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -177,6 +178,7 @@ export const appRouter = router({
   location: locationRouter,
   tapToCall: tapToCallRouter,
   travelCalendar: travelCalendarRouter,
+  correspondence: correspondenceRouter,
 });
 
 export type AppRouter = typeof appRouter;
