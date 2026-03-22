@@ -86,6 +86,7 @@ import { mobileSignRouter } from "./mobileSign";
 import { notificationsRouter } from "./notifications";
 import { locationRouter } from "./location";
 import { tapToCallRouter } from "./tapToCall";
+import { travelCalendarRouter } from "./travelCalendar";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -175,6 +176,7 @@ export const appRouter = router({
   notifications: notificationsRouter,
   location: locationRouter,
   tapToCall: tapToCallRouter,
+  travelCalendar: travelCalendarRouter,
 });
 
 export type AppRouter = typeof appRouter;

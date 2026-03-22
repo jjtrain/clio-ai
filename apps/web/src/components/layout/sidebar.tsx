@@ -58,6 +58,7 @@ const navGroups: NavGroup[] = [
       { label: "Docketing", href: "/docketing", icon: Gavel },
       { label: "Court Mode", href: "/court", icon: Gavel },
       { label: "Court Check-In", href: "/location", icon: MapPin },
+      { label: "Travel Calendar", href: "/mobile-travel-calendar", icon: CalendarClock },
     ],
   },
   {

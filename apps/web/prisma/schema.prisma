@@ -203,10 +203,21 @@ model CalendarEvent {
   allDay        Boolean   @default(false)
   location      String?
   googleEventId String?
+  latitude      Float?
+  longitude     Float?
+  address       String?
+  courtId       String?
+  eventType     String    @default("appointment")
+  color         String?
+  reminders     String?   @db.Text
+  recurrence    String?   @db.Text
+  userId        String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([matterId])
+  @@index([userId])
+  @@index([startTime])
 }
 
 enum ClientStatus {
@@ -12135,4 +12146,41 @@ model TapToCallSettings {
   quickNoteTemplates      String?   @db.Text
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
+}
+
+// ── Travel Calendar ───────────────────────────────────────────────────
+
+model TravelEstimate {
+  id              String    @id @default(cuid())
+  fromEventId     String
+  toEventId       String
+  travelMode      String    @default("driving")
+  durationMinutes Int
+  distanceMeters  Int?
+  departByTime    DateTime
+  routeSummary    String?
+  trafficLevel    String?
+  warningIssued   Boolean   @default(false)
+  userId          String
+  calculatedAt    DateTime  @default(now())
+
+  @@index([fromEventId])
+  @@index([toEventId])
+  @@index([userId])
+}
+
+model UserTravelPreference {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  defaultMode     String    @default("driving")
+  bufferMinutes   Int       @default(15)
+  homeAddress     String?
+  homeLatitude    Float?
+  homeLongitude   Float?
+  officeAddress   String?
+  officeLatitude  Float?
+  officeLongitude Float?
+  alertThreshold  Int       @default(30)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
