@@ -114,6 +114,7 @@ const navGroups: NavGroup[] = [
       { label: "Compliance", href: "/compliance", icon: ShieldCheck },
       { label: "Referrals", href: "/referrals", icon: Share2 },
       { label: "SOL Tracker", href: "/sol-tracker", icon: AlarmClock },
+      { label: "Courts", href: "/courts", icon: Landmark },
     ],
   },
   {

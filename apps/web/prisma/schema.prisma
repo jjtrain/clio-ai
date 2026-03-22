@@ -1779,6 +1779,32 @@ model Court {
   updatedAt       DateTime            @updatedAt
   submissions     EFilingSubmission[]
   templates       EFilingTemplate[]
+  shortName           String?
+  slug                String?           @unique
+  jurisdiction        String?
+  address             String?           @db.Text
+  city                String?
+  zip                 String?
+  phone               String?
+  fax                 String?
+  website             String?
+  efilingSystem       EFilingSystem?
+  efilingMandatory    Boolean           @default(false)
+  efilingExemptions   String?           @db.Text
+  clerkName           String?
+  clerkPhone          String?
+  clerkEmail          String?
+  clerkHours          String?
+  filingHours         String?
+  filingFees          String?           @db.Text
+  paymentMethods      String?
+  specialInstructions String?           @db.Text
+  lastVerified        DateTime?
+  verifiedBy          String?
+  courtFilingRules    CourtFilingRule[]
+  judgeProfiles       JudgeProfile[]
+  judgeSpecificRules  JudgeSpecificRule[]
+  courtAssignments    MatterCourtAssignment[]
 
   @@index([state])
   @@index([courtType])
@@ -11026,4 +11052,205 @@ model KPISnapshot {
   @@index([kpiId])
   @@index([period])
   @@index([calculatedAt])
+}
+
+// ── Court-Specific Filing Rules ───────────────────────────────────────
+
+enum EFilingSystem {
+  EFS_NYSCEF
+  EFS_ECF_PACER
+  EFS_FILE_AND_SERVE
+  EFS_ODYSSEY
+  EFS_TYLER
+  EFS_NONE
+  EFS_OTHER
+}
+
+enum FilingRuleCategory {
+  FRC_DOCUMENT_FORMAT
+  FRC_FILING_PROCEDURE
+  FRC_SERVICE_REQUIREMENT
+  FRC_SCHEDULING
+  FRC_MOTION_PRACTICE
+  FRC_DISCOVERY
+  FRC_TRIAL
+  FRC_APPEARANCE
+  FRC_PAYMENT
+  FRC_EFILING
+  FRC_JUDGE_SPECIFIC
+  FRC_LOCAL_RULE
+  FRC_COURTESY_COPY
+  FRC_ENDORSEMENT
+  FRC_OTHER
+}
+
+enum RuleSeverity {
+  RS_REQUIRED
+  RS_RECOMMENDED
+  RS_INFORMATIONAL
+  RS_WARNING
+}
+
+enum ReminderTiming {
+  RT_AT_FILING
+  RT_BEFORE_FILING
+  RT_AT_MATTER_CREATION
+  RT_AT_COURT_ASSIGNMENT
+  RT_ALWAYS_VISIBLE
+}
+
+enum CourtReminderStatus {
+  RMS_PENDING
+  RMS_ACKNOWLEDGED
+  RMS_COMPLETED
+  RMS_DISMISSED
+  RMS_OVERRIDDEN
+}
+
+model CourtFilingRule {
+  id                      String              @id @default(cuid())
+  courtId                 String
+  court                   Court               @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  category                FilingRuleCategory
+  title                   String
+  description             String              @db.Text
+  statute                 String?
+  statuteUrl              String?
+  severity                RuleSeverity
+  practiceAreas           String?             @db.Text
+  filingTypes             String?             @db.Text
+  reminderTiming          ReminderTiming?
+  reminderDaysBefore      Int?
+  checklist               String?             @db.Text
+  commonMistakes          String?             @db.Text
+  tips                    String?             @db.Text
+  penaltyForNonCompliance String?
+  exceptions              String?             @db.Text
+  effectiveDate           DateTime?
+  expirationDate          DateTime?
+  isActive                Boolean             @default(true)
+  displayOrder            Int                 @default(0)
+  lastVerified            DateTime?
+  verifiedBy              String?
+  reminders               CourtRuleReminder[]
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  @@index([courtId])
+  @@index([category])
+  @@index([severity])
+  @@index([isActive])
+  @@index([displayOrder])
+}
+
+model JudgeProfile {
+  id                      String              @id @default(cuid())
+  courtId                 String
+  court                   Court               @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  name                    String
+  title                   String?
+  part                    String?
+  courtroom               String?
+  floor                   String?
+  phone                   String?
+  clerkName               String?
+  clerkPhone              String?
+  clerkEmail              String?
+  practiceAreas           String?             @db.Text
+  schedulingPreferences   String?             @db.Text
+  rulingTendencies        String?             @db.Text
+  petPeeves               String?             @db.Text
+  preferences             String?             @db.Text
+  motionPractice          String?             @db.Text
+  discoveryPractice       String?             @db.Text
+  trialPractice           String?             @db.Text
+  individualRules         String?             @db.Text
+  individualRulesUrl      String?
+  appointedDate           DateTime?
+  isActive                Boolean             @default(true)
+  lastVerified            DateTime?
+  notes                   String?             @db.Text
+  specificRules           JudgeSpecificRule[]
+  assignments             MatterCourtAssignment[]
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  @@index([courtId])
+  @@index([name])
+  @@index([isActive])
+}
+
+model JudgeSpecificRule {
+  id              String              @id @default(cuid())
+  judgeId         String
+  judge           JudgeProfile        @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  courtId         String
+  court           Court               @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  category        FilingRuleCategory
+  title           String
+  description     String              @db.Text
+  severity        RuleSeverity
+  practiceAreas   String?             @db.Text
+  isActive        Boolean             @default(true)
+  displayOrder    Int                 @default(0)
+  lastVerified    DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([judgeId])
+  @@index([category])
+  @@index([isActive])
+}
+
+model MatterCourtAssignment {
+  id                    String        @id @default(cuid())
+  matterId              String        @unique
+  courtId               String
+  court                 Court         @relation(fields: [courtId], references: [id])
+  judgeId               String?
+  judge                 JudgeProfile? @relation(fields: [judgeId], references: [id])
+  indexNumber           String?
+  part                  String?
+  assignedDate          DateTime?
+  rjiFiledDate          DateTime?
+  rjiNumber             String?
+  filingDate            DateTime?
+  rulesAcknowledged     Boolean       @default(false)
+  rulesAcknowledgedAt   DateTime?
+  rulesAcknowledgedBy   String?
+  notes                 String?       @db.Text
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([courtId])
+  @@index([judgeId])
+  @@index([indexNumber])
+}
+
+model CourtRuleReminder {
+  id              String              @id @default(cuid())
+  matterId        String
+  courtRuleId     String?
+  courtRule       CourtFilingRule?    @relation(fields: [courtRuleId], references: [id])
+  judgeRuleId     String?
+  docketEntryId   String?
+  title           String
+  description     String              @db.Text
+  severity        RuleSeverity
+  category        FilingRuleCategory
+  checklist       String?             @db.Text
+  status          CourtReminderStatus @default(RMS_PENDING)
+  acknowledgedAt  DateTime?
+  acknowledgedBy  String?
+  completedAt     DateTime?
+  completedBy     String?
+  dismissedReason String?
+  dueDate         DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([matterId])
+  @@index([status])
+  @@index([severity])
+  @@index([dueDate])
 }
