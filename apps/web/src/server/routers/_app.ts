@@ -81,6 +81,7 @@ import { voiceNotesRouter } from "./voiceNotes";
 import { courtCompanionRouter } from "./courtCompanion";
 import { swipeToBillRouter } from "./swipeToBill";
 import { offlineSyncRouter } from "./offlineSync";
+import { scannerRouter } from "./scanner";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -165,6 +166,7 @@ export const appRouter = router({
   courtCompanion: courtCompanionRouter,
   swipeToBill: swipeToBillRouter,
   offlineSync: offlineSyncRouter,
+  scanner: scannerRouter,
 });
 
 export type AppRouter = typeof appRouter;

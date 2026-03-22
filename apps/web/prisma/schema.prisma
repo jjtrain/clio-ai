@@ -11594,3 +11594,88 @@ model OfflineCacheConfig {
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 }
+
+// ── Mobile Document Scanner ───────────────────────────────────────────
+
+enum ScanStatus {
+  SCN_UPLOADING
+  SCN_PROCESSING
+  SCN_OCR_COMPLETE
+  SCN_FILED
+  SCN_FAILED
+}
+
+enum ScanDocType {
+  SDT_COURT_ORDER
+  SDT_PLEADING
+  SDT_CORRESPONDENCE
+  SDT_EVIDENCE
+  SDT_CONTRACT
+  SDT_ID_DOCUMENT
+  SDT_MEDICAL_RECORD
+  SDT_FINANCIAL
+  SDT_RECEIPT
+  SDT_HANDWRITTEN_NOTE
+  SDT_BUSINESS_CARD
+  SDT_OTHER
+}
+
+model ScannedDocument {
+  id                    String        @id @default(cuid())
+  userId                String
+  userEmail             String?
+  matterId              String?
+  clientId              String?
+  documentId            String?
+  imageUrl              String        @db.Text
+  imageFormat           String        @default("jpeg")
+  imageSizeBytes        Int?
+  pageCount             Int           @default(1)
+  status                ScanStatus    @default(SCN_UPLOADING)
+  ocrText               String?       @db.Text
+  ocrConfidence         Decimal?      @db.Decimal(5, 4)
+  ocrEngine             String        @default("tesseract")
+  ocrLanguage           String        @default("en")
+  aiDocumentType        ScanDocType?
+  aiDocumentName        String?
+  aiSummary             String?       @db.Text
+  aiExtractedEntities   String?       @db.Text
+  aiSuggestedMatter     String?
+  aiMatterConfidence    String?
+  aiSuggestedName       String?
+  aiSuggestedCategory   String?
+  userAssignedName      String?
+  userAssignedCategory  String?
+  isMultiPage           Boolean       @default(false)
+  relatedScanIds        String?       @db.Text
+  location              String?
+  deviceType            String?
+  scannedAt             DateTime      @default(now())
+  processedAt           DateTime?
+  filedAt               DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([matterId])
+  @@index([status])
+  @@index([aiDocumentType])
+  @@index([scannedAt])
+}
+
+model ScannerSettings {
+  id                      String    @id @default("default")
+  autoOCR                 Boolean   @default(true)
+  autoClassify            Boolean   @default(true)
+  autoSuggestMatter       Boolean   @default(true)
+  autoFileAfterReview     Boolean   @default(false)
+  defaultImageQuality     String    @default("high")
+  maxImageSizeMB          Int       @default(10)
+  ocrEngine               String    @default("tesseract")
+  enhanceImage            Boolean   @default(true)
+  perspectiveCorrection   Boolean   @default(true)
+  autoRotate              Boolean   @default(true)
+  saveScanHistory         Boolean   @default(true)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
