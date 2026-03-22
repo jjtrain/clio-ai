@@ -156,6 +156,7 @@ const navGroups: NavGroup[] = [
       { label: "Settings", href: "/settings", icon: Settings },
       { label: "Help", href: "/help", icon: HelpCircle },
       { label: "Offline & Sync", href: "/settings/offline", icon: WifiOff },
+      { label: "Notifications", href: "/notifications", icon: Inbox },
     ],
   },
 ];

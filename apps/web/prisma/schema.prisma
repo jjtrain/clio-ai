@@ -11823,3 +11823,119 @@ model MobileSignSettings {
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
 }
+
+// ── Push Notifications ────────────────────────────────────────────────
+
+enum NotificationChannel {
+  NC_PUSH
+  NC_EMAIL
+  NC_SMS
+  NC_IN_APP
+}
+
+enum NotificationCategory {
+  NCAT_DEADLINE
+  NCAT_SOL
+  NCAT_COURT_DATE
+  NCAT_TASK
+  NCAT_LEAD
+  NCAT_PAYMENT
+  NCAT_SIGNATURE
+  NCAT_COURT_RULE
+  NCAT_BILLING
+  NCAT_SYSTEM
+  NCAT_CUSTOM
+}
+
+enum NotificationSeverity {
+  NS_INFO
+  NS_WARNING
+  NS_URGENT
+  NS_CRITICAL
+}
+
+model PushSubscription {
+  id            String    @id @default(cuid())
+  userId        String
+  userEmail     String?
+  endpoint      String    @unique @db.Text
+  p256dh        String    @db.Text
+  auth          String    @db.Text
+  deviceType    String?
+  browserName   String?
+  isActive      Boolean   @default(true)
+  lastUsedAt    DateTime?
+  failureCount  Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model NotificationPreference {
+  id                        String    @id @default(cuid())
+  userId                    String    @unique
+  userEmail                 String?
+  pushEnabled               Boolean   @default(true)
+  emailEnabled              Boolean   @default(true)
+  smsEnabled                Boolean   @default(false)
+  smsPhone                  String?
+  deadlineAlerts            Boolean   @default(true)
+  deadlineAlertDays         String    @default("7,3,1,0")
+  solAlerts                 Boolean   @default(true)
+  solAlertDays              String    @default("90,60,30,14,7,3,1")
+  courtDateAlerts           Boolean   @default(true)
+  courtDateAlertDays        String    @default("7,3,1,0")
+  taskDueAlerts             Boolean   @default(true)
+  taskAlertDays             String    @default("1,0")
+  newLeadAlerts             Boolean   @default(true)
+  paymentReceivedAlerts     Boolean   @default(true)
+  signatureCompletedAlerts  Boolean   @default(true)
+  courtRuleAlerts           Boolean   @default(true)
+  billingAlerts             Boolean   @default(false)
+  dailyDigestEnabled        Boolean   @default(true)
+  dailyDigestTime           String    @default("08:00")
+  quietHoursStart           String?
+  quietHoursEnd             String?
+  weekendAlerts             Boolean   @default(false)
+  soundEnabled              Boolean   @default(true)
+  urgentOverrideQuietHours  Boolean   @default(true)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+}
+
+model SentNotification {
+  id                  String                @id @default(cuid())
+  userId              String
+  channel             NotificationChannel
+  category            NotificationCategory
+  severity            NotificationSeverity  @default(NS_INFO)
+  title               String
+  body                String                @db.Text
+  icon                String?
+  url                 String?
+  matterId            String?
+  entityType          String?
+  entityId            String?
+  delivered           Boolean               @default(false)
+  deliveredAt         DateTime?
+  read                Boolean               @default(false)
+  readAt              DateTime?
+  clicked             Boolean               @default(false)
+  clickedAt           DateTime?
+  failed              Boolean               @default(false)
+  failureReason       String?
+  pushSubscriptionId  String?
+  smsSid              String?
+  emailId             String?
+  createdAt           DateTime              @default(now())
+
+  @@index([userId])
+  @@index([category])
+  @@index([severity])
+  @@index([delivered])
+  @@index([read])
+  @@index([createdAt])
+  @@index([matterId])
+}
