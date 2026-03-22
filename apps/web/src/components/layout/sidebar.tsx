@@ -56,6 +56,7 @@ const navGroups: NavGroup[] = [
       { label: "Appointments", href: "/appointments", icon: CalendarClock },
       { label: "Scheduling", href: "/scheduling", icon: CalendarRange },
       { label: "Docketing", href: "/docketing", icon: Gavel },
+      { label: "Court Mode", href: "/court", icon: Gavel },
     ],
   },
   {

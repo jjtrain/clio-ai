@@ -132,6 +132,7 @@ model Matter {
   departmentId        String?
   solEntries          StatuteOfLimitations[] @relation("MatterSOL")
   voiceNotes          VoiceNote[] @relation("MatterVoiceNotes")
+  courtSessions       CourtCompanionSession[] @relation("MatterCourtSessions")
 
   @@index([clientId])
   @@index([departmentId])
@@ -11338,4 +11339,27 @@ model VoiceNoteSettings {
   whisperApiKey             String?
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
+}
+
+// ── Court Companion ───────────────────────────────────────────────────
+
+model CourtCompanionSession {
+  id          String    @id @default(cuid())
+  matterId    String
+  matter      Matter    @relation("MatterCourtSessions", fields: [matterId], references: [id], onDelete: Cascade)
+  userId      String
+  userEmail   String?
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  deviceType  String?
+  quickNotes  String?   @db.Text
+  checklist   String?   @db.Text
+  outcome     String?   @db.Text
+  nextSteps   String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([matterId])
+  @@index([userId])
+  @@index([startedAt])
 }

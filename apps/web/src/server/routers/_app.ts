@@ -78,6 +78,7 @@ import { solRouter } from "./sol";
 import { practiceKPIsRouter } from "./practiceKPIs";
 import { courtRulesRouter } from "./courtRules";
 import { voiceNotesRouter } from "./voiceNotes";
+import { courtCompanionRouter } from "./courtCompanion";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -159,6 +160,7 @@ export const appRouter = router({
   practiceKPIs: practiceKPIsRouter,
   courtRules: courtRulesRouter,
   voiceNotes: voiceNotesRouter,
+  courtCompanion: courtCompanionRouter,
 });
 
 export type AppRouter = typeof appRouter;
