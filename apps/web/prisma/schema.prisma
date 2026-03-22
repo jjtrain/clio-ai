@@ -12019,3 +12019,120 @@ model LocationSettings {
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime  @updatedAt
 }
+
+// ── Tap-to-Call ───────────────────────────────────────────────────────
+
+enum CallContactRole {
+  CCR_CLIENT
+  CCR_OPPOSING_COUNSEL
+  CCR_COURT_CLERK
+  CCR_EXPERT
+  CCR_WITNESS
+  CCR_CO_COUNSEL
+  CCR_INSURANCE
+  CCR_MEDICAL_PROVIDER
+  CCR_GOVERNMENT
+  CCR_OTHER
+}
+
+enum CallLogDirection {
+  CLD_OUTBOUND
+  CLD_INBOUND
+}
+
+enum CallInitiatedFrom {
+  CIF_MATTER_DETAIL
+  CIF_CLIENT_DETAIL
+  CIF_CONTACT_LIST
+  CIF_COURT_COMPANION
+  CIF_HEADER
+  CIF_DIALER
+  CIF_NOTIFICATION
+  CIF_OTHER
+}
+
+enum CallLogStatus {
+  CLS_INITIATED
+  CLS_IN_PROGRESS
+  CLS_COMPLETED
+  CLS_NO_ANSWER
+  CLS_BUSY
+  CLS_FAILED
+  CLS_CANCELLED
+}
+
+enum CallBillingStatus {
+  CBS_UNBILLED
+  CBS_DRAFT_CREATED
+  CBS_BILLED
+  CBS_NOT_BILLABLE
+  CBS_DISMISSED
+}
+
+model CallLog {
+  id                      String            @id @default(cuid())
+  userId                  String
+  userEmail               String?
+  matterId                String?
+  clientId                String?
+  contactName             String
+  contactPhone            String
+  contactEmail            String?
+  contactRole             CallContactRole   @default(CCR_OTHER)
+  direction               CallLogDirection  @default(CLD_OUTBOUND)
+  initiatedFrom           CallInitiatedFrom @default(CIF_OTHER)
+  callStarted             DateTime
+  callEnded               DateTime?
+  callDuration            Int?
+  callStatus              CallLogStatus     @default(CLS_INITIATED)
+  subject                 String?
+  notes                   String?           @db.Text
+  aiSummary               String?           @db.Text
+  aiNarrative             String?           @db.Text
+  suggestedBillableMinutes Int?
+  suggestedActivity       String            @default("Communication")
+  billingStatus           CallBillingStatus @default(CBS_UNBILLED)
+  timeEntryId             String?
+  billableEventId         String?
+  recordingAvailable      Boolean           @default(false)
+  recordingUrl            String?
+  transcription           String?           @db.Text
+  followUpRequired        Boolean           @default(false)
+  followUpDate            DateTime?
+  followUpNotes           String?
+  followUpTaskId          String?
+  isPrivileged            Boolean           @default(false)
+  tags                    String?           @db.Text
+  deviceType              String?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([matterId])
+  @@index([clientId])
+  @@index([contactPhone])
+  @@index([callStarted])
+  @@index([billingStatus])
+  @@index([callStatus])
+  @@index([followUpRequired])
+}
+
+model TapToCallSettings {
+  id                      String    @id @default("default")
+  isEnabled               Boolean   @default(true)
+  autoStartTimer          Boolean   @default(true)
+  autoCreateTimeEntry     Boolean   @default(true)
+  autoDetectMatter        Boolean   @default(true)
+  showPostCallPrompt      Boolean   @default(true)
+  postCallPromptDelay     Int       @default(3)
+  defaultActivity         String    @default("Communication")
+  defaultBillingIncrement Int       @default(6)
+  roundingRule            String    @default("ROUND_UP")
+  minimumBillableMinutes  Int       @default(6)
+  aiNarrativeEnabled      Boolean   @default(true)
+  aiSuggestFollowUp       Boolean   @default(true)
+  autoLogMissedCalls      Boolean   @default(false)
+  quickNoteTemplates      String?   @db.Text
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
