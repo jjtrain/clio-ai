@@ -11939,3 +11939,83 @@ model SentNotification {
   @@index([createdAt])
   @@index([matterId])
 }
+
+// ── Location-Aware Court Check-In ─────────────────────────────────────
+
+model CourthouseLocation {
+  id                    String        @id @default(cuid())
+  courtId               String?
+  name                  String
+  address               String        @db.Text
+  city                  String
+  state                 String
+  zip                   String
+  latitude              Decimal       @db.Decimal(10, 7)
+  longitude             Decimal       @db.Decimal(10, 7)
+  radiusMeters          Int           @default(200)
+  courtType             String?
+  phone                 String?
+  parkingNotes          String?       @db.Text
+  securityNotes         String?       @db.Text
+  wifiInfo              String?       @db.Text
+  nearbyParking         String?       @db.Text
+  nearbyFood            String?       @db.Text
+  bathroomNotes         String?
+  elevatorNotes         String?
+  clerkOfficeLocation   String?
+  judgeChambers         String?       @db.Text
+  localTips             String?       @db.Text
+  isActive              Boolean       @default(true)
+  lastVerified          DateTime?
+  checkIns              CourtCheckIn[]
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([latitude])
+  @@index([longitude])
+  @@index([courtId])
+  @@index([isActive])
+}
+
+model CourtCheckIn {
+  id                      String              @id @default(cuid())
+  userId                  String
+  userEmail               String?
+  courthouseId            String
+  courthouse              CourthouseLocation   @relation(fields: [courthouseId], references: [id], onDelete: Cascade)
+  matterId                String?
+  checkInTime             DateTime            @default(now())
+  checkOutTime            DateTime?
+  latitude                Decimal?            @db.Decimal(10, 7)
+  longitude               Decimal?            @db.Decimal(10, 7)
+  accuracy                Decimal?            @db.Decimal(8, 2)
+  autoDetected            Boolean             @default(true)
+  courtCompanionLaunched  Boolean             @default(false)
+  quickNotes              String?             @db.Text
+  outcome                 String?             @db.Text
+  travelTimeMinutes       Int?
+  deviceType              String?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([courthouseId])
+  @@index([checkInTime])
+  @@index([matterId])
+}
+
+model LocationSettings {
+  id                          String    @id @default("default")
+  locationTrackingEnabled     Boolean   @default(false)
+  geofenceEnabled             Boolean   @default(false)
+  geofenceRadiusDefault       Int       @default(200)
+  autoCheckInEnabled          Boolean   @default(false)
+  autoSurfaceMatters          Boolean   @default(true)
+  autoLaunchCourtCompanion    Boolean   @default(false)
+  checkInNotificationEnabled  Boolean   @default(true)
+  trackTravelTime             Boolean   @default(false)
+  shareLocationWithFirm       Boolean   @default(false)
+  locationHistoryRetentionDays Int      @default(30)
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+}

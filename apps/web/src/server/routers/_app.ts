@@ -84,6 +84,7 @@ import { offlineSyncRouter } from "./offlineSync";
 import { scannerRouter } from "./scanner";
 import { mobileSignRouter } from "./mobileSign";
 import { notificationsRouter } from "./notifications";
+import { locationRouter } from "./location";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -171,6 +172,7 @@ export const appRouter = router({
   scanner: scannerRouter,
   mobileSign: mobileSignRouter,
   notifications: notificationsRouter,
+  location: locationRouter,
 });
 
 export type AppRouter = typeof appRouter;
