@@ -15,7 +15,7 @@ import {
   FileQuestion, Heart, Send, SearchCode, ScanEye, Banknote, Headphones,
   Contact, Megaphone, CalendarRange, Truck, FolderOpen, Share2, Lightbulb,
   Video, Home as HomeIcon, Brain, ChevronDown, ChevronRight, Building2,
-  DollarSign, CalendarDays, ShoppingBag, AlarmClock, Mic,
+  DollarSign, CalendarDays, ShoppingBag, AlarmClock, Mic, Smartphone,
 } from "lucide-react";
 
 interface NavChild {
@@ -99,6 +99,7 @@ const navGroups: NavGroup[] = [
       { label: "Accounting", href: "/accounting", icon: Calculator },
       { label: "Insights", href: "/insights", icon: LineChart },
       { label: "Forecasting", href: "/forecasting", icon: LineChart },
+      { label: "Swipe to Bill", href: "/billing/swipe", icon: Smartphone },
     ],
   },
   {

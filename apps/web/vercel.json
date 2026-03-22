@@ -59,6 +59,10 @@
     {
       "path": "/api/cron/kpi-calculator",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/swipe-to-bill",
+      "schedule": "0 12 * * *"
     }
   ]
 }

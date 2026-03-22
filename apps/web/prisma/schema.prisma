@@ -11363,3 +11363,131 @@ model CourtCompanionSession {
   @@index([userId])
   @@index([startedAt])
 }
+
+// ── Swipe-to-Bill ─────────────────────────────────────────────────────
+
+enum BillableEventType {
+  BET_PHONE_CALL
+  BET_VIDEO_CALL
+  BET_IN_PERSON
+  BET_EMAIL_SENT
+  BET_EMAIL_RECEIVED
+  BET_DOCUMENT_REVIEW
+  BET_COURT_APPEARANCE
+  BET_DEPOSITION
+  BET_PORTAL_MESSAGE
+  BET_SMS_SENT
+  BET_SMS_RECEIVED
+  BET_VOICE_NOTE
+  BET_CALENDAR_EVENT
+  BET_MANUAL
+}
+
+enum BillableEventSource {
+  BES_DIALPAD
+  BES_ZOOM
+  BES_TEAMS
+  BES_TWILIO
+  BES_GMAIL
+  BES_OUTLOOK
+  BES_CALENDAR
+  BES_SMITH_AI
+  BES_RUBY
+  BES_PATLIVE
+  BES_VOICE_NOTE
+  BES_PORTAL
+  BES_MANUAL
+}
+
+enum BillableEventStatus {
+  BEVS_PENDING
+  BEVS_BILLED
+  BEVS_DISMISSED
+  BEVS_EXPIRED
+  BEVS_SNOOZED
+}
+
+enum BillableEventPriority {
+  BEP_LOW
+  BEP_NORMAL
+  BEP_HIGH
+}
+
+model BillableEvent {
+  id                        String                @id @default(cuid())
+  matterId                  String?
+  clientId                  String?
+  userId                    String
+  userEmail                 String?
+  eventType                 BillableEventType
+  source                    BillableEventSource
+  externalId                String?
+  contactName               String?
+  contactEmail              String?
+  contactPhone              String?
+  contactRole               String?
+  subject                   String?
+  description               String?               @db.Text
+  startTime                 DateTime
+  endTime                   DateTime?
+  durationSeconds           Int?
+  suggestedBillableMinutes  Int?
+  suggestedActivity         String?
+  suggestedRate             Decimal?              @db.Decimal(10, 2)
+  suggestedNarrative        String?               @db.Text
+  status                    BillableEventStatus   @default(BEVS_PENDING)
+  timeEntryId               String?
+  dismissedReason           String?
+  dismissedAt               DateTime?
+  billedAt                  DateTime?
+  snoozedUntil              DateTime?
+  snoozeCount               Int                   @default(0)
+  matterMatchConfidence     String?
+  matterMatchMethod         String?
+  aiProcessed               Boolean               @default(false)
+  expiresAt                 DateTime?
+  notificationSent          Boolean               @default(false)
+  notificationSentAt        DateTime?
+  priority                  BillableEventPriority @default(BEP_NORMAL)
+  metadata                  String?               @db.Text
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+
+  @@index([userId])
+  @@index([matterId])
+  @@index([status])
+  @@index([eventType])
+  @@index([source])
+  @@index([startTime])
+  @@index([expiresAt])
+  @@index([priority])
+  @@index([snoozedUntil])
+}
+
+model SwipeToBillSettings {
+  id                        String    @id @default("default")
+  isEnabled                 Boolean   @default(true)
+  autoDetectCalls           Boolean   @default(true)
+  autoDetectMeetings        Boolean   @default(true)
+  autoDetectEmails          Boolean   @default(false)
+  autoDetectSMS             Boolean   @default(true)
+  autoDetectCalendarEvents  Boolean   @default(true)
+  autoDetectVoiceNotes      Boolean   @default(true)
+  minimumCallDuration       Int       @default(60)
+  minimumMeetingDuration    Int       @default(300)
+  notificationDelaySeconds  Int       @default(30)
+  expirationHours           Int       @default(48)
+  snoozeMinutes             Int       @default(30)
+  maxSnoozeCount            Int       @default(3)
+  defaultBillingIncrement   Int       @default(6)
+  roundingRule              String    @default("ROUND_UP")
+  minimumBillableMinutes    Int       @default(6)
+  dismissedEventsVisible    Boolean   @default(true)
+  aiNarrativeEnabled        Boolean   @default(true)
+  aiMatterMatchEnabled      Boolean   @default(true)
+  quietHoursStart           String?
+  quietHoursEnd             String?
+  weekendNotifications      Boolean   @default(false)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+}

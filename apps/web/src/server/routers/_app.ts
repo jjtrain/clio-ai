@@ -79,6 +79,7 @@ import { practiceKPIsRouter } from "./practiceKPIs";
 import { courtRulesRouter } from "./courtRules";
 import { voiceNotesRouter } from "./voiceNotes";
 import { courtCompanionRouter } from "./courtCompanion";
+import { swipeToBillRouter } from "./swipeToBill";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -161,6 +162,7 @@ export const appRouter = router({
   courtRules: courtRulesRouter,
   voiceNotes: voiceNotesRouter,
   courtCompanion: courtCompanionRouter,
+  swipeToBill: swipeToBillRouter,
 });
 
 export type AppRouter = typeof appRouter;
