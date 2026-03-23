@@ -1482,6 +1482,7 @@ export async function applyStay(
   chainId: string,
   stayStart: Date,
   stayEnd: Date,
+  reason?: string,
 ) {
   await (db as any).deadlineChain.update({
     where: { id: chainId },
@@ -1489,6 +1490,7 @@ export async function applyStay(
       status: "stayed",
       stayStartDate: stayStart,
       stayEndDate: stayEnd,
+      ...(reason ? { notes: `Stay reason: ${reason}` } : {}),
     },
   });
 
