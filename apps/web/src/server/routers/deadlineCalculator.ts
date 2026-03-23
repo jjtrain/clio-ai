@@ -99,16 +99,16 @@ export const deadlineCalculatorRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
-        const chain = await deadlineEngine.createDeadlineChain({
+        const result = await deadlineEngine.createDeadlineChain({
           ...input,
           triggerDate: new Date(input.triggerDate),
           userId: "default",
           firmId: "default",
         });
 
-        const deadlines = await deadlineEngine.syncToCalendar(chain.id);
+        await deadlineEngine.syncToCalendar(result.chain.id);
 
-        return { chain, deadlines };
+        return result;
       } catch (error) {
         throw error;
       }
