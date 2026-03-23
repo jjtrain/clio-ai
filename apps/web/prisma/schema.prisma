@@ -12295,3 +12295,107 @@ model FirmLetterhead {
   @@index([userId])
   @@index([firmId])
 }
+
+model DeadlineChain {
+  id              String   @id @default(cuid())
+  matterId        String?
+  name            String
+  triggerEvent    String
+  triggerDate     DateTime
+  triggerDescription String?
+  practiceArea    String
+  jurisdiction    String
+  courtId         String?
+  serviceMethod   String?
+  status          String   @default("active")
+  stayStartDate   DateTime?
+  stayEndDate     DateTime?
+  notes           String?  @db.Text
+  userId          String
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([userId])
+  @@index([status])
+}
+
+model CalculatedDeadline {
+  id              String   @id @default(cuid())
+  chainId         String
+  name            String
+  description     String?
+  ruleReference   String?
+  category        String
+  baseCalcDays    Int
+  adjustmentDays  Int      @default(0)
+  totalDays       Int
+  deadlineDate    DateTime
+  originalDate    DateTime
+  adjustedForWeekend Boolean @default(false)
+  adjustedForHoliday Boolean @default(false)
+  holidayName     String?
+  isBusinessDays  Boolean  @default(false)
+  priority        String   @default("normal")
+  status          String   @default("pending")
+  completedAt     DateTime?
+  extendedTo      DateTime?
+  extensionReason String?
+  reminderDays    Json?
+  dependsOnId     String?
+  sortOrder       Int      @default(0)
+  matterId        String?
+  calendarEventId String?
+  userId          String
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([chainId])
+  @@index([deadlineDate])
+  @@index([status])
+  @@index([matterId])
+}
+
+model DeadlineRule {
+  id              String   @id @default(cuid())
+  triggerEvent    String
+  practiceArea    String
+  jurisdiction    String
+  deadlineName    String
+  description     String?
+  ruleReference   String?
+  category        String
+  calendarDays    Int?
+  businessDays    Int?
+  mailAdditionalDays    Int @default(0)
+  subServiceAdditionalDays Int @default(0)
+  nailMailAdditionalDays Int @default(0)
+  priority        String   @default("normal")
+  defaultReminders String?
+  dependsOnRule   String?
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+  notes           String?
+  firmId          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([triggerEvent, practiceArea, jurisdiction])
+}
+
+model CourtHoliday {
+  id           String   @id @default(cuid())
+  name         String
+  date         DateTime
+  jurisdiction String
+  isRecurring  Boolean  @default(false)
+  recurMonth   Int?
+  recurDay     Int?
+  recurRule    String?
+  createdAt    DateTime @default(now())
+
+  @@index([date])
+  @@index([jurisdiction])
+}
