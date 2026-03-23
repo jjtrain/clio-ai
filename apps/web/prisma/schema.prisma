@@ -12623,3 +12623,152 @@ model MatterOutcomeRecord {
   @@index([practiceArea, caseType])
   @@index([outcome])
 }
+
+model IntakeSession {
+  id                String   @id @default(cuid())
+  sessionToken      String   @unique @default(cuid())
+  firmId            String
+  status            String   @default("active") // 'active', 'completed', 'abandoned', 'qualified', 'disqualified', 'converted', 'needs_review', 'archived'
+  practiceArea      String?
+  subCategory       String?
+  flowId            String?
+  source            String?  // 'website_widget', 'direct_link', 'google_ads', 'facebook', 'referral', 'phone', 'walk_in', 'email', 'social_media'
+  sourceDetail      String?
+  referrerUrl       String?
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+  clientLanguage    String   @default("en")
+  contactInfo       Json?    // { firstName, lastName, email, phone, preferredContact, bestTimeToCall }
+  extractedData     Json?    // practice-area-specific structured data extracted by AI
+  conversationLog   Json?    // array of { role: 'assistant'|'user', content: string, timestamp: string, metadata?: any }
+  aiSummary         String?  @db.Text
+  leadScore         Int?
+  leadGrade         String?  // 'A', 'B', 'C', 'D', 'F'
+  scoringBreakdown  Json?    // array of { factor, points, description }
+  urgencyLevel      String   @default("normal") // 'emergency', 'urgent', 'normal', 'low'
+  conflictCheckStatus String? // 'clear', 'potential_conflict', 'conflict_confirmed', 'not_checked'
+  conflictDetails   String?  @db.Text
+  assignedTo        String?
+  assignedToName    String?
+  routingReason     String?
+  contactedAt       DateTime?
+  contactMethod     String?
+  convertedMatterId String?
+  messagesCount     Int      @default(0)
+  currentQuestionIndex Int   @default(0)
+  documentsUploaded Json?    // array of { fileName, fileType, uploadedAt }
+  lastActivityAt    DateTime @default(now())
+  completedAt       DateTime?
+  userId            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([firmId])
+  @@index([status])
+  @@index([practiceArea])
+  @@index([leadGrade])
+  @@index([sessionToken])
+  @@index([assignedTo])
+}
+
+model IntakeScreeningFlow {
+  id                   String   @id @default(cuid())
+  name                 String
+  practiceArea         String
+  subCategory          String?
+  welcomeMessage       String   @db.Text
+  questions            Json     // array of question objects
+  qualificationRules   Json?    // { minScore, autoQualifyScore }
+  disqualificationRules Json?   // { solExpiredMonths, etc }
+  closingMessageQualified String? @db.Text
+  closingMessageUnqualified String? @db.Text
+  emergencyProtocol    Json?    // { triggers, action, message }
+  routingRules         Json?
+  isDefault            Boolean  @default(false)
+  isActive             Boolean  @default(true)
+  firmId               String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([practiceArea])
+  @@index([isDefault])
+}
+
+model IntakeRoutingRule {
+  id                String   @id @default(cuid())
+  name              String
+  practiceArea      String?
+  subCategory       String?
+  conditions        Json?    // { minLeadGrade, urgencyLevel, jurisdiction }
+  assignToUserId    String?
+  assignToName      String
+  priority          Int      @default(0)
+  maxActiveLeads    Int      @default(50)
+  currentLeadCount  Int      @default(0)
+  isActive          Boolean  @default(true)
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([practiceArea])
+  @@index([priority])
+}
+
+model IntakeNotification {
+  id              String   @id @default(cuid())
+  sessionId       String
+  recipientId     String
+  recipientName   String?
+  type            String   // 'new_lead', 'emergency', 'follow_up', 'response_overdue'
+  channel         String   // 'in_app', 'email', 'sms'
+  subject         String?
+  message         String   @db.Text
+  status          String   @default("pending") // 'pending', 'sent', 'read', 'failed'
+  scheduledFor    DateTime?
+  sentAt          DateTime?
+  readAt          DateTime?
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([recipientId])
+  @@index([status])
+}
+
+model IntakeAnalytics {
+  id                  String   @id @default(cuid())
+  date                DateTime
+  firmId              String
+  totalSessions       Int      @default(0)
+  completedSessions   Int      @default(0)
+  abandonedSessions   Int      @default(0)
+  qualifiedLeads      Int      @default(0)
+  convertedLeads      Int      @default(0)
+  avgLeadScore        Float?
+  avgResponseMinutes  Float?
+  sessionsBySource    Json?    // { website: 10, google_ads: 5, ... }
+  sessionsByPractice  Json?    // { personal_injury: 8, ... }
+  gradeDistribution   Json?    // { A: 3, B: 5, C: 4, D: 2, F: 1 }
+  createdAt           DateTime @default(now())
+
+  @@unique([date, firmId])
+  @@index([date])
+}
+
+model IntakeEmbedConfig {
+  id              String   @id @default(cuid())
+  firmId          String   @unique
+  position        String   @default("bottom-right") // 'bottom-right', 'bottom-left'
+  theme           String   @default("light") // 'light', 'dark'
+  primaryColor    String   @default("#1e293b")
+  logoUrl         String?
+  firmName        String?
+  tagline         String?
+  buttonText      String   @default("Free Case Evaluation")
+  practiceAreas   Json?    // array of enabled practice areas
+  autoOpenDelay   Int      @default(0) // seconds, 0 = never
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}

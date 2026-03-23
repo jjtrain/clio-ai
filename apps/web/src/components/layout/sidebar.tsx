@@ -42,6 +42,7 @@ const navGroups: NavGroup[] = [
       { label: "Lead Inbox", href: "/leads", icon: Inbox },
       { label: "Intake Forms", href: "/intake-admin", icon: ClipboardList },
       { label: "Intake Screening", href: "/screening", icon: ScanSearch },
+      { label: "AI Intake Chat", href: "/intake-screening", icon: MessageSquare },
       { label: "CRM & Intake", href: "/crm", icon: Contact },
       { label: "Conflict Check", href: "/conflicts", icon: ShieldAlert },
       { label: "Client Portal", href: "/client-portal", icon: UserCircle },
