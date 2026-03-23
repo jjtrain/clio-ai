@@ -384,9 +384,9 @@ export const deadlineCalculatorRouter = router({
         }
 
         // Include chain data
-        const chainIds = [
-          ...new Set(deadlines.map((d: any) => d.chainId).filter(Boolean)),
-        ];
+        const chainIds = Array.from(
+          new Set(deadlines.map((d: any) => d.chainId).filter(Boolean))
+        );
         let chains: any[] = [];
         if (chainIds.length > 0) {
           try {
