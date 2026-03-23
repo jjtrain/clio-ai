@@ -23,7 +23,7 @@ export const deadlineCalculatorRouter = router({
 
       const deadlines = await deadlineEngine.calculateFullChain(
         parsed.triggerEvent,
-        parsed.triggerDate,
+        new Date(parsed.triggerDate),
         practiceArea,
         jurisdiction,
         parsed.serviceMethod
