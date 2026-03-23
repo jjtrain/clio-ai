@@ -18,8 +18,8 @@ export const deadlineCalculatorRouter = router({
     .mutation(async ({ input }) => {
       const parsed = await deadlineEngine.parseTriggerEvent(input.text);
 
-      const practiceArea = input.practiceArea ?? parsed.practiceArea;
-      const jurisdiction = input.jurisdiction ?? parsed.jurisdiction;
+      const practiceArea = input.practiceArea ?? parsed.practiceArea ?? "general";
+      const jurisdiction = input.jurisdiction ?? parsed.jurisdiction ?? "ny_supreme";
 
       const deadlines = await deadlineEngine.calculateFullChain(
         parsed.triggerEvent,
