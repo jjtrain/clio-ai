@@ -90,6 +90,7 @@ import { travelCalendarRouter } from "./travelCalendar";
 import { correspondenceRouter } from "./correspondence";
 import { deadlineCalculatorRouter } from "./deadlineCalculator";
 import { documentReviewFlagsRouter } from "./documentReviewFlags";
+import { predictionsRouter } from "./predictions";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -183,6 +184,7 @@ export const appRouter = router({
   correspondence: correspondenceRouter,
   deadlineCalculator: deadlineCalculatorRouter,
   documentReviewFlags: documentReviewFlagsRouter,
+  predictions: predictionsRouter,
 });
 
 export type AppRouter = typeof appRouter;

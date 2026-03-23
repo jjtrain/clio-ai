@@ -12499,3 +12499,127 @@ model ReviewComparison {
 
   @@index([reviewId])
 }
+
+model MatterPrediction {
+  id                  String   @id @default(cuid())
+  matterId            String
+  matterName          String?
+  practiceArea        String
+  jurisdiction        String?
+  caseType            String?
+  overallScore        Float
+  overallLabel        String
+  outcomeBreakdown    Json
+  strengthFactors     Json
+  weaknessFactors     Json
+  neutralFactors      Json
+  settlementRange     Json?
+  timelineEstimate    Json?
+  comparableMetrics   Json?
+  recommendations     Json?
+  riskAlerts          Json?
+  modelVersion        String   @default("v1")
+  dataPointsUsed      Int      @default(0)
+  confidenceLevel     String
+  lastCalculated      DateTime @default(now())
+  scoreHistory        Json?
+  userId              String
+  firmId              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([practiceArea])
+  @@index([overallScore])
+}
+
+model OutcomeBenchmark {
+  id                     String   @id @default(cuid())
+  practiceArea           String
+  caseType               String
+  jurisdiction           String?
+  dataSource             String
+  sampleSize             Int
+  settlementRate         Float
+  trialRate              Float
+  dismissalRate          Float
+  plaintiffWinRate       Float?
+  defendantWinRate       Float?
+  avgSettlementAmount    Float?
+  medianSettlementAmount Float?
+  settlementRangeLow     Float?
+  settlementRangeHigh    Float?
+  avgDurationMonths      Float
+  medianDurationMonths   Float?
+  avgCostToResolve       Float?
+  keyFactors             Json?
+  lastUpdated            DateTime @default(now())
+  isActive               Boolean  @default(true)
+  firmId                 String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@index([practiceArea, caseType])
+  @@index([jurisdiction])
+}
+
+model MatterScoreFactor {
+  id              String   @id @default(cuid())
+  factorName      String
+  category        String
+  practiceArea    String?
+  description     String
+  weightDefault   Float
+  inputType       String
+  selectOptions   Json?
+  autoCalcSource  String?
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@index([category])
+  @@index([practiceArea])
+}
+
+model MatterFactorInput {
+  id              String   @id @default(cuid())
+  predictionId    String
+  matterId        String
+  factorId        String
+  factorName      String
+  inputValue      String
+  normalizedScore Float
+  weight          Float
+  weightedScore   Float
+  source          String
+  notes           String?
+  userId          String
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([predictionId])
+  @@index([matterId])
+}
+
+model MatterOutcomeRecord {
+  id                String   @id @default(cuid())
+  matterId          String?
+  practiceArea      String
+  caseType          String
+  jurisdiction      String?
+  outcome           String
+  settlementAmount  Float?
+  verdictAmount     Float?
+  durationMonths    Float?
+  totalCost         Float?
+  keyFactorsJson    Json?
+  liabilityStrength Int?
+  damagesSeverity   Int?
+  isAnonymized      Boolean  @default(true)
+  firmId            String
+  createdAt         DateTime @default(now())
+
+  @@index([practiceArea, caseType])
+  @@index([outcome])
+}
