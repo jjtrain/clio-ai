@@ -12399,3 +12399,103 @@ model CourtHoliday {
   @@index([date])
   @@index([jurisdiction])
 }
+
+model DocumentReview {
+  id              String   @id @default(cuid())
+  matterId        String?
+  documentName    String
+  documentType    String
+  practiceArea    String?
+  jurisdiction    String?
+  fileUrl         String?
+  fileName        String?
+  fileSize        Int?
+  mimeType        String?
+  extractedText   String?  @db.Text
+  pageCount       Int?
+  reviewStatus    String   @default("processing")
+  overallRiskLevel String?
+  summaryText     String?  @db.Text
+  totalFlags      Int      @default(0)
+  criticalFlags   Int      @default(0)
+  highFlags       Int      @default(0)
+  mediumFlags     Int      @default(0)
+  lowFlags        Int      @default(0)
+  resolvedFlags   Int      @default(0)
+  aiModelUsed     String?
+  processingTime  Int?
+  reviewNotes     String?  @db.Text
+  userId          String
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([userId])
+  @@index([reviewStatus])
+  @@index([documentType])
+}
+
+model ReviewFlag {
+  id              String   @id @default(cuid())
+  reviewId        String
+  flagType        String
+  severity        String
+  category        String
+  title           String
+  description     String   @db.Text
+  recommendation  String?  @db.Text
+  documentSection String?
+  pageNumber      Int?
+  startPosition   Int?
+  endPosition     Int?
+  relevantText    String?  @db.Text
+  ruleReference   String?
+  status          String   @default("open")
+  attorneyNotes   String?  @db.Text
+  resolvedAt      DateTime?
+  resolvedAction  String?
+  sortOrder       Int      @default(0)
+  userId          String
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([reviewId])
+  @@index([severity])
+  @@index([status])
+}
+
+model ReviewChecklist {
+  id              String   @id @default(cuid())
+  name            String
+  documentType    String
+  practiceArea    String?
+  jurisdiction    String?
+  checklistItems  Json
+  isDefault       Boolean  @default(false)
+  isShared        Boolean  @default(true)
+  userId          String
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([documentType])
+}
+
+model ReviewComparison {
+  id              String   @id @default(cuid())
+  reviewId        String
+  comparisonType  String
+  comparisonDocId String?
+  comparisonText  String?  @db.Text
+  matchedItems    Json?
+  missingItems    Json?
+  extraItems      Json?
+  matchPercentage Float?
+  userId          String
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([reviewId])
+}

@@ -88,6 +88,8 @@ import { locationRouter } from "./location";
 import { tapToCallRouter } from "./tapToCall";
 import { travelCalendarRouter } from "./travelCalendar";
 import { correspondenceRouter } from "./correspondence";
+import { deadlineCalculatorRouter } from "./deadlineCalculator";
+import { documentReviewFlagsRouter } from "./documentReviewFlags";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -179,6 +181,8 @@ export const appRouter = router({
   tapToCall: tapToCallRouter,
   travelCalendar: travelCalendarRouter,
   correspondence: correspondenceRouter,
+  deadlineCalculator: deadlineCalculatorRouter,
+  documentReviewFlags: documentReviewFlagsRouter,
 });
 
 export type AppRouter = typeof appRouter;
