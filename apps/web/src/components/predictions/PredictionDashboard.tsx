@@ -88,7 +88,7 @@ export default function PredictionDashboard() {
   }
 
   const avgScore = predictions.length > 0
-    ? Math.round(predictions.reduce((s, p: any) => s + p.overallScore, 0) / predictions.length)
+    ? Math.round(predictions.reduce((s: number, p: any) => s + p.overallScore, 0) / predictions.length)
     : 0;
 
   return (
