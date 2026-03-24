@@ -131,6 +131,7 @@ import { meetingsUnifiedRouter } from "./meetingsUnified";
 import { apiIntegrationsRouter } from "./apiIntegrations";
 import { whatsappRouter } from "./whatsapp";
 import { supportCalculatorRouter } from "./supportCalculator";
+import { equitableDistributionRouter } from "./equitableDistribution";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -265,6 +266,7 @@ export const appRouter = router({
   apiIntegrations: apiIntegrationsRouter,
   whatsapp: whatsappRouter,
   supportCalculator: supportCalculatorRouter,
+  equitableDistribution: equitableDistributionRouter,
 });
 
 export type AppRouter = typeof appRouter;

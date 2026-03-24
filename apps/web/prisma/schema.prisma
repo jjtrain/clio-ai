@@ -16848,3 +16848,80 @@ enum CalcType {
   MAINTENANCE
   COMBINED
 }
+
+// ─── Equitable Distribution ───────────────────────────────────────
+
+model EquitableWorksheet {
+  id                      String              @id @default(cuid())
+  firmId                  String              @default("demo-firm")
+  matterId                String              @unique
+  jurisdiction            String              @default("NY")
+  distributionStandard    String              @default("EQUITABLE") // EQUITABLE | COMMUNITY_PROPERTY
+  payorLabel              String              @default("Spouse A")
+  payeeLabel              String              @default("Spouse B")
+  status                  String              @default("DRAFT") // DRAFT | IN_NEGOTIATION | MEDIATION | STIPULATED | COURT_ORDERED
+  targetPayorShare        Float?              @default(0.5)
+  notes                   String?             @db.Text
+  importedFromAffidavitId String?
+  lastEditedById          String?
+  createdById             String?
+  rows                    WorksheetRow[]
+  snapshots               WorksheetSnapshot[]
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+}
+
+model WorksheetRow {
+  id                    String             @id @default(cuid())
+  worksheetId           String
+  worksheet             EquitableWorksheet @relation(fields: [worksheetId], references: [id], onDelete: Cascade)
+  sortOrder             Int                @default(0)
+  category              String             // AssetCategory value
+  description           String
+  accountDetail         String?
+  dateAcquired          DateTime?
+  titledIn              String?
+  classification        String             @default("DISPUTED") // MARITAL | SEPARATE_PAYOR | SEPARATE_PAYEE | MIXED | DISPUTED
+  payorClassClaim       String?
+  payeeClassClaim       String?
+  separatePropertyBasis String?
+  payorClaimedValue     Float?
+  payeeClaimedValue     Float?
+  agreedValue           Float?
+  valuationMethod       String?
+  valuationDate         DateTime?
+  valuationSource       String?
+  isLiability           Boolean            @default(false)
+  balance               Float?
+  payorBalanceClaim     Float?
+  payeeBalanceClaim     Float?
+  agreedBalance         Float?
+  disposition           String?
+  awardedTo             String?
+  offsetAmount          Float?
+  offsetRowId           String?
+  saleProceeds          Float?
+  payorFinalShare       Float?
+  payeeFinalShare       Float?
+  isDisputed            Boolean            @default(false)
+  disputeNote           String?
+  importedFrom          String?
+  attachmentUrl         String?
+  attachmentName        String?
+  notes                 String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@index([worksheetId])
+}
+
+model WorksheetSnapshot {
+  id              String             @id @default(cuid())
+  worksheetId     String
+  worksheet       EquitableWorksheet @relation(fields: [worksheetId], references: [id], onDelete: Cascade)
+  label           String
+  rowsSnapshot    Json
+  summarySnapshot Json
+  createdById     String?
+  createdAt       DateTime           @default(now())
+}
