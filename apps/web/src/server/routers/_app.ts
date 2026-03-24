@@ -120,6 +120,7 @@ import { cleTrackingRouter } from "./cleTracking";
 import { bulkOperationsRouter } from "./bulkOperations";
 import { profitabilityRouter } from "./profitability";
 import { cacRouter } from "./cac";
+import { agingRouter } from "./aging";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -243,6 +244,7 @@ export const appRouter = router({
   bulkOperations: bulkOperationsRouter,
   profitability: profitabilityRouter,
   cac: cacRouter,
+  aging: agingRouter,
 });
 
 export type AppRouter = typeof appRouter;

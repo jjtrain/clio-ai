@@ -324,6 +324,8 @@ model Invoice {
   termsText     String?           @db.Text
   auditId       String?           // link to BillingAudit
   auditStatus   String?           // 'pending_audit', 'auditing', 'audit_complete', 'audit_passed'
+  escalationStage   String?       // 'REMINDER_30', 'REMINDER_60', 'DEMAND_90', 'COLLECTIONS'
+  lastEscalationAt  DateTime?
   sentAt        DateTime?
   paidAt        DateTime?
   createdAt     DateTime          @default(now())
@@ -16310,4 +16312,27 @@ model CACSnapshot {
 
   @@unique([firmId, period, practiceArea])
   @@index([firmId, period])
+}
+
+// ==========================================
+// AGING RECEIVABLES & ESCALATION
+// ==========================================
+
+model ReceivableEscalation {
+  id              String   @id @default(cuid())
+  invoiceId       String
+  firmId          String
+  stage           String   // 'REMINDER_30', 'REMINDER_60', 'DEMAND_90', 'COLLECTIONS'
+  method          String   // 'email', 'letter', 'phone', 'portal'
+  subject         String?
+  body            String?  @db.Text
+  sentAt          DateTime @default(now())
+  response        String?  // 'paid', 'disputed', 'payment_plan_requested', 'no_response', 'bounced'
+  respondedAt     DateTime?
+  notes           String?
+  sentBy          String?
+  createdAt       DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([firmId, stage])
 }
