@@ -129,6 +129,7 @@ import { courtCalendarRouter } from "./courtCalendar";
 import { accountingSyncRouter } from "./accountingSync";
 import { meetingsUnifiedRouter } from "./meetingsUnified";
 import { apiIntegrationsRouter } from "./apiIntegrations";
+import { whatsappRouter } from "./whatsapp";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -261,6 +262,7 @@ export const appRouter = router({
   accountingSync: accountingSyncRouter,
   meetingsUnified: meetingsUnifiedRouter,
   apiIntegrations: apiIntegrationsRouter,
+  whatsapp: whatsappRouter,
 });
 
 export type AppRouter = typeof appRouter;

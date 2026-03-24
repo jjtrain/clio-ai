@@ -16682,3 +16682,140 @@ model AutomationLog {
   @@index([firmId])
   @@index([createdAt])
 }
+
+// ─── WhatsApp Business Integration ────────────────────────────────
+
+model WhatsAppConnection {
+  id                  String    @id @default(cuid())
+  firmId              String    @unique @default("demo-firm")
+  wabaId              String
+  phoneNumberId       String
+  phoneNumber         String
+  displayName         String
+  accessToken         String    @db.Text
+  webhookVerifyToken  String
+  isActive            Boolean   @default(true)
+  messagingTier       String    @default("STANDARD")
+  qualityRating       String?
+  lastSyncAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  conversations       WhatsAppConversation[]
+  templates           WhatsAppTemplate[]
+}
+
+model WhatsAppConversation {
+  id                 String                @id @default(cuid())
+  firmId             String                @default("demo-firm")
+  connectionId       String
+  connection         WhatsAppConnection    @relation(fields: [connectionId], references: [id])
+  matterId           String?
+  clientPhone        String
+  clientName         String?
+  status             WaConversationStatus  @default(OPEN)
+  windowExpiresAt    DateTime?
+  autoFiled          Boolean               @default(false)
+  assignedToId       String?
+  lastMessageAt      DateTime?
+  lastMessageSnippet String?
+  unreadCount        Int                   @default(0)
+  messages           WhatsAppMessage[]
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([firmId])
+  @@index([connectionId, clientPhone])
+  @@index([matterId])
+  @@index([lastMessageAt])
+}
+
+model WhatsAppMessage {
+  id              String               @id @default(cuid())
+  conversationId  String
+  conversation    WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  matterId        String?
+  waMessageId     String               @unique
+  direction       WaDirection
+  messageType     WaMessageType        @default(TEXT)
+  bodyText        String?              @db.Text
+  templateName    String?
+  templateParams  Json?
+  mediaId         String?
+  mediaUrl        String?
+  mediaMimeType   String?
+  mediaFilename   String?
+  mediaSize       Int?
+  documentId      String?
+  status          WaMessageStatus      @default(SENT)
+  failureReason   String?
+  sentAt          DateTime
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  senderName      String?
+  createdAt       DateTime             @default(now())
+
+  @@index([conversationId])
+  @@index([sentAt])
+}
+
+model WhatsAppTemplate {
+  id              String             @id @default(cuid())
+  connectionId    String
+  connection      WhatsAppConnection @relation(fields: [connectionId], references: [id])
+  firmId          String             @default("demo-firm")
+  waTemplateId    String             @unique
+  name            String
+  category        WaTemplateCategory @default(UTILITY)
+  language        String             @default("en_US")
+  status          WaTemplateStatus   @default(PENDING)
+  components      Json
+  variableMapping Json?
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+enum WaConversationStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  ARCHIVED
+}
+
+enum WaDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum WaMessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  AUDIO
+  VIDEO
+  TEMPLATE
+  REACTION
+  LOCATION
+  UNSUPPORTED
+}
+
+enum WaMessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum WaTemplateCategory {
+  UTILITY
+  MARKETING
+  AUTHENTICATION
+}
+
+enum WaTemplateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAUSED
+}

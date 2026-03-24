@@ -66,6 +66,7 @@ const seedFiles = [
   "seed-gmail.ts",
   "seed-meetings.ts",
   "seed-api-integrations.ts",
+  "seed-whatsapp.ts",
 ];
 
 async function main() {
