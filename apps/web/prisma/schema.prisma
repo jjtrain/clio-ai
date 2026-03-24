@@ -3820,6 +3820,7 @@ model ExternalIdMapping {
 enum AccountingProvider {
   QUICKBOOKS
   XERO
+  FRESHBOOKS
 }
 
 enum IntegrationSyncStatus {
@@ -16368,4 +16369,155 @@ model PlatformBenchmark {
 
   @@unique([metric, practiceArea, period])
   @@index([metric, practiceArea])
+}
+
+// ==========================================
+// CUSTOM REPORT BUILDER
+// ==========================================
+
+model SavedReport {
+  id              String   @id @default(cuid())
+  firmId          String
+  name            String
+  description     String?
+  config          Json     // { fields, filters, groupBy, sortBy, chartType }
+  isTemplate      Boolean  @default(false)
+  lastRunAt       DateTime?
+  runCount        Int      @default(0)
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([firmId])
+}
+
+// ─── Daily Digest ─────────────────────────────────────────────────
+
+model DigestPreference {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  enabled   Boolean  @default(true)
+  sendHour  Int      @default(7)
+  timezone  String   @default("America/New_York")
+  sections  Json     @default("{\"deadlines\":true,\"tasks\":true,\"unbilled\":true,\"hearings\":true,\"payments\":true,\"stats\":true}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DigestLog {
+  id          String   @id @default(cuid())
+  userId      String
+  sentAt      DateTime @default(now())
+  status      String   @default("sent")
+  previewHtml String?
+  error       String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([sentAt])
+}
+
+// ─── Realization Rate ─────────────────────────────────────────────
+
+model RealizationSnapshot {
+  id                       String   @id @default(cuid())
+  firmId                   String
+  dimension                String   // ATTORNEY | PRACTICE_AREA | CLIENT | MATTER_TYPE
+  dimensionId              String
+  dimensionLabel           String
+  period                   String   // YYYY-MM
+  hoursWorked              Float    @default(0)
+  hoursBilled              Float    @default(0)
+  amountBilled             Float    @default(0)
+  amountCollected          Float    @default(0)
+  standardRate             Float    @default(0)
+  billingRealizationRate   Float    @default(0)
+  collectionRealizationRate Float   @default(0)
+  combinedRealizationRate  Float    @default(0)
+  severity                 String?  // warning | critical
+  trend                    String?  // improving | declining | stable
+  createdAt                DateTime @default(now())
+
+  @@unique([firmId, dimension, dimensionId, period])
+  @@index([firmId, period])
+  @@index([dimension])
+}
+
+// ─── Court Calendar Integration ───────────────────────────────────
+
+model CourtEvent {
+  id            String   @id @default(cuid())
+  matterId      String?
+  firmId        String
+  source        String   @default("MANUAL") // MANUAL | NYSCEF | PACER | UNICOURT | IMPORT | COURTLISTENER
+  externalId    String?
+  eventType     String   @default("HEARING") // HEARING | FILING_DEADLINE | CONFERENCE | TRIAL | MOTION | JUDGMENT | ORDER
+  title         String
+  courtName     String?
+  judgeAssigned String?
+  caseNumber    String?
+  scheduledAt   DateTime
+  endTime       DateTime?
+  location      String?
+  notes         String?  @db.Text
+  syncedAt      DateTime?
+  status        String   @default("SCHEDULED") // SCHEDULED | COMPLETED | CANCELLED | CONTINUED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([firmId, externalId, source])
+  @@index([firmId])
+  @@index([matterId])
+  @@index([scheduledAt])
+  @@index([caseNumber])
+}
+
+model CourtIntegration {
+  id           String   @id @default(cuid())
+  firmId       String
+  provider     String   // COURTLISTENER | PACER | NYSCEF | UNICOURT
+  credentials  Json?
+  lastSyncAt   DateTime?
+  status       String   @default("active") // active | paused | error
+  caseNumbers  Json     @default("[]")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([firmId, provider])
+  @@index([firmId])
+}
+
+// ─── Gmail Integration ────────────────────────────────────────────
+
+model GmailConnection {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  email           String
+  accessToken     String    @db.Text
+  refreshToken    String    @db.Text
+  tokenExpiry     DateTime
+  historyId       String?
+  watchExpiry     DateTime?
+  watchResourceId String?
+  syncEnabled     Boolean   @default(true)
+  lastSyncAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model EmailFilingRule {
+  id              String   @id @default(cuid())
+  firmId          String   @default("demo-firm")
+  name            String
+  priority        Int      @default(0)
+  fromDomain      String?
+  fromAddress     String?
+  subjectContains String?
+  toAddress       String?
+  matterId        String?
+  labelWithTag    String?
+  autoArchive     Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

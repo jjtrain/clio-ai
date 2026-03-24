@@ -453,6 +453,27 @@ export async function sendEscalationNotice(params: {
   });
 }
 
+// ─── Daily Digest Email ──────────────────────────────────────────
+
+export async function sendDigestEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  fromEmail: string;
+}): Promise<{ success: boolean; error?: string; previewHtml?: string }> {
+  if (!RESEND_API_KEY) {
+    console.log("[Email] RESEND_API_KEY not configured — saving digest preview");
+    return { success: true, previewHtml: params.html };
+  }
+  const result = await sendEmail({
+    to: params.to,
+    from: params.fromEmail,
+    subject: params.subject,
+    html: params.html,
+  });
+  return result;
+}
+
 export async function sendAppointmentCancellation(data: AppointmentEmailData & { reason?: string }) {
   return sendEmail({
     to: data.clientEmail,

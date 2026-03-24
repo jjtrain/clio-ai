@@ -15,7 +15,7 @@ import {
   FileQuestion, Heart, Send, SearchCode, ScanEye, Banknote, Headphones,
   Contact, Megaphone, CalendarRange, Truck, FolderOpen, Share2, Lightbulb,
   Video, Home as HomeIcon, Brain, ChevronDown, ChevronRight, Building2,
-  DollarSign, CalendarDays, ShoppingBag, AlarmClock, Mic, Smartphone, WifiOff, ScanLine, MapPin, Phone, Target,
+  DollarSign, CalendarDays, ShoppingBag, AlarmClock, Mic, Smartphone, WifiOff, ScanLine, MapPin, Phone, Target, Link2,
 } from "lucide-react";
 
 interface NavChild {
@@ -138,6 +138,8 @@ const navGroups: NavGroup[] = [
       { label: "PI Medical", href: "/pi-medical", icon: HeartPulse },
       { label: "Investigations", href: "/investigations", icon: SearchCode },
       { label: "Docket Search", href: "/docket-search", icon: SearchCode },
+      { label: "Court Calendar", href: "/court/calendar", icon: Gavel },
+      { label: "Court Integrations", href: "/court/integrations", icon: Plug },
       { label: "Visuals", href: "/visuals", icon: BarChart3 },
       { label: "Compliance", href: "/compliance", icon: ShieldCheck },
       { label: "Referrals", href: "/referrals", icon: Share2 },
@@ -154,6 +156,7 @@ const navGroups: NavGroup[] = [
       { label: "Marketing ROI", href: "/marketing", icon: TrendingUp },
       { label: "Reviews", href: "/marketing/reviews", icon: Megaphone },
       { label: "Analytics", href: "/analytics", icon: BarChart3 },
+      { label: "Realization Rate", href: "/analytics/realization", icon: TrendingUp },
       { label: "Risk Monitor", href: "/risk", icon: ShieldCheck },
       { label: "Referral Tracking", href: "/referral-tracking", icon: Share2 },
     ],
@@ -166,6 +169,7 @@ const navGroups: NavGroup[] = [
       { label: "Legal Research", href: "/research", icon: BookOpen },
       { label: "Dashboards", href: "/dashboards", icon: PieChart },
       { label: "Reports", href: "/reports", icon: FileBarChart },
+      { label: "Report Builder", href: "/reports/custom-builder", icon: BarChart3 },
       { label: "Marketplace", href: "/marketplace", icon: ShoppingBag },
       { label: "KPI Dashboards", href: "/kpi", icon: BarChart3 },
       { label: "Voice Notes", href: "/voice-notes", icon: Mic },
@@ -183,6 +187,9 @@ const navGroups: NavGroup[] = [
       { label: "Practice Fields", href: "/settings/practice-fields", icon: Settings },
       { label: "Jurisdictions", href: "/settings/jurisdictions", icon: Globe },
       { label: "Settings", href: "/settings", icon: Settings },
+      { label: "Daily Digest", href: "/settings/digest", icon: Mail },
+      { label: "Accounting Sync", href: "/settings/accounting", icon: Link2 },
+      { label: "Email Settings", href: "/settings/email", icon: Mail },
       { label: "Task Cascades", href: "/settings/task-cascades", icon: CheckSquare },
       { label: "Workflows", href: "/settings/workflows", icon: Settings },
       { label: "Help", href: "/help", icon: HelpCircle },

@@ -53,6 +53,17 @@ const seedFiles = [
   // Layer 3: Depends on layer 2
   "seed-quick-invoice.ts",
   "seed-workflows.ts",
+
+  // Layer 4: Standalone / no deps on above
+  "seed-cac.ts",
+  "seed-aging.ts",
+  "seed-benchmarks.ts",
+  "seed-reports.ts",
+  "seed-digest.ts",
+  "seed-realization.ts",
+  "seed-court-calendar.ts",
+  "seed-accounting-sync.ts",
+  "seed-gmail.ts",
 ];
 
 async function main() {

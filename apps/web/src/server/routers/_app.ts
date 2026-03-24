@@ -122,6 +122,11 @@ import { profitabilityRouter } from "./profitability";
 import { cacRouter } from "./cac";
 import { agingRouter } from "./aging";
 import { benchmarksRouter } from "./benchmarks";
+import { reportBuilderRouter } from "./reportBuilder";
+import { digestRouter } from "./digest";
+import { realizationRouter } from "./realization";
+import { courtCalendarRouter } from "./courtCalendar";
+import { accountingSyncRouter } from "./accountingSync";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -247,6 +252,11 @@ export const appRouter = router({
   cac: cacRouter,
   aging: agingRouter,
   benchmarks: benchmarksRouter,
+  reportBuilder: reportBuilderRouter,
+  digest: digestRouter,
+  realization: realizationRouter,
+  courtCalendar: courtCalendarRouter,
+  accountingSync: accountingSyncRouter,
 });
 
 export type AppRouter = typeof appRouter;
