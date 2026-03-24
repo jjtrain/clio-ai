@@ -134,7 +134,7 @@ export function GlobalSearchBar() {
           </button>
         )}
         <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 rounded border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
-          {navigator.platform?.includes("Mac") ? "\u2318" : "Ctrl"}K
+          {typeof navigator !== "undefined" && navigator.platform?.includes("Mac") ? "\u2318" : "Ctrl"}K
         </kbd>
       </div>
 
