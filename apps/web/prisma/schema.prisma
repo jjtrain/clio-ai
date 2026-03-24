@@ -68,6 +68,8 @@ model Matter {
   practiceArea  String?
   openDate     DateTime        @default(now())
   closeDate    DateTime?
+  intakeSource  String?         // 'google_ads', 'referral', 'bar_association', 'website', 'social_media', 'walk_in', 'other'
+  intakeDate    DateTime?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   timeEntries  TimeEntry[]
@@ -2551,17 +2553,21 @@ model ReportExecution {
 }
 
 model MarketingSpend {
-  id        String   @id @default(cuid())
-  source    String
-  amount    Decimal  @db.Decimal(10, 2)
-  period    String   // YYYY-MM format
-  notes     String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  firmId        String?
+  practiceArea  String?
+  source        String
+  amount        Decimal  @db.Decimal(10, 2)
+  period        String   // YYYY-MM format
+  description   String?
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@unique([source, period])
   @@index([source])
   @@index([period])
+  @@index([firmId, practiceArea])
 }
 
 enum FeeType {
@@ -16284,4 +16290,24 @@ model ProfitabilityScenario {
   createdAt       DateTime @default(now())
 
   @@index([firmId])
+}
+
+// ==========================================
+// CLIENT ACQUISITION COST (CAC)
+// ==========================================
+
+model CACSnapshot {
+  id              String   @id @default(cuid())
+  firmId          String
+  period          String   // '2026-01'
+  practiceArea    String?  // null = firm-wide
+  totalSpend      Float    @default(0)
+  newClients      Int      @default(0)
+  cac             Float?   // spend / clients
+  avgMatterRevenue Float?
+  ltvToCacRatio   Float?
+  computedAt      DateTime @default(now())
+
+  @@unique([firmId, period, practiceArea])
+  @@index([firmId, period])
 }
