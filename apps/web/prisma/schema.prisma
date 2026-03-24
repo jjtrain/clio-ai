@@ -16336,3 +16336,36 @@ model ReceivableEscalation {
   @@index([invoiceId])
   @@index([firmId, stage])
 }
+
+// ==========================================
+// ANONYMOUS BENCHMARKING
+// ==========================================
+
+model BenchmarkSnapshot {
+  id              String   @id @default(cuid())
+  firmId          String
+  practiceArea    String
+  metric          String   // 'avg_case_duration_days', 'avg_matter_revenue', 'collection_rate', 'avg_days_to_first_invoice', 'cac'
+  value           Float
+  period          String   // '2026-03'
+  createdAt       DateTime @default(now())
+
+  @@index([firmId, metric, period])
+  @@index([metric, practiceArea, period])
+}
+
+model PlatformBenchmark {
+  id              String   @id @default(cuid())
+  metric          String
+  practiceArea    String
+  p25             Float
+  p50             Float    // median
+  p75             Float
+  mean            Float?
+  sampleSize      Int
+  period          String   // '2026-03'
+  updatedAt       DateTime @default(now())
+
+  @@unique([metric, practiceArea, period])
+  @@index([metric, practiceArea])
+}

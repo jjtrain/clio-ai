@@ -121,6 +121,7 @@ import { bulkOperationsRouter } from "./bulkOperations";
 import { profitabilityRouter } from "./profitability";
 import { cacRouter } from "./cac";
 import { agingRouter } from "./aging";
+import { benchmarksRouter } from "./benchmarks";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -245,6 +246,7 @@ export const appRouter = router({
   profitability: profitabilityRouter,
   cac: cacRouter,
   aging: agingRouter,
+  benchmarks: benchmarksRouter,
 });
 
 export type AppRouter = typeof appRouter;
