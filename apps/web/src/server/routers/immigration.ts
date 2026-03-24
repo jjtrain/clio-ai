@@ -596,4 +596,152 @@ export const immigrationRouter = router({
   "reports.export": publicProcedure
     .input(z.object({ format: z.enum(["csv", "pdf", "json"]).default("json"), filters: z.record(z.any()).optional() }))
     .query(() => ({ status: "not_implemented", message: "Report export not yet implemented" })),
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Case Timeline Milestones
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  "milestones.update": publicProcedure
+    .input(z.object({
+      caseId: z.string(),
+      milestone: z.enum([
+        "receiptDate", "biometricsDate", "rfeDate", "rfeResponseDate",
+        "interviewDate", "interviewCompleted", "approvalDate", "denialDate",
+      ]),
+      date: z.string().nullable(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const caseData = await ctx.db.immigrationCase.findUniqueOrThrow({ where: { id: input.caseId } });
+      const dateVal = input.date ? new Date(input.date) : null;
+
+      // Build update data based on milestone
+      const updateData: any = {};
+      let activityType: string = "STATUS_CHANGED";
+      let activityDesc = "";
+      let newStatus: string | null = null;
+
+      switch (input.milestone) {
+        case "receiptDate":
+          updateData.receiptDate = dateVal;
+          activityType = "RECEIPT_RECEIVED";
+          activityDesc = `Receipt notice received${dateVal ? ` on ${dateVal.toLocaleDateString()}` : ""}`;
+          if (dateVal) newStatus = "RECEIVED";
+          break;
+        case "biometricsDate":
+          updateData.biometricsDate = dateVal;
+          activityType = "BIOMETRICS_COMPLETED";
+          activityDesc = `Biometrics appointment${dateVal ? ` on ${dateVal.toLocaleDateString()}` : ""}`;
+          if (dateVal) newStatus = "BIOMETRICS_COMPLETED";
+          break;
+        case "rfeDate":
+          updateData.rfeDate = dateVal;
+          if (dateVal) {
+            updateData.rfeDeadline = new Date(dateVal.getTime() + 87 * 86400000);
+            updateData.rfeDescription = input.notes || caseData.rfeDescription;
+          }
+          activityType = "RFE_RECEIVED";
+          activityDesc = `RFE issued${dateVal ? ` on ${dateVal.toLocaleDateString()}. Response due by ${new Date(dateVal.getTime() + 87 * 86400000).toLocaleDateString()}` : ""}`;
+          if (dateVal) newStatus = "RFE_ISSUED";
+          break;
+        case "rfeResponseDate":
+          updateData.rfeResponseDate = dateVal;
+          activityType = "RFE_RESPONDED";
+          activityDesc = `RFE response filed${dateVal ? ` on ${dateVal.toLocaleDateString()}` : ""}`;
+          if (dateVal) newStatus = "RFE_RESPONSE_FILED";
+          break;
+        case "interviewDate":
+          updateData.interviewDate = dateVal;
+          activityType = "INTERVIEW_SCHEDULED";
+          activityDesc = `Interview scheduled${dateVal ? ` for ${dateVal.toLocaleDateString()}` : ""}`;
+          if (dateVal) newStatus = "INTERVIEW_SCHEDULED";
+          break;
+        case "interviewCompleted":
+          updateData.interviewResult = input.notes || "Completed";
+          activityType = "INTERVIEW_COMPLETED";
+          activityDesc = `Interview completed${input.notes ? `: ${input.notes}` : ""}`;
+          newStatus = "INTERVIEW_COMPLETED";
+          break;
+        case "approvalDate":
+          updateData.approvalDate = dateVal;
+          activityType = "APPROVED";
+          activityDesc = `Case approved${dateVal ? ` on ${dateVal.toLocaleDateString()}` : ""}`;
+          if (dateVal) newStatus = "APPROVED";
+          break;
+        case "denialDate":
+          updateData.denialDate = dateVal;
+          updateData.denialReason = input.notes || null;
+          activityType = "DENIED";
+          activityDesc = `Case denied${dateVal ? ` on ${dateVal.toLocaleDateString()}` : ""}${input.notes ? `. Reason: ${input.notes}` : ""}`;
+          if (dateVal) newStatus = "DENIED";
+          break;
+      }
+
+      if (newStatus) updateData.status = newStatus;
+      if (input.notes && input.milestone !== "rfeDate" && input.milestone !== "denialDate") {
+        activityDesc += input.notes ? `. Notes: ${input.notes}` : "";
+      }
+
+      // Update the case
+      const updated = await ctx.db.immigrationCase.update({
+        where: { id: input.caseId },
+        data: updateData,
+      });
+
+      // Post activity to timeline
+      if (dateVal && activityDesc) {
+        await ctx.db.immigrationActivity.create({
+          data: {
+            caseId: input.caseId,
+            activityType: activityType as any,
+            description: activityDesc,
+            performedBy: ctx.session?.userId || "system",
+          },
+        });
+      }
+
+      // Auto-create RFE deadline task
+      if (input.milestone === "rfeDate" && dateVal) {
+        const rfeDeadline = new Date(dateVal.getTime() + 87 * 86400000);
+        await ctx.db.task.create({
+          data: {
+            title: `RFE Response Due — ${caseData.beneficiaryName} (${caseData.caseType})`,
+            description: `Request for Evidence received on ${dateVal.toLocaleDateString()}. Response must be filed by ${rfeDeadline.toLocaleDateString()} (87 days).${input.notes ? `\n\nRFE Details: ${input.notes}` : ""}`,
+            matterId: caseData.matterId,
+            dueDate: rfeDeadline,
+            priority: "URGENT",
+            status: "NOT_STARTED",
+          },
+        });
+      }
+
+      return updated;
+    }),
+
+  "milestones.updateProcessingTime": publicProcedure
+    .input(z.object({ caseId: z.string(), processingTimeEstimate: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.immigrationCase.update({
+        where: { id: input.caseId },
+        data: { processingTimeEstimate: input.processingTimeEstimate },
+      });
+    }),
+
+  "milestones.updateReceiptNumber": publicProcedure
+    .input(z.object({ caseId: z.string(), receiptNumber: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.immigrationCase.update({
+        where: { id: input.caseId },
+        data: { receiptNumber: input.receiptNumber },
+      });
+    }),
+
+  "milestones.updateServiceCenter": publicProcedure
+    .input(z.object({ caseId: z.string(), uscisOffice: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.immigrationCase.update({
+        where: { id: input.caseId },
+        data: { uscisOffice: input.uscisOffice },
+      });
+    }),
 });
