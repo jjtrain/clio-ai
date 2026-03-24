@@ -64,6 +64,7 @@ const seedFiles = [
   "seed-court-calendar.ts",
   "seed-accounting-sync.ts",
   "seed-gmail.ts",
+  "seed-meetings.ts",
 ];
 
 async function main() {

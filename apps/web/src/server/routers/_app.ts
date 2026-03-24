@@ -127,6 +127,7 @@ import { digestRouter } from "./digest";
 import { realizationRouter } from "./realization";
 import { courtCalendarRouter } from "./courtCalendar";
 import { accountingSyncRouter } from "./accountingSync";
+import { meetingsUnifiedRouter } from "./meetingsUnified";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -257,6 +258,7 @@ export const appRouter = router({
   realization: realizationRouter,
   courtCalendar: courtCalendarRouter,
   accountingSync: accountingSyncRouter,
+  meetingsUnified: meetingsUnifiedRouter,
 });
 
 export type AppRouter = typeof appRouter;

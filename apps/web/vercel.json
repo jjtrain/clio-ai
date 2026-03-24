@@ -95,6 +95,10 @@
     {
       "path": "/api/cron/gmail-watch-renew",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/meeting-reminders",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

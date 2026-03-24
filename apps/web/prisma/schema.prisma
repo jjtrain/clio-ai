@@ -6427,6 +6427,7 @@ model RainmakerDiagnostic {
 
 enum VideoProvider {
   ZOOM
+  TEAMS
 }
 
 enum ZoomMeetingType {
@@ -16520,4 +16521,89 @@ model EmailFilingRule {
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// ─── Unified Meeting Integration (Zoom + Teams) ───────────────────
+
+model VideoConnection {
+  id              String        @id @default(cuid())
+  userId          String
+  provider        VideoProvider
+  email           String
+  accessToken     String        @db.Text
+  refreshToken    String        @db.Text
+  tokenExpiry     DateTime
+  providerUserId  String?
+  tenantId        String?
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([userId, provider])
+}
+
+model MeetingEvent {
+  id                  String          @id @default(cuid())
+  firmId              String          @default("demo-firm")
+  matterId            String?
+  createdById         String?
+  title               String
+  agenda              String?         @db.Text
+  provider            VideoProvider
+  externalMeetingId   String
+  joinUrl             String
+  hostUrl             String?
+  dialInNumbers       Json?
+  password            String?
+  scheduledAt         DateTime
+  durationMinutes     Int
+  timezone            String          @default("America/New_York")
+  status              MeetingStatus   @default(SCHEDULED)
+  calendarEventId     String?
+  timeEntryId         String?
+  emailThreadId       String?
+  recordingUrl        String?
+  recordingExpiry     DateTime?
+  startedAt           DateTime?
+  endedAt             DateTime?
+  actualDurationMins  Int?
+  reminderSent        Boolean         @default(false)
+  attendees           MeetingAttendee[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([firmId])
+  @@index([matterId])
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+model MeetingAttendee {
+  id        String       @id @default(cuid())
+  meetingId String
+  meeting   MeetingEvent @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  email     String
+  name      String?
+  role      AttendeeRole @default(ATTENDEE)
+  rsvp      RsvpStatus   @default(PENDING)
+  joinedAt  DateTime?
+  leftAt    DateTime?
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AttendeeRole {
+  HOST
+  ATTENDEE
+}
+
+enum RsvpStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }
