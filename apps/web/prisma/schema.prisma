@@ -3920,25 +3920,33 @@ model CourtFiling {
 }
 
 model TrademarkDocket {
-  id                  String    @id @default(cuid())
-  matterId            String?
-  matter              Matter?   @relation(fields: [matterId], references: [id], onDelete: SetNull)
-  markName            String
-  serialNumber        String    @unique
-  registrationNumber  String?
-  currentStatus       String?
-  statusDate          DateTime?
-  ownerName           String?
-  filingDate          DateTime?
-  registrationDate    DateTime?
-  nextDeadlineType    String?
-  nextDeadlineDate    DateTime?
-  autoMonitor         Boolean   @default(true)
-  lastChecked         DateTime  @default(now())
-  lastStatusChange    DateTime?
-  prosecutionHistory  Json?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                    String    @id @default(cuid())
+  matterId              String?
+  matter                Matter?   @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  markName              String
+  serialNumber          String    @unique
+  registrationNumber    String?
+  currentStatus         String?
+  statusDate            DateTime?
+  ownerName             String?
+  ownerAddress          String?
+  attorneyOfRecord      String?
+  internationalClasses  String?
+  filingDate            DateTime?
+  publicationDate       DateTime?
+  registrationDate      DateTime?
+  nextDeadlineType      String?
+  nextDeadlineDate      DateTime?
+  autoMonitor           Boolean   @default(true)
+  lastChecked           DateTime  @default(now())
+  lastStatusChange      DateTime?
+  lastViewedAt          DateTime?
+  prosecutionHistory    Json?
+  documentsList         Json?
+  cachedResponse        Json?
+  newEventsSinceView    Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   @@index([serialNumber])
   @@index([nextDeadlineDate])

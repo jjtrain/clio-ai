@@ -54,6 +54,55 @@ export class UsptoTsdrClient {
     }
   }
 
+  async getDocuments(serialNumber: string): Promise<ServiceResult<any[]>> {
+    const sn = serialNumber.replace(/\D/g, "");
+    try {
+      const res = await fetch(`${this.baseUrl}/ts/cd/casedocs/sn${sn}/docs.json`, { headers: this.headers() });
+      if (!res.ok) return { success: true, data: [] }; // 404 is normal for pending apps
+      const data = await res.json();
+      const docs = (data.documentBag?.document || data.docs || []).map((d: any) => ({
+        id: d.documentIdentifier || d.id,
+        description: d.documentDescription || d.description || "Document",
+        date: d.documentDate || d.date,
+        url: `https://tsdr.uspto.gov/documentviewer?caseId=sn${sn}&docId=${d.documentIdentifier || d.id}`,
+      }));
+      return { success: true, data: docs };
+    } catch {
+      return { success: true, data: [] };
+    }
+  }
+
+  async getFullStatus(serialNumber: string): Promise<ServiceResult<TrademarkStatus & { ownerAddress?: string; attorneyOfRecord?: string; internationalClasses?: string; publicationDate?: Date; documents?: any[] }>> {
+    const statusResult = await this.getStatusBySerial(serialNumber);
+    if (!statusResult.success || !statusResult.data) return statusResult as any;
+
+    const docsResult = await this.getDocuments(serialNumber);
+    const sn = serialNumber.replace(/\D/g, "");
+
+    // Re-fetch to get additional fields from raw response
+    try {
+      const res = await fetch(`${this.baseUrl}/ts/cd/casestatus/sn${sn}/info.json`, { headers: this.headers() });
+      if (res.ok) {
+        const raw = await res.json();
+        const tm = raw.trademarkBag?.trademark || raw;
+        return {
+          success: true,
+          data: {
+            ...statusResult.data,
+            ownerAddress: tm.applicantAddress || tm.ownerAddress || undefined,
+            attorneyOfRecord: tm.attorneyName || tm.attorney || undefined,
+            internationalClasses: (tm.classificationBag?.classification || tm.classes || [])
+              .map((c: any) => c.classNumber || c.class_number || c).filter(Boolean).join(", "),
+            publicationDate: tm.publicationDate ? new Date(tm.publicationDate) : undefined,
+            documents: docsResult.data || [],
+          },
+        };
+      }
+    } catch {}
+
+    return { success: true, data: { ...statusResult.data, documents: docsResult.data || [] } } as any;
+  }
+
   async getStatusByRegistration(regNumber: string): Promise<ServiceResult<TrademarkStatus>> {
     const rn = regNumber.replace(/\D/g, "");
     try {

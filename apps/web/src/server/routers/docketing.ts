@@ -204,6 +204,60 @@ export const docketingRouter = router({
     .input(z.object({ trademarkDocketId: z.string() }))
     .mutation(async ({ input }) => engine.refreshTrademarkStatus(input.trademarkDocketId)),
 
+  refreshTrademarkFull: publicProcedure
+    .input(z.object({ trademarkDocketId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const tm = await ctx.db.trademarkDocket.findUniqueOrThrow({ where: { id: input.trademarkDocketId } });
+      const result = await engine.getUspto().getFullStatus(tm.serialNumber);
+      if (!result.success || !result.data) return { error: result.error, newEvents: 0 };
+      const data = result.data as any;
+      const oldHistory = (tm.prosecutionHistory as any[] || []);
+      const newHistory = data.prosecutionHistory || [];
+      const oldKeys = new Set(oldHistory.map((e: any) => `${e.date}|${e.description || e.action}`));
+      const newEvents = newHistory.filter((e: any) => !oldKeys.has(`${e.date}|${e.description || e.action}`));
+      const maint = data.registrationDate ? engine.getUspto().calculateMaintenanceDeadlines(data.registrationDate, data.currentStatus) : [];
+      const next = maint[0];
+      await ctx.db.trademarkDocket.update({
+        where: { id: input.trademarkDocketId },
+        data: {
+          currentStatus: data.currentStatus, statusDate: data.statusDate, ownerName: data.ownerName,
+          ownerAddress: data.ownerAddress, attorneyOfRecord: data.attorneyOfRecord, internationalClasses: data.internationalClasses,
+          filingDate: data.filingDate, publicationDate: data.publicationDate, registrationDate: data.registrationDate,
+          registrationNumber: data.registrationNumber, nextDeadlineType: next?.type, nextDeadlineDate: next?.dueDate,
+          lastChecked: new Date(), lastStatusChange: data.currentStatus !== tm.currentStatus ? new Date() : undefined,
+          prosecutionHistory: newHistory as any, documentsList: data.documents as any, cachedResponse: data as any,
+          newEventsSinceView: (tm.newEventsSinceView || 0) + newEvents.length,
+        },
+      });
+      // Auto-create alerts
+      if (tm.matterId) {
+        for (const ev of newEvents) {
+          const desc = (ev.description || ev.action || "").toUpperCase();
+          if (desc.includes("OFFICE ACTION")) {
+            const oa = engine.getUspto().calculateOfficeActionDeadline(new Date(ev.date));
+            await ctx.db.task.create({ data: { title: `Office Action — ${tm.markName}`, description: `Response due ${oa.initialDeadline.toLocaleDateString()}`, matterId: tm.matterId, dueDate: oa.initialDeadline, priority: "HIGH", status: "NOT_STARTED" } });
+          }
+          if (desc.includes("PUBLISHED FOR OPPOSITION") || desc.includes("PUBLICATION")) {
+            const d = new Date(ev.date); d.setDate(d.getDate() + 30);
+            await ctx.db.task.create({ data: { title: `Opposition Window — ${tm.markName}`, description: `30-day window ends ${d.toLocaleDateString()}`, matterId: tm.matterId, dueDate: d, priority: "HIGH", status: "NOT_STARTED" } });
+          }
+          if (desc.includes("NOTICE OF ALLOWANCE")) {
+            const sou = engine.getUspto().calculateSouDeadline(new Date(ev.date));
+            await ctx.db.task.create({ data: { title: `Statement of Use — ${tm.markName}`, description: `SOU due ${sou.initialDeadline.toLocaleDateString()}`, matterId: tm.matterId, dueDate: sou.initialDeadline, priority: "HIGH", status: "NOT_STARTED" } });
+          }
+        }
+      }
+      return { data, newEvents: newEvents.length };
+    }),
+
+  markTrademarkViewed: publicProcedure
+    .input(z.object({ trademarkDocketId: z.string() }))
+    .mutation(async ({ ctx, input }) => ctx.db.trademarkDocket.update({ where: { id: input.trademarkDocketId }, data: { lastViewedAt: new Date(), newEventsSinceView: 0 } })),
+
+  getTrademarkForMatter: publicProcedure
+    .input(z.object({ matterId: z.string() }))
+    .query(async ({ ctx, input }) => ctx.db.trademarkDocket.findFirst({ where: { matterId: input.matterId } })),
+
   removeTrademarkMonitor: publicProcedure
     .input(z.object({ trademarkDocketId: z.string() }))
     .mutation(async ({ ctx, input }) => ctx.db.trademarkDocket.delete({ where: { id: input.trademarkDocketId } })),
