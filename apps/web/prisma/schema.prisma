@@ -16819,3 +16819,32 @@ enum WaTemplateStatus {
   REJECTED
   PAUSED
 }
+
+// ─── Support Calculator ───────────────────────────────────────────
+
+model SupportCalculation {
+  id                        String    @id @default(cuid())
+  firmId                    String    @default("demo-firm")
+  matterId                  String
+  calculationType           CalcType
+  jurisdiction              String
+  label                     String    @default("Scenario 1")
+  inputs                    Json
+  results                   Json
+  formulaVersion            String
+  isPinned                  Boolean   @default(false)
+  notes                     String?   @db.Text
+  importedFromAffidavitId   String?
+  createdById               String?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@index([matterId])
+  @@index([firmId])
+}
+
+enum CalcType {
+  CHILD_SUPPORT
+  MAINTENANCE
+  COMBINED
+}
