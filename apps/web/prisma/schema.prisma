@@ -16933,3 +16933,35 @@ model WorksheetSnapshot {
   createdById     String?
   createdAt       DateTime           @default(now())
 }
+
+// ─── Trademark Specimen Management ────────────────────────────────
+
+model TrademarkSpecimen {
+  id                  String    @id @default(cuid())
+  trademarkDocketId   String
+  matterId            String
+  niceClass           Int
+  goodsServices       String?   @db.Text
+  specimenType        String    // WEBSITE | PRODUCT_LABEL | PACKAGING | HANG_TAG | ADVERTISEMENT | STORE_DISPLAY | OTHER
+  fileUrl             String
+  thumbnailUrl        String?
+  fileName            String
+  fileType            String
+  fileSize            Int?
+  dateFirstUseCommerce  DateTime?
+  dateFirstUseAnywhere  DateTime?
+  dateCollected       DateTime?
+  filingAssociation   String?   // INITIAL_APP | SOU | SEC8 | SEC8_15 | SEC8_RENEWAL | OTHER
+  status              String    @default("PENDING") // PENDING | ACCEPTED | REJECTED
+  rejectionReason     String?
+  isCurrent           Boolean   @default(false)
+  isSuperseded        Boolean   @default(false)
+  notes               String?   @db.Text
+  uploadedById        String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([trademarkDocketId, niceClass])
+  @@index([matterId])
+  @@index([status])
+}

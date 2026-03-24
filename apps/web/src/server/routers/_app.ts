@@ -132,6 +132,7 @@ import { apiIntegrationsRouter } from "./apiIntegrations";
 import { whatsappRouter } from "./whatsapp";
 import { supportCalculatorRouter } from "./supportCalculator";
 import { equitableDistributionRouter } from "./equitableDistribution";
+import { specimensRouter } from "./specimens";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -267,6 +268,7 @@ export const appRouter = router({
   whatsapp: whatsappRouter,
   supportCalculator: supportCalculatorRouter,
   equitableDistribution: equitableDistributionRouter,
+  specimens: specimensRouter,
 });
 
 export type AppRouter = typeof appRouter;
