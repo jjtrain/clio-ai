@@ -133,6 +133,9 @@ model Matter {
   solEntries          StatuteOfLimitations[] @relation("MatterSOL")
   voiceNotes          VoiceNote[] @relation("MatterVoiceNotes")
   courtSessions       CourtCompanionSession[] @relation("MatterCourtSessions")
+  matterActions        MatterAction[]
+  phaseHistory         MatterPhaseHistory[]
+  activityLogs         MatterActivityLog[]
 
   @@index([clientId])
   @@index([departmentId])
@@ -160,11 +163,22 @@ model TimeEntry {
   matter            Matter           @relation(fields: [matterId], references: [id], onDelete: Cascade)
   userId            String
   user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  description       String
+  description       String           @db.Text
+  originalDescription String?        @db.Text // preserved if AI rewrites
   duration          Int              // Duration in minutes
+  hours             Float            @default(0) // duration in hours (computed from duration)
   date              DateTime
   billable          Boolean          @default(true)
   rate              Decimal?         @db.Decimal(10, 2)
+  amount            Decimal?         @db.Decimal(10, 2) // hours × rate
+  billingType       String           @default("hourly") // 'hourly', 'flat_fee', 'contingency', 'pro_bono', 'no_charge'
+  status            String           @default("draft") // 'draft', 'reviewed', 'approved', 'flagged', 'revised', 'billed', 'written_off', 'paid'
+  activityCode      String?          // UTBMS/LEDES code
+  taskCategory      String?          // 'research', 'drafting', 'court_appearance', 'client_communication', 'discovery', 'deposition', 'negotiation', 'travel', 'filing', 'review', 'conference', 'administrative'
+  isAutoLogged      Boolean          @default(false)
+  sourceType        String?          // 'manual', 'tap_to_call', 'swipe_to_bill', 'calendar_auto', 'timer'
+  sourceId          String?
+  firmId            String?
   invoiceLineItemId String?
   invoiceLineItem   InvoiceLineItem? @relation(fields: [invoiceLineItemId], references: [id], onDelete: SetNull)
   createdAt         DateTime         @default(now())
@@ -173,6 +187,8 @@ model TimeEntry {
   @@index([matterId])
   @@index([userId])
   @@index([invoiceLineItemId])
+  @@index([status])
+  @@index([date])
 }
 
 model Document {
@@ -257,6 +273,26 @@ enum MatterActivityType {
   TIME_LOGGED
   LEAD_CONVERTED
   CREATED
+  CORRESPONDENCE_SENT
+  CORRESPONDENCE_RECEIVED
+  DOCUMENT_REVIEWED
+  DEADLINE_COMPLETED
+  DEADLINE_MISSED
+  DEADLINE_EXTENDED
+  CALENDAR_EVENT_OCCURRED
+  INVOICE_SENT
+  PAYMENT_RECEIVED
+  INTAKE_CONVERTED
+  PREDICTION_UPDATED
+  PHASE_CHANGED
+  ACTION_COMPLETED
+  FILING_SUBMITTED
+  DISCOVERY_SERVED
+  DISCOVERY_RECEIVED
+  COURT_APPEARANCE
+  DEPOSITION_TAKEN
+  SETTLEMENT_DISCUSSION
+  CLIENT_COMMUNICATION
 }
 
 enum InvoiceStatus {
@@ -280,7 +316,12 @@ model Invoice {
   taxAmount     Decimal           @db.Decimal(10, 2)
   total         Decimal           @db.Decimal(10, 2)
   amountPaid    Decimal           @default(0) @db.Decimal(10, 2)
-  notes         String?
+  adjustments   Decimal           @default(0) @db.Decimal(10, 2) // write-downs, courtesy discounts
+  adjustmentNotes String?
+  notes         String?           @db.Text
+  termsText     String?           @db.Text
+  auditId       String?           // link to BillingAudit
+  auditStatus   String?           // 'pending_audit', 'auditing', 'audit_complete', 'audit_passed'
   sentAt        DateTime?
   paidAt        DateTime?
   createdAt     DateTime          @default(now())
@@ -300,6 +341,7 @@ model Invoice {
   @@index([matterId])
   @@index([status])
   @@index([templateId])
+  @@index([auditId])
 }
 
 model InvoiceLineItem {
@@ -494,6 +536,15 @@ model Task {
   createdById String?
   createdBy   User?        @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
+  // Cascade fields
+  cascadeExecutionId String?
+  cascadeItemId      String?
+  dependsOnTaskId    String?
+  isAutoCascaded     Boolean  @default(false)
+  category           String?
+  estimatedMinutes   Int?
+  tags               Json?
+
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -502,6 +553,7 @@ model Task {
   @@index([status])
   @@index([dueDate])
   @@index([priority])
+  @@index([cascadeExecutionId])
 }
 
 enum TaskStatus {
@@ -1931,17 +1983,29 @@ model ClientPortalUser {
   email            String    @unique
   passwordHash     String
   name             String
+  firstName        String?
+  lastName         String?
+  phone            String?
+  preferredLanguage String   @default("en")
+  timezone         String   @default("America/New_York")
   isActive         Boolean   @default(true)
   lastLoginAt      DateTime?
   loginToken       String?
   loginTokenExpiry DateTime?
+  notificationPrefs Json?   // { email: true, sms: false, portal: true }
+  firmId           String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   messages         ClientPortalMessage[]
+  matterAccess     PortalMatterAccess[]
+  notifications    PortalNotification[]
+  feedback         PortalFeedback[]
+  sessions         PortalSession[]
 
   @@index([clientId])
   @@index([email])
+  @@index([firmId])
 }
 
 model ClientPortalMessage {
@@ -1982,6 +2046,174 @@ model ClientPortalSettings {
 enum PortalMessageDirection {
   CLIENT_TO_FIRM
   FIRM_TO_CLIENT
+}
+
+// ==========================================
+// CLIENT PORTAL — EXTENDED MODELS
+// ==========================================
+
+model PortalMatterAccess {
+  id              String   @id @default(cuid())
+  portalUserId    String
+  portalUser      ClientPortalUser @relation(fields: [portalUserId], references: [id], onDelete: Cascade)
+  matterId        String
+  role            String   @default("client") // 'client', 'co_client', 'authorized_representative'
+  accessLevel     String   @default("standard") // 'standard', 'limited', 'full'
+  permissions     Json?    // { documents: true, messages: true, billing: true, calendar: true, status: true, uploads: true }
+  isActive        Boolean  @default(true)
+  grantedAt       DateTime @default(now())
+  revokedAt       DateTime?
+
+  @@unique([portalUserId, matterId])
+  @@index([portalUserId])
+  @@index([matterId])
+}
+
+model PortalSession {
+  id              String   @id @default(cuid())
+  portalUserId    String
+  portalUser      ClientPortalUser @relation(fields: [portalUserId], references: [id], onDelete: Cascade)
+  token           String   @unique
+  ipAddress       String?
+  userAgent       String?
+  isActive        Boolean  @default(true)
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+
+  @@index([token])
+  @@index([portalUserId])
+}
+
+model PortalStatusUpdate {
+  id              String   @id @default(cuid())
+  matterId        String
+  title           String
+  body            String   @db.Text
+  bodyPlainLanguage String? @db.Text // AI-rewritten for clients
+  milestone       String?  // 'case_filed', 'discovery_started', 'deposition_taken', 'settlement_offer', 'trial_date_set', 'resolved', etc.
+  phase           String?  // current phase label
+  phasePercentage Int?     // 0-100
+  isPublished     Boolean  @default(false)
+  publishedAt     DateTime?
+  isDraft         Boolean  @default(true)
+  notifyClient    Boolean  @default(true)
+  aiGenerated     Boolean  @default(false)
+  userId          String   // attorney who published
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([isPublished])
+}
+
+model PortalDocument {
+  id              String   @id @default(cuid())
+  matterId        String
+  portalUserId    String?  // null = shared by attorney, non-null = uploaded by client
+  fileName        String
+  fileUrl         String?
+  fileSize        Int?
+  mimeType        String?
+  category        String   // 'medical_records', 'accident_documents', 'insurance', 'court_filings', 'correspondence', 'client_uploads', 'financial', 'application_materials', 'agreements', etc.
+  description     String?
+  uploaderType    String   @default("attorney") // 'attorney', 'client'
+  isVisible       Boolean  @default(true)
+  requiresSignature Boolean @default(false)
+  signedAt        DateTime?
+  signatureData   String?  @db.Text
+  userId          String?  // attorney who shared
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([category])
+  @@index([portalUserId])
+}
+
+model PortalChecklist {
+  id              String   @id @default(cuid())
+  matterId        String
+  portalUserId    String?
+  title           String
+  practiceArea    String?
+  items           Json     // array of { id, label, description?, priority: 'asap'|'when_can'|'optional', isCompleted, completedAt?, linkedDocumentId? }
+  totalItems      Int      @default(0)
+  completedItems  Int      @default(0)
+  userId          String   // attorney who created
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([portalUserId])
+}
+
+model PortalNotification {
+  id              String   @id @default(cuid())
+  portalUserId    String
+  portalUser      ClientPortalUser @relation(fields: [portalUserId], references: [id], onDelete: Cascade)
+  matterId        String?
+  type            String   // 'message', 'document', 'status_update', 'invoice', 'event', 'signature', 'checklist', 'system'
+  title           String
+  body            String
+  linkTo          String?  // relative URL within portal
+  isRead          Boolean  @default(false)
+  readAt          DateTime?
+  emailSent       Boolean  @default(false)
+  smsSent         Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([portalUserId])
+  @@index([isRead])
+}
+
+model PortalFeedback {
+  id              String   @id @default(cuid())
+  portalUserId    String
+  portalUser      ClientPortalUser @relation(fields: [portalUserId], references: [id], onDelete: Cascade)
+  matterId        String?
+  ratingType      String   // 'satisfaction', 'nps', 'service_quality'
+  score           Int      // 1-5 for satisfaction, 0-10 for NPS
+  comment         String?  @db.Text
+  isAnonymous     Boolean  @default(false)
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([portalUserId])
+  @@index([firmId])
+  @@index([ratingType])
+}
+
+model PortalBrandingTheme {
+  id              String   @id @default(cuid())
+  practiceArea    String   @unique
+  colorPrimary    String   @default("#1E40AF")
+  colorSecondary  String   @default("#3B82F6")
+  colorAccent     String   @default("#F59E0B")
+  colorBackground String   @default("#F8FAFC")
+  colorSurface    String   @default("#FFFFFF")
+  colorText       String   @default("#111827")
+  colorMuted      String   @default("#6B7280")
+  gradientStart   String?
+  gradientEnd     String?
+  fontFamily      String   @default("Inter")
+  borderRadius    String   @default("8px")
+  iconStyle       String   @default("outlined") // 'outlined', 'filled'
+  tone            String   @default("professional") // 'supportive', 'warm', 'professional', 'formal'
+  welcomeHeading  String?
+  welcomeSubtext  String?  @db.Text
+  terminology     Json?    // { legalTerm: clientFriendlyTerm }
+  statusLabels    Json?    // phase labels and descriptions
+  documentCategories Json? // string[]
+  quickActions    Json?    // { label, icon, href }[]
+  faqItems        Json?    // { q, a }[]
+  firmId          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([firmId])
 }
 
 // ============================================
@@ -12771,4 +13003,3285 @@ model IntakeEmbedConfig {
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// ==========================================
+// SEARCH SYSTEM
+// ==========================================
+
+model SearchIndex {
+  id          String   @id @default(cuid())
+  entityType  String   // 'matter', 'contact', 'document', 'correspondence', 'calendarEvent', 'deadline', 'intakeSession', 'prediction', 'note', 'billing'
+  entityId    String
+  title       String
+  subtitle    String?
+  body        String?  @db.Text
+  tags        Json?    // string[]
+  metadata    Json?    // type-specific filterable fields
+  firmId      String
+  userId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([entityType, entityId])
+  @@index([firmId])
+  @@index([entityType])
+}
+
+model SearchSynonym {
+  id            String   @id @default(cuid())
+  term          String
+  canonicalTerm String
+  category      String   // 'document_type', 'entity', 'legal_concept', 'event_type', 'practice_area', 'status', 'sort'
+  firmId        String?  // null = global, set = firm-specific
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([term])
+  @@index([firmId])
+}
+
+model SavedSearch {
+  id              String   @id @default(cuid())
+  name            String
+  queryText       String
+  isPinned        Boolean  @default(false)
+  alertEnabled    Boolean  @default(false)
+  alertFrequency  String?  // 'daily', 'weekly', 'monthly'
+  lastRunAt       DateTime?
+  lastResultCount Int?
+  userId          String
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([firmId])
+}
+
+model SearchQuery {
+  id            String   @id @default(cuid())
+  queryText     String
+  parsedIntent  Json?
+  resultCount   Int      @default(0)
+  executionTime Int?     // ms
+  rating        Int?     // 1-5 user rating
+  ratingComment String?
+  userId        String
+  firmId        String
+  createdAt     DateTime @default(now())
+
+  clicks        SearchClick[]
+
+  @@index([userId])
+  @@index([firmId])
+  @@index([createdAt])
+}
+
+model SearchClick {
+  id          String   @id @default(cuid())
+  queryId     String
+  query       SearchQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  resultId    String
+  resultType  String
+  createdAt   DateTime @default(now())
+
+  @@index([queryId])
+}
+
+// ==========================================
+// AI BILLING AUDIT SYSTEM
+// ==========================================
+
+model BillingAudit {
+  id                    String   @id @default(cuid())
+  invoiceId             String?
+  matterId              String?
+  auditType             String   // 'pre_invoice', 'periodic', 'matter_close', 'manual', 'bulk'
+  auditScope            String   // 'single_invoice', 'matter_all_time', 'date_range', 'attorney_entries', 'bulk_review'
+  periodStart           DateTime?
+  periodEnd             DateTime?
+  totalEntriesReviewed  Int      @default(0)
+  totalHoursReviewed    Float    @default(0)
+  totalAmountReviewed   Float    @default(0)
+  totalFlags            Int      @default(0)
+  criticalFlags         Int      @default(0)
+  highFlags             Int      @default(0)
+  mediumFlags           Int      @default(0)
+  lowFlags              Int      @default(0)
+  resolvedFlags         Int      @default(0)
+  estimatedSavings      Float?   // potential write-down avoided
+  estimatedRisk         Float?   // potential client dispute amount
+  overallGrade          String?  // 'A', 'B', 'C', 'D', 'F'
+  summaryText           String?  @db.Text
+  recommendations       Json?    // array of { action, priority, impact }
+  aiModelUsed           String?
+  processingTime        Int?     // seconds
+  status                String   @default("processing") // 'processing', 'completed', 'attorney_reviewed', 'all_resolved', 'archived'
+  userId                String
+  firmId                String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  flags                 BillingFlag[]
+
+  @@index([invoiceId])
+  @@index([matterId])
+  @@index([userId])
+  @@index([status])
+}
+
+model BillingFlag {
+  id                    String   @id @default(cuid())
+  auditId               String
+  audit                 BillingAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  timeEntryId           String?
+  invoiceId             String?
+  flagType              String   // 'block_billing', 'vague_description', 'excessive_time', 'duplicate_entry', 'rate_inconsistency', 'no_value_description', 'missing_detail', 'unusual_hours', 'weekend_billing', 'after_hours', 'rounded_time', 'stacking', 'overhead_task', 'guideline_violation', 'minimum_billing_excessive', 'travel_time_issue', 'clerical_as_attorney', 'multiple_attorneys_same_task', 'chronological_gap', 'description_mismatch', 'custom'
+  severity              String   // 'critical', 'high', 'medium', 'low', 'info'
+  category              String   // 'description_quality', 'time_accuracy', 'rate_compliance', 'duplicate_detection', 'guideline_compliance', 'pattern_analysis', 'value_justification'
+  title                 String
+  description           String   @db.Text
+  recommendation        String?  @db.Text
+  suggestedDescription  String?  @db.Text
+  suggestedHours        Float?
+  currentValue          String?
+  expectedValue         String?
+  ruleReference         String?
+  financialImpact       Float?
+  status                String   @default("open") // 'open', 'accepted', 'rejected', 'auto_fixed', 'manually_fixed', 'deferred'
+  resolution            String?
+  resolvedAt            DateTime?
+  sortOrder             Int      @default(0)
+  userId                String
+  firmId                String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([auditId])
+  @@index([timeEntryId])
+  @@index([severity])
+  @@index([status])
+}
+
+model BillingGuideline {
+  id              String   @id @default(cuid())
+  name            String
+  clientId        String?
+  clientName      String?
+  practiceArea    String?
+  guidelineType   String   // 'task_time_limit', 'description_requirement', 'rate_cap', 'block_billing_rule', 'staffing_rule', 'expense_rule', 'format_rule', 'prohibited_task', 'custom'
+  rule            Json     // { condition: {...}, threshold: {...}, action: 'flag' | 'auto_reduce' | 'block' }
+  description     String   @db.Text
+  isActive        Boolean  @default(true)
+  isDefault       Boolean  @default(false)
+  source          String   @default("firm") // 'firm', 'client_guidelines', 'insurance_company', 'court_appointed', 'ledes'
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([firmId])
+  @@index([practiceArea])
+  @@index([guidelineType])
+}
+
+model BillingBenchmark {
+  id              String   @id @default(cuid())
+  taskCategory    String
+  taskDescription String?
+  practiceArea    String?
+  jurisdiction    String?
+  experienceLevel String?  // 'junior', 'mid', 'senior', 'partner'
+  minHours        Float
+  maxHours        Float
+  avgHours        Float
+  medianHours     Float?
+  sampleSize      Int
+  notes           String?
+  source          String   @default("industry_benchmark") // 'industry_benchmark', 'firm_historical', 'court_approved'
+  firmId          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([taskCategory])
+  @@index([practiceArea])
+}
+
+// ==========================================
+// SUGGESTED NEXT ACTIONS SYSTEM
+// ==========================================
+
+model MatterAction {
+  id                String   @id @default(cuid())
+  matterId          String
+  matter            Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  ruleId            String?  // null if AI-generated
+  title             String
+  description       String   @db.Text
+  actionType        String   // 'filing', 'discovery', 'correspondence', 'client_communication', 'court_preparation', 'settlement', 'billing', 'expert', 'strategic', 'document_review', 'deadline_response', 'administrative'
+  urgency           String   // 'immediate', 'this_week', 'next_two_weeks', 'this_month', 'when_possible'
+  priority          Int      @default(5) // 1-10
+  status            String   @default("pending") // 'pending', 'acknowledged', 'in_progress', 'completed', 'dismissed', 'deferred', 'expired'
+  source            String   @default("ai") // 'rule', 'ai', 'manual'
+  triggerEvent      String?  // what triggered this action
+  reasoning         String?  @db.Text // AI reasoning chain
+  practiceAreaContext String? @db.Text // practice-area-specific tips
+  ruleReference     String?  // legal rule citation
+  suggestedFeature  String?  // 'correspondence', 'deadline_calculator', 'document_review', 'calendar', 'billing', 'prediction'
+  suggestedAction   Json?    // { feature, params } for deep linking
+  estimatedTime     String?  // "1-2 hours"
+  relatedDeadlineId String?
+  relatedDeadlineDate DateTime?
+  deferredUntil     DateTime?
+  snoozeCount       Int      @default(0)
+  completedAction   String?  // note about what was done
+  dismissReason     String?
+  completedAt       DateTime?
+  dismissedAt       DateTime?
+  expiresAt         DateTime?
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([status])
+  @@index([urgency])
+  @@index([userId])
+  @@index([priority])
+}
+
+model ActionRule {
+  id                String   @id @default(cuid())
+  name              String
+  description       String   @db.Text
+  practiceArea      String?  // null = universal
+  casePhase         String?  // null = any phase
+  triggerType       String   // 'deadline_approaching', 'inactivity', 'phase_transition', 'document_review_result', 'prediction_change', 'billing_trigger', 'intake_conversion', 'calendar_event'
+  triggerCondition  Json     // { type, daysThreshold, ... }
+  actionTemplate    Json     // { title, description, actionType, urgency, priority, suggestedFeature, ... }
+  isActive          Boolean  @default(true)
+  isDefault         Boolean  @default(false)
+  firmId            String?  // null = platform default
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([triggerType])
+  @@index([practiceArea])
+  @@index([isActive])
+}
+
+model MatterPhaseHistory {
+  id          String   @id @default(cuid())
+  matterId    String
+  matter      Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  phase       String   // 'pre_litigation', 'pleadings', 'discovery', 'motion_practice', 'trial_prep', 'trial', 'post_trial', 'appeal', 'settlement', 'closed'
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  detectedBy  String   @default("system") // 'system', 'manual', 'ai'
+  notes       String?
+  userId      String?
+  firmId      String
+  createdAt   DateTime @default(now())
+
+  @@index([matterId])
+  @@index([phase])
+}
+
+model MatterActivityLog {
+  id            String   @id @default(cuid())
+  matterId      String
+  matter        Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  activityType  String   // 'correspondence_sent', 'correspondence_received', 'document_reviewed', 'deadline_completed', 'deadline_missed', 'calendar_event', 'time_entry', 'invoice_sent', 'payment_received', 'intake_converted', 'prediction_updated', 'phase_changed', 'filing_submitted', 'discovery_served', 'court_appearance', 'client_call', 'client_meeting', 'settlement_discussion', 'note_added'
+  description   String   @db.Text
+  entityType    String?  // 'correspondence', 'document', 'deadline', 'calendar_event', 'time_entry', 'invoice', 'prediction'
+  entityId      String?
+  metadata      Json?
+  userId        String?
+  firmId        String
+  occurredAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([matterId])
+  @@index([activityType])
+  @@index([occurredAt])
+}
+
+// ==========================================
+// AUTOMATED CLIENT STATUS UPDATES
+// ==========================================
+
+model StatusUpdateQueue {
+  id                String   @id @default(cuid())
+  matterId          String
+  portalAccountId   String?
+  triggerId         String?
+  templateId        String?
+  triggerSource     String   // 'phase_change', 'deadline_completed', 'deadline_missed', 'court_event_completed', 'correspondence_sent', 'document_reviewed', 'intake_converted', 'billing_event', 'prediction_changed', 'checklist_milestone', 'inactivity', 'settlement_event', 'manual'
+  triggerData       Json?    // event-specific data
+  title             String
+  body              String   @db.Text
+  bodyPlainLanguage String?  @db.Text
+  milestone         String?
+  phase             String?
+  phasePercentage   Int?
+  clientActionRequired Boolean @default(false)
+  clientActionText  String?
+  practiceArea      String?
+  tone              String   @default("professional")
+  priority          Int      @default(5) // 1-10
+  status            String   @default("pending_approval") // 'pending_approval', 'approved', 'rejected', 'auto_published', 'delivered', 'recalled', 'held'
+  autoPublish       Boolean  @default(false)
+  approvalRequired  Boolean  @default(true)
+  deliveryChannels  Json?    // ['portal', 'email', 'sms']
+  deliveryStatus    Json?    // { portal: 'delivered', email: 'sent', sms: 'sent' }
+  deliveredAt       DateTime?
+  recalledAt        DateTime?
+  rejectedReason    String?
+  editedTitle       String?
+  editedBody        String?  @db.Text
+  aiModelUsed       String?
+  generatedAt       DateTime @default(now())
+  approvedAt        DateTime?
+  approvedBy        String?
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([status])
+  @@index([practiceArea])
+  @@index([priority])
+}
+
+model StatusUpdateTrigger {
+  id                String   @id @default(cuid())
+  name              String
+  description       String?  @db.Text
+  triggerSource     String   // same as StatusUpdateQueue.triggerSource
+  triggerCondition  Json     // { type, phase?, eventType?, category?, threshold?, ... }
+  practiceArea      String?  // null = all practice areas
+  autoPublish       Boolean  @default(false)
+  approvalRequired  Boolean  @default(true)
+  cooldownHours     Int      @default(24)
+  priority          Int      @default(5)
+  templateId        String?  // link to StatusUpdateTemplate
+  isActive          Boolean  @default(true)
+  isDefault         Boolean  @default(false)
+  firmId            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([triggerSource])
+  @@index([practiceArea])
+  @@index([isActive])
+}
+
+model StatusUpdateTemplate {
+  id                String   @id @default(cuid())
+  name              String
+  triggerSource     String
+  practiceArea      String?
+  tone              String   @default("professional") // 'supportive', 'warm', 'professional', 'formal', 'celebratory'
+  titleTemplate     String
+  bodyTemplate      String   @db.Text
+  milestoneTag      String?
+  includeNextSteps  Boolean  @default(true)
+  includeTimeline   Boolean  @default(false)
+  clientActionText  String?
+  excludeTopics     Json?    // string[] of topics to avoid
+  isActive          Boolean  @default(true)
+  firmId            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([triggerSource])
+  @@index([practiceArea])
+}
+
+model StatusUpdateSchedule {
+  id                String   @id @default(cuid())
+  matterId          String
+  scheduleType      String   @default("periodic") // 'periodic', 'custom'
+  frequencyDays     Int      @default(30)
+  templateId        String?
+  autoPublish       Boolean  @default(false)
+  isPaused          Boolean  @default(false)
+  nextRunAt         DateTime
+  lastRunAt         DateTime?
+  maxOccurrences    Int?
+  currentOccurrence Int      @default(0)
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([nextRunAt])
+  @@index([isPaused])
+}
+
+model ClientUpdatePreference {
+  id                String   @id @default(cuid())
+  portalAccountId   String
+  matterId          String?
+  frequency         String   @default("realtime") // 'realtime', 'daily_digest', 'weekly_digest', 'biweekly_digest', 'monthly_digest'
+  channels          Json     @default("[\"portal\", \"email\"]") // ['portal', 'email', 'sms']
+  quietHoursStart   String?  // "22:00"
+  quietHoursEnd     String?  // "08:00"
+  timezone          String   @default("America/New_York")
+  suppressCategories Json?   // string[] of triggerSources to suppress
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([portalAccountId, matterId])
+  @@index([portalAccountId])
+}
+
+// ==========================================
+// CLIENT PULSE SURVEYS
+// ==========================================
+
+model PulseSurvey {
+  id                String   @id @default(cuid())
+  templateId        String?
+  triggerId         String?
+  matterId          String?
+  portalAccountId   String?
+  clientName        String?
+  clientEmail       String?
+  practiceArea      String?
+  triggerMilestone  String?  // what triggered this survey
+  question          String   @db.Text
+  questionType      String   // 'scale_1_5', 'nps_0_10', 'thumbs', 'emoji_5', 'open_ended'
+  followUpQuestion  String?  @db.Text // shown after initial response
+  responseToken     String   @unique @default(cuid())
+  tokenExpiry       DateTime
+  score             Int?     // null until responded
+  responseLabel     String?  // 'Very Satisfied', 'Promoter', 'Thumbs Up', etc.
+  followUpResponse  String?  @db.Text
+  respondedAt       DateTime?
+  deliveryChannels  Json?    // ['portal', 'email', 'sms']
+  deliveryStatus    Json?    // { portal: 'sent', email: 'delivered', sms: 'sent' }
+  deliveredAt       DateTime?
+  reminderCount     Int      @default(0)
+  lastReminderAt    DateTime?
+  status            String   @default("pending") // 'pending', 'delivered', 'responded', 'expired', 'skipped'
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([portalAccountId])
+  @@index([responseToken])
+  @@index([status])
+  @@index([firmId])
+}
+
+model PulseTemplate {
+  id                String   @id @default(cuid())
+  name              String
+  triggerMilestone  String   // 'case_opened', 'first_month', 'discovery_started', 'deposition_taken', 'settlement_reached', 'case_closed', 'quarterly_checkin', 'post_event', 'post_invoice'
+  practiceArea      String?  // null = all
+  question          String   @db.Text
+  questionType      String   // 'scale_1_5', 'nps_0_10', 'thumbs', 'emoji_5'
+  followUpQuestion  String?  @db.Text
+  emailSubject      String?
+  emailPreheader    String?
+  smsText           String?
+  deliveryDelay     Int      @default(0) // hours after trigger
+  reminderAfterHours Int?    // send reminder if no response
+  maxReminders      Int      @default(1)
+  isActive          Boolean  @default(true)
+  isDefault         Boolean  @default(false)
+  firmId            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([triggerMilestone])
+  @@index([practiceArea])
+}
+
+model PulseTrigger {
+  id                String   @id @default(cuid())
+  name              String
+  triggerSource     String   // 'phase_change', 'milestone', 'time_based', 'event_completed', 'invoice_sent', 'case_closed'
+  triggerCondition  Json     // { type, milestone?, daysAfter?, eventType? }
+  templateId        String?
+  practiceArea      String?
+  isActive          Boolean  @default(true)
+  isDefault         Boolean  @default(false)
+  firmId            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([triggerSource])
+  @@index([isActive])
+}
+
+model PulseAggregation {
+  id                String   @id @default(cuid())
+  period            String   // '2026-03', '2026-Q1', '2026'
+  periodType        String   // 'monthly', 'quarterly', 'yearly'
+  scope             String   // 'firm', 'practice_area', 'attorney', 'milestone'
+  scopeValue        String?  // practice area name, attorney id, milestone name
+  totalSurveys      Int      @default(0)
+  totalResponses    Int      @default(0)
+  responseRate      Float    @default(0)
+  avgScore          Float    @default(0)
+  medianScore       Float?
+  npsScore          Float?
+  promoters         Int      @default(0)
+  passives          Int      @default(0)
+  detractors        Int      @default(0)
+  scoreDistribution Json?    // { "1": count, "2": count, ... }
+  trendDirection    String?  // 'up', 'down', 'stable'
+  trendDelta        Float?
+  themes            Json?    // [{ theme, count, sentiment, sampleQuotes }]
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([period, periodType, scope, scopeValue, firmId])
+  @@index([firmId])
+  @@index([periodType])
+}
+
+// ==========================================
+// PAYMENT PLANS & AUTO-PAY
+// ==========================================
+
+model AutoPayPlan {
+  id                    String   @id @default(cuid())
+  matterId              String
+  matterName            String?
+  clientName            String
+  clientEmail           String?
+  portalAccountId       String?
+  planName              String
+  planType              String   // 'flat_fee_installment', 'retainer_replenishment', 'expense_advance', 'settlement_lien', 'custom', 'payment_arrangement'
+  billingType           String   // 'hourly', 'flat_fee', 'contingency', 'hybrid'
+  totalAmount           Float?
+  totalPaid             Float    @default(0)
+  remainingBalance      Float?
+  installmentAmount     Float
+  installmentCount      Int?
+  completedInstallments Int      @default(0)
+  frequency             String   // 'weekly', 'biweekly', 'monthly_1st', 'monthly_15th', 'monthly_1st_and_15th', 'monthly_custom', 'quarterly', 'one_time', 'custom'
+  customScheduleDates   Json?
+  dayOfMonth            Int?
+  startDate             DateTime
+  endDate               DateTime?
+  nextPaymentDate       DateTime?
+  lastPaymentDate       DateTime?
+  lastPaymentAmount     Float?
+  autoPayEnabled        Boolean  @default(false)
+  paymentMethodId       String?
+  retainerMinBalance    Float?
+  retainerTargetBalance Float?
+  currentRetainerBalance Float?
+  lateFeeEnabled        Boolean  @default(false)
+  lateFeeAmount         Float?
+  lateFeePercentage     Float?
+  lateFeeDaysGrace      Int      @default(5)
+  depositAccount        String   @default("operating") // 'operating', 'trust', 'iola'
+  trustAccountId        String?
+  status                String   @default("active") // 'draft', 'pending_approval', 'active', 'paused', 'completed', 'defaulted', 'cancelled'
+  pauseReason           String?
+  pausedAt              DateTime?
+  resumeDate            DateTime?
+  missedPayments        Int      @default(0)
+  consecutiveMissed     Int      @default(0)
+  maxMissedBeforeDefault Int     @default(3)
+  clientSignedAt        DateTime?
+  agreementDocUrl       String?
+  notes                 String?  @db.Text
+  termsText             String?  @db.Text
+  userId                String
+  firmId                String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  scheduledPayments     ScheduledPayment[]
+
+  @@index([matterId])
+  @@index([status])
+  @@index([nextPaymentDate])
+  @@index([firmId])
+}
+
+model ScheduledPayment {
+  id                String   @id @default(cuid())
+  planId            String
+  plan              AutoPayPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  matterId          String
+  sequenceNumber    Int
+  scheduledDate     DateTime
+  amount            Float
+  lateFeeAmount     Float    @default(0)
+  totalDue          Float
+  status            String   @default("scheduled") // 'scheduled', 'processing', 'completed', 'failed', 'retrying', 'skipped', 'refunded', 'waived', 'late'
+  attemptCount      Int      @default(0)
+  maxAttempts       Int      @default(3)
+  lastAttemptAt     DateTime?
+  nextRetryAt       DateTime?
+  retryIntervalHours Int     @default(48)
+  paymentMethodId   String?
+  transactionId     String?
+  processorResponse Json?
+  failureReason     String?
+  completedAt       DateTime?
+  receiptId         String?
+  reminderSent      Boolean  @default(false)
+  reminderSentAt    DateTime?
+  failureNotifSent  Boolean  @default(false)
+  waivedBy          String?
+  waivedReason      String?
+  notes             String?
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([planId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+model ClientPaymentMethod {
+  id                  String   @id @default(cuid())
+  portalAccountId     String?
+  clientName          String
+  clientEmail         String
+  methodType          String   // 'credit_card', 'debit_card', 'ach_bank', 'check', 'cash', 'wire'
+  cardBrand           String?
+  lastFour            String?
+  expiryMonth         Int?
+  expiryYear          Int?
+  bankName            String?
+  accountLastFour     String?
+  processorToken      String?
+  processorCustomerId String?
+  isDefault           Boolean  @default(false)
+  isActive            Boolean  @default(true)
+  verifiedAt          DateTime?
+  lastUsedAt          DateTime?
+  failureCount        Int      @default(0)
+  billingAddress      Json?
+  firmId              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([portalAccountId])
+  @@index([firmId])
+}
+
+model PaymentReceipt {
+  id              String   @id @default(cuid())
+  transactionId   String
+  matterId        String
+  planId          String?
+  receiptNumber   String   @unique
+  clientName      String
+  clientEmail     String?
+  amount          Float
+  paymentMethod   String
+  paymentDate     DateTime
+  description     String
+  depositAccount  String
+  trustAccountNote String?
+  receiptUrl      String?
+  sentVia         Json?
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([matterId])
+  @@index([receiptNumber])
+}
+
+model PaymentPlanAgreement {
+  id              String   @id @default(cuid())
+  planId          String
+  matterId        String
+  clientName      String
+  agreementText   String   @db.Text
+  termsAccepted   Boolean  @default(false)
+  acceptedAt      DateTime?
+  acceptedVia     String?
+  signatureData   String?  @db.Text
+  ipAddress       String?
+  documentUrl     String?
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([planId])
+}
+
+// ==========================================
+// CLIENT-FACING MATTER TIMELINE
+// ==========================================
+
+model ClientTimelineEvent {
+  id                    String   @id @default(cuid())
+  matterId              String
+  eventType             String   // 'milestone', 'status_update', 'document_shared', 'court_event', 'filing', 'correspondence', 'payment', 'deadline', 'phase_change', 'client_action', 'attorney_note', 'future_milestone', 'anticipated_event'
+  category              String   // 'legal_proceeding', 'document', 'communication', 'financial', 'administrative', 'client_task', 'upcoming'
+  timelineStatus        String   // 'completed', 'current', 'upcoming', 'anticipated', 'cancelled'
+  title                 String
+  description           String?  @db.Text
+  clientDescription     String?  @db.Text
+  date                  DateTime
+  endDate               DateTime?
+  isEstimatedDate       Boolean  @default(false)
+  dateLabel             String?
+  iconType              String?  // 'gavel', 'file', 'mail', 'dollar', 'calendar', 'check', 'clock', 'user', 'shield', 'star', 'flag', 'alert'
+  accentColor           String?
+  importance            String   @default("normal") // 'major', 'normal', 'minor'
+  isVisibleToClient     Boolean  @default(true)
+  requiresClientAction  Boolean  @default(false)
+  clientActionText      String?
+  clientActionLink      String?
+  clientActionCompleted Boolean  @default(false)
+  clientActionCompletedAt DateTime?
+  linkedEntityType      String?
+  linkedEntityId        String?
+  attachmentUrl         String?
+  attachmentName        String?
+  phaseTag              String?
+  sortOrder             Int?
+  sourceType            String   @default("auto") // 'auto', 'manual', 'ai_generated'
+  sourceId              String?
+  createdBy             String?
+  userId                String
+  firmId                String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([timelineStatus])
+  @@index([date])
+  @@index([isVisibleToClient])
+}
+
+model TimelineTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  practiceArea    String
+  caseType        String?
+  jurisdiction    String?
+  milestones      Json     // ordered array of milestone templates
+  isActive        Boolean  @default(true)
+  isDefault       Boolean  @default(false)
+  firmId          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([practiceArea])
+}
+
+model TimelineConfig {
+  id                  String   @id @default(cuid())
+  matterId            String   @unique
+  templateId          String?
+  showEstimatedDates  Boolean  @default(true)
+  showPhaseGroups     Boolean  @default(true)
+  showDocuments       Boolean  @default(true)
+  showPayments        Boolean  @default(true)
+  showCorrespondence  Boolean  @default(false)
+  showDeadlines       Boolean  @default(false)
+  showClientActions   Boolean  @default(true)
+  customWelcomeNote   String?  @db.Text
+  hideBeforeDate      DateTime?
+  userId              String
+  firmId              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// ==========================================
+// MULTILINGUAL TRANSLATION SYSTEM
+// ==========================================
+
+model LanguageConfig {
+  id              String   @id @default(cuid())
+  languageCode    String   @unique // 'es', 'zh', 'ru', 'ht', 'ko', 'ar', 'pt', 'fr', 'pl', 'hi'
+  languageName    String   // 'Spanish', 'Chinese (Simplified)'
+  nativeName      String   // 'Español', '中文（简体）'
+  isRTL           Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  fontFamily      String?  // override font for CJK/Arabic/Devanagari
+  dateFormat      String?  // locale date format
+  uiCoverage      Float    @default(0) // 0-1 percentage of UI strings translated
+  contentCoverage Float    @default(0)
+  glossarySize    Int      @default(0)
+  activeClients   Int      @default(0) // clients using this language
+  firmId          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model UITranslation {
+  id              String   @id @default(cuid())
+  translationKey  String   // 'portal.nav.dashboard', 'portal.actions.pay_now'
+  languageCode    String
+  translatedText  String   @db.Text
+  isVerified      Boolean  @default(false)
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  firmId          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([translationKey, languageCode])
+  @@index([languageCode])
+}
+
+model ContentTranslation {
+  id              String   @id @default(cuid())
+  sourceType      String   // 'timeline_event', 'status_update', 'checklist_item', 'portal_document', 'message', 'survey_question', 'agreement'
+  sourceId        String
+  sourceField     String   @default("body") // which field: 'title', 'body', 'description', 'clientDescription'
+  languageCode    String
+  originalText    String   @db.Text
+  translatedText  String   @db.Text
+  practiceArea    String?
+  qualityScore    Float?   // 0-1 AI self-assessment
+  isVerified      Boolean  @default(false)
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  needsReview     Boolean  @default(false)
+  reviewReason    String?
+  translationModel String? // 'claude-sonnet-4-20250514'
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([sourceType, sourceId, sourceField, languageCode])
+  @@index([sourceType, sourceId])
+  @@index([languageCode])
+  @@index([needsReview])
+}
+
+model TranslationGlossary {
+  id              String   @id @default(cuid())
+  languageCode    String
+  englishTerm     String
+  translatedTerm  String
+  category        String   // 'legal', 'practice_area', 'ui', 'court', 'immigration', 'family_law', 'medical', 'financial'
+  practiceArea    String?
+  context         String?
+  doNotTranslate  Boolean  @default(false)
+  isVerified      Boolean  @default(false)
+  firmId          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([languageCode, englishTerm, practiceArea])
+  @@index([languageCode])
+  @@index([category])
+}
+
+model ClientLanguagePreference {
+  id              String   @id @default(cuid())
+  portalAccountId String   @unique
+  primaryLanguage String   @default("en")
+  secondaryLanguage String?
+  showBilingual   Boolean  @default(false)
+  autoTranslate   Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ==========================================
+// APPOINTMENT SELF-SCHEDULING
+// ==========================================
+
+model AppointmentType {
+  id                      String   @id @default(cuid())
+  name                    String
+  description             String?  @db.Text
+  practiceArea            String?
+  duration                Int      // minutes
+  bufferBefore            Int      @default(0)
+  bufferAfter             Int      @default(15)
+  locationType            String   @default("flexible") // 'in_person', 'virtual', 'phone', 'flexible'
+  virtualPlatform         String?  // 'zoom', 'teams', 'google_meet'
+  price                   Float?
+  requiresPayment         Boolean  @default(false)
+  allowedBookers          String   @default("both") // 'clients', 'public', 'both', 'internal'
+  requiresMatter          Boolean  @default(false)
+  maxAdvanceDays          Int      @default(30)
+  minAdvanceHours         Int      @default(24)
+  maxPerDay               Int?
+  maxPerWeek              Int?
+  autoConfirm             Boolean  @default(true)
+  confirmationMessage     String?  @db.Text
+  preparationInstructions String?  @db.Text
+  cancellationPolicy      String?  @db.Text
+  cancellationDeadlineHours Int    @default(24)
+  followUpActions         Json?    // { createTimeEntry, sendSurvey, scheduleFollowUp }
+  isPublic                Boolean  @default(false)
+  isActive                Boolean  @default(true)
+  color                   String?
+  sortOrder               Int      @default(0)
+  firmId                  String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  scheduledAppointments ScheduledAppointment[]
+
+  @@index([practiceArea])
+  @@index([isPublic])
+  @@index([firmId])
+}
+
+model ScheduledAppointment {
+  id                  String   @id @default(cuid())
+  typeId              String
+  type                AppointmentType @relation(fields: [typeId], references: [id])
+  matterId            String?
+  attorneyId          String?
+  clientName          String
+  clientEmail         String
+  clientPhone         String?
+  clientLanguage      String   @default("en")
+  portalAccountId     String?
+  startTime           DateTime
+  endTime             DateTime
+  duration            Int      // actual duration in minutes
+  locationType        String   // 'in_person', 'virtual', 'phone'
+  location            String?  // office address or meeting URL
+  meetingUrl          String?
+  meetingId           String?  // external meeting ID (Zoom, etc.)
+  status              String   @default("confirmed") // 'pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show', 'rescheduled'
+  bookingSource       String   @default("manual") // 'public_page', 'portal', 'intake', 'manual', 'phone'
+  bookingToken        String   @unique @default(cuid())
+  clientNotes         String?  @db.Text
+  attorneyNotes       String?  @db.Text
+  billingDuration     Int?     // actual billed duration (may differ)
+  timeEntryId         String?  // auto-created time entry
+  cancellationReason  String?
+  cancelledAt         DateTime?
+  cancelledBy         String?  // 'client', 'attorney', 'system'
+  completedAt         DateTime?
+  noShowAt            DateTime?
+  checkedInAt         DateTime?
+  confirmationSentAt  DateTime?
+  calendarEventId     String?  // linked CalendarEvent
+  userId              String?
+  firmId              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  reminders           ScheduledAppointmentReminder[]
+
+  @@index([typeId])
+  @@index([matterId])
+  @@index([attorneyId])
+  @@index([startTime])
+  @@index([status])
+  @@index([bookingToken])
+  @@index([firmId])
+}
+
+model AttorneyAvailability {
+  id              String   @id @default(cuid())
+  attorneyId      String
+  dayOfWeek       Int?     // 0=Sunday, 1=Monday... 6=Saturday (null for specific dates)
+  specificDate    DateTime? // for one-time availability
+  startTime       String   // "09:00" (HH:mm)
+  endTime         String   // "17:00"
+  isAvailable     Boolean  @default(true)
+  locationType    String   @default("both") // 'in_person', 'virtual', 'both'
+  recurrenceType  String   @default("weekly") // 'weekly', 'one_time'
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([attorneyId])
+  @@index([dayOfWeek])
+}
+
+model AvailabilityException {
+  id              String   @id @default(cuid())
+  attorneyId      String
+  date            DateTime
+  allDay          Boolean  @default(true)
+  startTime       String?  // if not allDay
+  endTime         String?
+  reason          String   // 'vacation', 'court', 'personal', 'holiday', 'conference', 'other'
+  reasonDetail    String?
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([attorneyId])
+  @@index([date])
+}
+
+model ScheduledAppointmentReminder {
+  id              String   @id @default(cuid())
+  appointmentId   String
+  appointment     ScheduledAppointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  reminderType    String   // '24_hour', '1_hour', '15_minute', 'custom'
+  channel         String   // 'email', 'sms', 'portal', 'push'
+  scheduledFor    DateTime
+  sentAt          DateTime?
+  status          String   @default("scheduled") // 'scheduled', 'sent', 'failed', 'cancelled'
+  content         Json?    // { subject, body, smsText }
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([appointmentId])
+  @@index([scheduledFor])
+  @@index([status])
+}
+
+model BookingPageConfig {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  subtitle        String?
+  description     String?  @db.Text
+  logoUrl         String?
+  primaryColor    String?
+  enabledTypeIds  Json?    // string[] of AppointmentType IDs
+  collectReason   Boolean  @default(true)
+  collectPhone    Boolean  @default(true)
+  customFields    Json?    // additional form fields
+  languages       Json?    // string[] of language codes
+  testimonials    Json?    // { quote, author }[]
+  confirmationRedirectUrl String?
+  isActive        Boolean  @default(true)
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ==========================================
+// REFERRAL TRACKING & ATTRIBUTION
+// ==========================================
+
+model ReferralSource {
+  id                String   @id @default(cuid())
+  name              String
+  sourceType        String   // 'referring_attorney', 'medical_provider', 'past_client', 'google_ads', 'google_organic', 'facebook_ads', 'yelp', 'bar_association', 'community_org', 'other'
+  category          String   // 'professional_referral', 'client_referral', 'digital_marketing', 'organic', 'directory_listing', 'institutional', 'traditional_marketing', 'event', 'other'
+  contactName       String?
+  contactTitle      String?
+  contactFirm       String?
+  contactEmail      String?
+  contactPhone      String?
+  contactAddress    String?
+  practiceArea      String?
+  specialtyArea     String?
+  referralAgreement Boolean  @default(false)
+  referralFeeType   String?  // 'percentage', 'flat_fee', 'reciprocal'
+  referralFeeAmount Float?
+  relationship      String   @default("new") // 'new', 'developing', 'strong', 'inactive'
+  trackingCode      String?  @unique
+  trackingUrl       String?
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+  totalReferrals    Int      @default(0)
+  totalConverted    Int      @default(0)
+  totalRevenue      Float    @default(0)
+  lastReferralAt    DateTime?
+  tags              Json?    // string[]
+  notes             String?  @db.Text
+  isActive          Boolean  @default(true)
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  referralEntries   ReferralEntry[]
+
+  @@index([sourceType])
+  @@index([category])
+  @@index([trackingCode])
+  @@index([firmId])
+}
+
+model ReferralEntry {
+  id                String   @id @default(cuid())
+  sourceId          String
+  source            ReferralSource @relation(fields: [sourceId], references: [id])
+  matterId          String?
+  campaignId        String?
+  clientName        String
+  clientEmail       String?
+  clientPhone       String?
+  practiceArea      String?
+  referralDate      DateTime @default(now())
+  howHeard          String?  // value from HowHeardOption
+  howHeardDetail    String?  // follow-up answer
+  trackingCode      String?  // captured from URL
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+  utmContent        String?
+  landingPage       String?
+  status            String   @default("lead") // 'lead', 'contacted', 'consultation_scheduled', 'consultation_completed', 'retained', 'active_matter', 'matter_closed', 'lost_lead', 'declined'
+  lostReason        String?  // 'not_qualified', 'chose_other_firm', 'no_response', 'price', 'sol_expired', 'conflict'
+  revenue           Float    @default(0)
+  referralFeePaid   Float    @default(0)
+  intakeSessionId   String?
+  appointmentId     String?
+  notes             String?  @db.Text
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([sourceId])
+  @@index([matterId])
+  @@index([status])
+  @@index([firmId])
+}
+
+model ReferralCampaign {
+  id                String   @id @default(cuid())
+  name              String
+  campaignType      String   // 'digital_ad', 'referral_program', 'event', 'direct_mail', 'social_media', 'content_marketing', 'other'
+  channel           String?  // 'google_ads', 'facebook', 'instagram', 'linkedin', 'email', 'print', 'radio', 'tv'
+  practiceArea      String?
+  startDate         DateTime
+  endDate           DateTime?
+  budget            Float?
+  spent             Float    @default(0)
+  utmCampaign       String?
+  totalLeads        Int      @default(0)
+  totalConsultations Int     @default(0)
+  totalRetained     Int      @default(0)
+  totalRevenue      Float    @default(0)
+  costPerLead       Float?
+  costPerRetained   Float?
+  roi               Float?   // ((revenue - spent) / spent) * 100
+  goals             String?  @db.Text
+  notes             String?  @db.Text
+  status            String   @default("active") // 'planned', 'active', 'paused', 'completed'
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([firmId])
+  @@index([status])
+}
+
+model HowHeardOption {
+  id              String   @id @default(cuid())
+  label           String
+  value           String   @unique
+  category        String   // 'professional_referral', 'client_referral', 'digital', 'directory', 'event', 'traditional_marketing', 'other'
+  iconType        String?
+  hasFollowUp     Boolean  @default(false)
+  followUpPrompt  String?
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+  translations    Json?    // { es: "...", zh: "...", ... }
+  firmId          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ReferralThankYou {
+  id              String   @id @default(cuid())
+  sourceId        String
+  referralId      String?
+  occasion        String   // 'new_referral', 'case_settled', 'milestone_referral', 'holiday', 'quarterly_appreciation', 'custom'
+  thankYouType    String   // 'email', 'letter', 'gift', 'lunch', 'phone_call'
+  scheduledDate   DateTime
+  sentAt          DateTime?
+  status          String   @default("scheduled") // 'scheduled', 'sent', 'completed', 'overdue', 'cancelled'
+  content         String?  @db.Text
+  notes           String?
+  userId          String
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([sourceId])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+// ==========================================
+// FEE STRUCTURES & HYBRID BILLING
+// ==========================================
+
+model FeeStructureTemplate {
+  id                    String   @id @default(cuid())
+  name                  String
+  description           String?  @db.Text
+  practiceArea          String
+  caseType              String?
+  jurisdiction          String?
+  phases                Json     // array of FeePhase objects
+  contingencySchedule   Json?    // tiered contingency rates
+  retainerRequired      Boolean  @default(false)
+  retainerAmount        Float?
+  retainerType          String?  // 'evergreen', 'fixed', 'deposit_against_fees'
+  retainerReplenishThreshold Float?
+  expenseHandling       String   @default("pass_through") // 'pass_through', 'included', 'capped', 'advance_required'
+  expenseCap            Float?
+  paymentTermsDays      Int      @default(30)
+  lateFeeEnabled        Boolean  @default(false)
+  lateFeePercentage     Float?
+  totalEstimate         Json?    // { low, midpoint, high, notes }
+  clientFacingDescription String? @db.Text
+  engagementLetterTemplate String? @db.Text
+  isActive              Boolean  @default(true)
+  isDefault             Boolean  @default(false)
+  notes                 String?  @db.Text
+  firmId                String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([practiceArea])
+  @@index([caseType])
+  @@index([isDefault])
+}
+
+model MatterFeeStructure {
+  id                    String   @id @default(cuid())
+  matterId              String   @unique
+  templateId            String?
+  templateName          String?
+  phases                Json     // array of FeePhase with matter-specific overrides
+  contingencySchedule   Json?
+  retainerRequired      Boolean  @default(false)
+  retainerAmount        Float?
+  retainerType          String?
+  expenseHandling       String   @default("pass_through")
+  expenseCap            Float?
+  totalEstimate         Json?
+  currentPhaseId        String?
+  totalBilled           Float    @default(0)
+  totalCollected        Float    @default(0)
+  totalExpenses         Float    @default(0)
+  budgetAlertThreshold  Float?   // percentage (0.8 = 80%)
+  budgetAlertTriggered  Boolean  @default(false)
+  discountPercentage    Float?
+  discountReason        String?
+  clientFacingDescription String? @db.Text
+  engagementLetterSigned Boolean @default(false)
+  engagementLetterSignedAt DateTime?
+  status                String   @default("active") // 'draft', 'active', 'completed', 'modified'
+  userId                String
+  firmId                String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  phaseCompletions      PhaseCompletion[]
+
+  @@index([matterId])
+  @@index([firmId])
+}
+
+model PhaseCompletion {
+  id                String   @id @default(cuid())
+  feeStructureId    String
+  feeStructure      MatterFeeStructure @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  phaseId           String   // ID from the phases JSON
+  phaseName         String
+  billingModel      String   // 'flat_fee', 'hourly', 'contingency', 'capped_hourly', 'subscription', 'no_charge'
+  status            String   @default("active") // 'pending', 'active', 'completed', 'skipped'
+  startedAt         DateTime?
+  completedAt       DateTime?
+  skippedAt         DateTime?
+  skipReason        String?
+  amountBilled      Float    @default(0)
+  amountCollected   Float    @default(0)
+  hoursLogged       Float    @default(0)
+  flatFeeAmount     Float?   // for flat fee phases
+  capAmount         Float?   // for capped hourly
+  recoveryAmount    Float?   // for contingency phases
+  contingencyFee    Float?   // calculated fee
+  notes             String?
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([feeStructureId])
+  @@index([status])
+}
+
+model HourlyRateSchedule {
+  id              String   @id @default(cuid())
+  matterId        String?  // null = firm default
+  templateId      String?
+  role            String   // 'partner', 'senior_associate', 'associate', 'junior_associate', 'paralegal', 'law_clerk', 'of_counsel'
+  attorneyId      String?  // specific attorney override
+  rate            Float
+  effectiveDate   DateTime @default(now())
+  endDate         DateTime?
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([role])
+  @@index([firmId])
+}
+
+model FeeEstimate {
+  id              String   @id @default(cuid())
+  matterId        String
+  scenario        String   @default("expected") // 'best_case', 'expected', 'complex', 'custom'
+  scenarioLabel   String?  // "Quick Settlement", "Standard Timeline", "Trial Required"
+  phaseBreakdown  Json     // per-phase estimates
+  totalLow        Float
+  totalMidpoint   Float
+  totalHigh       Float
+  expenseEstimate Float?
+  notes           String?  @db.Text
+  clientExplanation String? @db.Text // AI-generated plain language
+  presentedAt     DateTime?
+  selectedAt      DateTime?
+  isSelected      Boolean  @default(false)
+  userId          String
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([matterId])
+}
+
+// ==========================================
+// TRUST / IOLA ACCOUNTING (COMPLIANCE)
+// ==========================================
+
+model TrustBankAccount {
+  id                    String   @id @default(cuid())
+  accountName           String
+  accountType           String   // 'iola', 'escrow', 'trust', 'operating'
+  bankName              String
+  bankBranch            String?
+  accountNumberLast4    String?
+  routingNumberLast4    String?
+  accountHolderName     String?
+  openingDate           DateTime?
+  openingBalance        Float    @default(0)
+  currentBalance        Float    @default(0)
+  lastBankBalance       Float?
+  lastBankBalanceDate   DateTime?
+  pendingDeposits       Float    @default(0)
+  pendingDisbursements  Float    @default(0)
+  interestBearing       Boolean  @default(false)
+  iolaBarNumber         String?
+  iolaFundRecipient     String?
+  reconciliationFrequency String @default("monthly")
+  lastReconciledAt      DateTime?
+  nextReconciliationDue DateTime?
+  signatories           Json?    // [{ name, title, canApprove }]
+  signatureRequired     String   @default("single") // 'single', 'dual'
+  complianceStatus      String   @default("compliant") // 'compliant', 'warning', 'non_compliant'
+  isActive              Boolean  @default(true)
+  notes                 String?  @db.Text
+  firmId                String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  clientLedgers         TrustClientLedger[]
+  journalEntries        TrustJournalEntry[]
+  reconciliations       TrustReconciliation[]
+
+  @@index([firmId])
+  @@index([accountType])
+}
+
+model TrustClientLedger {
+  id                String   @id @default(cuid())
+  accountId         String
+  account           TrustBankAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  matterId          String
+  matterName        String?
+  clientName        String
+  currentBalance    Float    @default(0)
+  totalDeposited    Float    @default(0)
+  totalDisbursed    Float    @default(0)
+  lastActivityAt    DateTime?
+  status            String   @default("active") // 'active', 'closed', 'dormant'
+  closedAt          DateTime?
+  notes             String?
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([accountId, matterId])
+  @@index([accountId])
+  @@index([matterId])
+  @@index([status])
+}
+
+model TrustJournalEntry {
+  id                String   @id @default(cuid())
+  accountId         String
+  account           TrustBankAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  transactionRef    String   // "TT-2026-000042"
+  matterId          String?
+  clientName        String?
+  entryDate         DateTime
+  debitAccount      String   // "Trust Bank — IOLA" or "Client Trust Liability — Smith"
+  creditAccount     String
+  description       String
+  debitAmount       Float
+  creditAmount      Float
+  runningBalance    Float?
+  transactionType   String   // 'deposit', 'disbursement', 'earned_fee', 'expense_reimbursement', 'client_refund', 'transfer', 'interest', 'bank_fee'
+  disbursementPayee String?
+  disbursementMethod String?  // 'check', 'wire', 'ach', 'transfer'
+  checkNumber       String?
+  referenceNumber   String?
+  sourcePaymentId   String?
+  isCleared         Boolean  @default(false)
+  clearedAt         DateTime?
+  approvedBy        String?
+  approvedAt        DateTime?
+  complianceFlag    Boolean  @default(false)
+  complianceFlagReason String?
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+
+  @@index([accountId])
+  @@index([matterId])
+  @@index([entryDate])
+  @@index([transactionRef])
+  @@index([isCleared])
+}
+
+model TrustReconciliation {
+  id                    String   @id @default(cuid())
+  accountId             String
+  account               TrustBankAccount @relation(fields: [accountId], references: [id])
+  reconciliationDate    DateTime
+  statementBalance      Float
+  firmLedgerBalance     Float
+  clientLedgersTotal    Float
+  outstandingDeposits   Json?    // [{ amount, description, date }]
+  outstandingChecks     Json?    // [{ amount, checkNumber, payee, date }]
+  adjustments           Json?    // [{ amount, description, type }]
+  adjustedBankBalance   Float
+  threeWayMatch         Boolean
+  bankVsLedgerDiff      Float    @default(0)
+  ledgerVsClientsDiff   Float    @default(0)
+  status                String   @default("in_progress") // 'in_progress', 'completed', 'completed_with_exceptions', 'needs_review'
+  exceptions            Json?    // [{ description, amount, resolution }]
+  notes                 String?  @db.Text
+  reconciledBy          String
+  reviewedBy            String?
+  completedAt           DateTime?
+  firmId                String
+  createdAt             DateTime @default(now())
+
+  @@index([accountId])
+  @@index([reconciliationDate])
+}
+
+model SettlementDisbursement {
+  id                String   @id @default(cuid())
+  matterId          String
+  matterName        String?
+  clientName        String
+  trustAccountId    String
+  grossRecovery     Float
+  settlementType    String   // 'negotiated_settlement', 'mediation', 'arbitration', 'verdict', 'default_judgment'
+  fundingSource     String?  // 'insurance_company', 'defendant', 'court_registry'
+  fundingEntity     String?
+  settlementDate    DateTime
+  disbursementLines Json     // [{ lineType, payee, description, amount, method, status }]
+  totalDisbursed    Float    @default(0)
+  clientNetAmount   Float?
+  status            String   @default("draft") // 'draft', 'pending_approval', 'client_approved', 'attorney_approved', 'ready_to_disburse', 'partially_disbursed', 'fully_disbursed'
+  clientApprovedAt  DateTime?
+  attorneyApprovedAt DateTime?
+  worksheetUrl      String?
+  notes             String?  @db.Text
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([status])
+}
+
+model TrustComplianceRule {
+  id                String   @id @default(cuid())
+  name              String
+  ruleType          String   // 'balance_minimum', 'reconciliation_frequency', 'disbursement_limit', 'dormancy_threshold', 'commingling_check'
+  condition         Json
+  action            Json     // { type: 'block_transaction'|'alert'|'require_dual_approval', severity?, alert? }
+  regulatoryReference String?
+  isActive          Boolean  @default(true)
+  firmId            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([ruleType])
+}
+
+model TrustComplianceAlert {
+  id                String   @id @default(cuid())
+  accountId         String?
+  matterId          String?
+  ruleId            String?
+  alertType         String   // 'negative_balance', 'reconciliation_overdue', 'commingling', 'dormant_funds', 'stale_check', 'large_disbursement', 'unauthorized_disbursement'
+  severity          String   // 'critical', 'high', 'medium', 'info'
+  title             String
+  description       String   @db.Text
+  status            String   @default("open") // 'open', 'acknowledged', 'resolved', 'dismissed'
+  resolvedAt        DateTime?
+  resolvedBy        String?
+  resolution        String?
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([severity])
+  @@index([firmId])
+}
+
+// ==========================================
+// BATCH INVOICING SYSTEM
+// ==========================================
+
+model InvoicingTemplate {
+  id                    String   @id @default(cuid())
+  name                  String
+  description           String?
+  practiceArea          String
+  caseType              String?
+  billingModel          String?  // 'hourly', 'flat_fee', 'contingency', 'hybrid', 'subscription', 'all'
+  layout                String   @default("standard") // 'standard', 'detailed', 'summary', 'expense_only'
+  headerConfig          Json?    // { showLogo, showAddress, customHeader, invoiceTitle }
+  clientInfoConfig      Json?    // { showFields }
+  lineItemConfig        Json?    // { timeEntries: { show, groupBy, columns, ... }, flatFeeDisplay, contingencyDisplay, subscriptionDisplay }
+  summaryConfig         Json?    // { showSubtotal, showExpenses, showTrustBalance, showRetainerStatus, showAmountDue }
+  expenseConfig         Json?    // { show, detail, columns }
+  trustConfig           Json?    // { showTrustBalance, showRetainerStatus, showTrustDisclosure, disclosureText }
+  footerConfig          Json?    // { paymentTerms, paymentInstructions, showPaymentLink, customFooter }
+  styleConfig           Json?    // { primaryColor, accentColor, fontFamily, fontSize, rowShading }
+  pageConfig            Json?    // { paperSize, margins }
+  clientFacingLanguage  Json?    // { legalTerm: plainTerm }
+  redactInternalNotes   Boolean  @default(true)
+  isActive              Boolean  @default(true)
+  isDefault             Boolean  @default(false)
+  firmId                String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([practiceArea])
+  @@index([billingModel])
+  @@index([isDefault])
+}
+
+model GeneratedInvoice {
+  id                String   @id @default(cuid())
+  invoiceNumber     String   @unique
+  matterId          String
+  matterName        String?
+  clientName        String
+  clientEmail       String?
+  templateId        String?
+  templateName      String?
+  batchId           String?
+  periodStart       DateTime
+  periodEnd         DateTime
+  invoiceDate       DateTime @default(now())
+  dueDate           DateTime
+  lineItems         Json     // array of line item objects
+  subtotal          Float    @default(0)
+  expenseTotal      Float    @default(0)
+  adjustments       Float    @default(0)
+  trustCredit       Float    @default(0)
+  priorBalance      Float    @default(0)
+  totalDue          Float    @default(0)
+  totalHours        Float    @default(0)
+  billingModel      String?
+  practiceArea      String?
+  auditGrade        String?  // 'A', 'B', 'C', 'D', 'F'
+  auditFlagCount    Int      @default(0)
+  pdfUrl            String?
+  ledesUrl          String?
+  status            String   @default("draft") // 'draft', 'approved', 'finalized', 'sent', 'paid', 'partially_paid', 'overdue', 'voided', 'disputed'
+  sentAt            DateTime?
+  sentVia           String?  // 'portal', 'email', 'both', 'print'
+  paidAt            DateTime?
+  paidAmount        Float    @default(0)
+  voidedAt          DateTime?
+  voidedReason      String?
+  customNotes       String?  @db.Text
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([batchId])
+  @@index([status])
+  @@index([firmId])
+}
+
+model InvoiceBatch {
+  id                String   @id @default(cuid())
+  batchName         String
+  batchType         String   @default("monthly") // 'monthly', 'quarterly', 'custom'
+  periodStart       DateTime
+  periodEnd         DateTime
+  filterCriteria    Json?    // { practiceAreas, billingModels, matterIds, minimumAmount }
+  sendMethod        String?  // 'portal', 'email', 'both', 'print'
+  totalItems        Int      @default(0)
+  approvedItems     Int      @default(0)
+  rejectedItems     Int      @default(0)
+  heldItems         Int      @default(0)
+  totalAmount       Float    @default(0)
+  status            String   @default("generating") // 'generating', 'review', 'partially_approved', 'approved', 'sending', 'sent', 'completed'
+  sentAt            DateTime?
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  items             InvoiceBatchItem[]
+
+  @@index([status])
+  @@index([firmId])
+}
+
+model InvoiceBatchItem {
+  id              String   @id @default(cuid())
+  batchId         String
+  batch           InvoiceBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  invoiceId       String?
+  matterId        String
+  matterName      String?
+  clientName      String?
+  templateId      String?
+  amount          Float    @default(0)
+  hours           Float    @default(0)
+  auditGrade      String?
+  auditFlagCount  Int      @default(0)
+  status          String   @default("pending") // 'pending', 'generated', 'approved', 'rejected', 'held'
+  rejectedReason  String?
+  holdReason      String?
+  userId          String
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([batchId])
+  @@index([status])
+}
+
+model InvoiceSchedule {
+  id                String   @id @default(cuid())
+  name              String
+  scheduleType      String   @default("monthly") // 'monthly', 'bimonthly', 'quarterly', 'semi_annual', 'annual'
+  dayOfMonth        Int      @default(1)
+  filterCriteria    Json?
+  autoGenerate      Boolean  @default(true)
+  autoAudit         Boolean  @default(true)
+  autoApproveGradeA Boolean  @default(false)
+  autoSend          Boolean  @default(false)
+  sendMethod        String?
+  templateOverrides Json?    // { practiceArea: templateId }
+  isActive          Boolean  @default(true)
+  lastRunAt         DateTime?
+  nextRunAt         DateTime?
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([nextRunAt])
+}
+
+model InvoicePDFConfig {
+  id                    String   @id @default("default")
+  firmName              String?
+  firmAddress           String?
+  firmPhone             String?
+  firmEmail             String?
+  firmBarNumber         String?
+  firmLogoUrl           String?
+  trustAccountDisclosure String? @db.Text
+  paymentInstructions   String?  @db.Text
+  defaultPaymentTermsDays Int    @default(30)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// ==========================================
+// FEE SPLITTING & REFERRAL FEES
+// ==========================================
+
+model FeeSplitAgreement {
+  id                    String   @id @default(cuid())
+  matterId              String
+  matterName            String?
+  agreementType         String   // 'referral_fee', 'co_counsel', 'of_counsel', 'forwarding_fee', 'origination_credit'
+  templateId            String?
+  referralSourceId      String?  // link to ReferralSource
+  splitMethod           String   @default("percentage_of_fee") // 'percentage_of_fee', 'percentage_of_recovery', 'fixed_amount', 'hourly_split', 'tiered'
+  splitBasis            String   @default("attorney_fee") // 'attorney_fee', 'gross_recovery', 'net_recovery'
+  totalFeePercentage    Float?   // contingency percentage of recovery
+  recoveryAmount        Float?   // actual recovery (when known)
+  totalFeeAmount        Float?   // calculated total fee
+  tiers                 Json?    // for tiered: [{ maxRecovery, ourPercentage, referralPercentage }]
+  ethicsCompliance      Json?    // { clientConsentObtained, consentDate, writtenAgreement, proportionalResponsibility, totalFeeReasonable }
+  clientConsentDocUrl   String?
+  feeAgreementDocUrl    String?
+  status                String   @default("draft") // 'draft', 'pending_consent', 'active', 'disbursing', 'completed', 'terminated'
+  activatedAt           DateTime?
+  completedAt           DateTime?
+  notes                 String?  @db.Text
+  userId                String
+  firmId                String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  participants          FeeSplitParticipant[]
+  disbursements         FeeSplitDisbursement[]
+
+  @@index([matterId])
+  @@index([status])
+  @@index([firmId])
+}
+
+model FeeSplitParticipant {
+  id                String   @id @default(cuid())
+  agreementId       String
+  agreement         FeeSplitAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  role              String   // 'lead_counsel', 'co_counsel', 'referral_source', 'of_counsel', 'forwarding_attorney'
+  isOurFirm         Boolean  @default(false)
+  firmName          String?
+  attorneyName      String?
+  email             String?
+  phone             String?
+  barNumber         String?
+  taxId             String?  // for 1099 reporting (encrypted in production)
+  splitPercentage   Float?
+  fixedAmount       Float?
+  responsibilities  Json?    // string[] of responsibility areas
+  disbursementMethod String?  // 'trust_check', 'wire', 'ach', 'trust_transfer'
+  disbursementStatus String  @default("pending") // 'pending', 'approved', 'disbursed', 'held'
+  disbursedAmount   Float    @default(0)
+  form1099Required  Boolean  @default(false)
+  form1099Generated Boolean  @default(false)
+  form1099SentAt    DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([agreementId])
+}
+
+model FeeSplitDisbursement {
+  id                String   @id @default(cuid())
+  agreementId       String
+  agreement         FeeSplitAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  participantId     String
+  amount            Float
+  description       String
+  method            String   // 'trust_check', 'wire', 'ach', 'trust_transfer'
+  checkNumber       String?
+  referenceNumber   String?
+  trustTransactionRef String? // link to TrustJournalEntry
+  status            String   @default("pending") // 'pending', 'approved', 'processing', 'completed', 'failed'
+  approvedBy        String?
+  approvedAt        DateTime?
+  completedAt       DateTime?
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+
+  @@index([agreementId])
+  @@index([status])
+}
+
+model FeeSplitTemplate {
+  id                String   @id @default(cuid())
+  name              String
+  agreementType     String
+  practiceArea      String?
+  splitMethod       String
+  splitBasis        String
+  defaultParticipants Json   // template participant configs
+  tiers             Json?
+  ethicsChecklist   Json?
+  isActive          Boolean  @default(true)
+  firmId            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([agreementType])
+}
+
+model OriginationCredit {
+  id                String   @id @default(cuid())
+  attorneyId        String
+  attorneyName      String
+  matterId          String
+  matterName        String?
+  creditPercentage  Float    @default(100)
+  totalRevenue      Float    @default(0)
+  creditAmount      Float    @default(0)
+  period            String?  // year or year-quarter
+  isActive          Boolean  @default(true)
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([attorneyId])
+  @@index([matterId])
+}
+
+// ==========================================
+// CONTINGENCY CASE MANAGEMENT
+// ==========================================
+
+model ContingencyCase {
+  id                      String   @id @default(cuid())
+  matterId                String   @unique
+  matterName              String?
+  clientName              String?
+  caseType                String?  // 'auto_accident', 'slip_and_fall', 'medical_malpractice', 'wrongful_death', 'product_liability'
+  incidentDate            DateTime?
+  solDate                 DateTime?
+  feePercentage           Float    @default(33.33)
+  feeBase                 String   @default("gross_recovery") // 'gross_recovery', 'net_after_expenses'
+  feeTier                 String?  // 'flat', 'tiered'
+  feeTiers                Json?    // [{ stage, percentage }]
+  currentStage            String   @default("pre_litigation") // 'pre_litigation', 'post_filing', 'post_trial'
+  effectiveFeePercentage  Float    @default(33.33)
+  totalExpensesAdvanced   Float    @default(0)
+  totalExpensesBudgeted   Float    @default(0)
+  totalHoursInvested      Float    @default(0)
+  blendedHourlyRate       Float    @default(350)
+  insurancePolicyLimits   Float?
+  insuranceCarrier        String?
+  claimNumber             String?
+  adjustorName            String?
+  adjustorPhone           String?
+  adjustorEmail           String?
+  demandAmount            Float?
+  demandDate              DateTime?
+  lastOfferAmount         Float?
+  lastOfferDate           DateTime?
+  medicalSpecials         Float    @default(0)
+  lostWages               Float    @default(0)
+  propertyDamage          Float    @default(0)
+  settlementTarget        Json?    // { low, midpoint, high }
+  status                  String   @default("active") // 'active', 'settled', 'trial', 'dismissed', 'withdrawn'
+  settledAmount           Float?
+  settledDate             DateTime?
+  userId                  String
+  firmId                  String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  expenses                CaseExpense[]
+  liens                   CaseLien[]
+  damages                 DamageComponent[]
+  negotiations            NegotiationEvent[]
+  scenarios               SettlementScenario[]
+  providers               CaseMedicalProvider[]
+  policies                CaseInsurancePolicy[]
+  budgetItems             CaseExpenseBudget[]
+
+  @@index([matterId])
+  @@index([status])
+  @@index([firmId])
+}
+
+model CaseExpense {
+  id              String   @id @default(cuid())
+  caseId          String
+  contingencyCase ContingencyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  category        String   // 'filing_fee', 'service_fee', 'medical_records', 'expert_medical', 'expert_accident_reconstruction', 'deposition_transcript', 'investigation', 'police_report', 'mediation_fee', 'trial_exhibits', 'copying', 'other'
+  description     String
+  vendor          String?
+  amount          Float
+  datePaid        DateTime?
+  paymentStatus   String   @default("paid") // 'paid', 'pending', 'projected'
+  receiptUrl      String?
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([caseId])
+  @@index([category])
+}
+
+model CaseLien {
+  id                  String   @id @default(cuid())
+  caseId              String
+  contingencyCase     ContingencyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  lienType            String   // 'medical_provider', 'health_insurance_subrogation', 'medicare_conditional', 'medicaid', 'workers_comp', 'child_support', 'government', 'other'
+  lienHolder          String
+  contactName         String?
+  contactPhone        String?
+  contactEmail        String?
+  originalAmount      Float
+  negotiatedAmount    Float?
+  reductionPercentage Float?
+  reductionMethod     String?  // 'negotiated', 'common_fund', 'statutory', 'hardship'
+  status              String   @default("asserted") // 'asserted', 'verified', 'negotiating', 'negotiated', 'paid', 'released', 'disputed'
+  isPriority          Boolean  @default(false)
+  isStatutory         Boolean  @default(false)
+  letterOfProtection  Boolean  @default(false)
+  notes               String?  @db.Text
+  firmId              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([caseId])
+}
+
+model DamageComponent {
+  id                  String   @id @default(cuid())
+  caseId              String
+  contingencyCase     ContingencyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  damageType          String   // 'medical_past', 'medical_future', 'lost_wages_past', 'lost_wages_future', 'pain_suffering_past', 'pain_suffering_future', 'loss_enjoyment', 'loss_consortium', 'property_damage', 'punitive'
+  category            String   // 'economic', 'non_economic'
+  description         String
+  amountActual        Float?
+  amountLow           Float?
+  amountMidpoint      Float?
+  amountHigh          Float?
+  documentedBy        String?
+  verificationStatus  String   @default("estimated") // 'estimated', 'documented', 'verified_by_expert'
+  firmId              String
+  createdAt           DateTime @default(now())
+
+  @@index([caseId])
+}
+
+model NegotiationEvent {
+  id          String   @id @default(cuid())
+  caseId      String
+  contingencyCase ContingencyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  eventType   String   // 'demand', 'offer', 'counter', 'mediation_result', 'verdict'
+  amount      Float
+  date        DateTime
+  notes       String?  @db.Text
+  firmId      String
+  createdAt   DateTime @default(now())
+
+  @@index([caseId])
+  @@index([date])
+}
+
+model SettlementScenario {
+  id              String   @id @default(cuid())
+  caseId          String
+  contingencyCase ContingencyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  scenarioName    String
+  settlementAmount Float
+  feePercentage   Float
+  feeAmount       Float
+  expenses        Float
+  lienTotal       Float
+  clientNet       Float
+  effectiveHourlyRate Float?
+  roi             Float?
+  isPresented     Boolean  @default(false)
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([caseId])
+}
+
+model CaseMedicalProvider {
+  id                String   @id @default(cuid())
+  caseId            String
+  contingencyCase   ContingencyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  providerName      String
+  providerType      String   // 'orthopedist', 'physical_therapy', 'emergency_room', 'radiologist', 'pain_management', 'neurologist', 'surgeon', 'chiropractor', 'psychologist'
+  facilityName      String?
+  firstVisitDate    DateTime?
+  lastVisitDate     DateTime?
+  treatmentOngoing  Boolean  @default(true)
+  totalBilled       Float    @default(0)
+  letterOfProtection Boolean @default(false)
+  recordsObtained   Boolean  @default(false)
+  billsObtained     Boolean  @default(false)
+  narrativeObtained Boolean  @default(false)
+  notes             String?
+  firmId            String
+  createdAt         DateTime @default(now())
+
+  @@index([caseId])
+}
+
+model CaseInsurancePolicy {
+  id              String   @id @default(cuid())
+  caseId          String
+  contingencyCase ContingencyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  policyType      String   // 'auto_liability', 'uninsured_motorist', 'underinsured', 'umbrella', 'commercial', 'homeowners'
+  carrier         String
+  policyNumber    String?
+  insured         String?
+  policyLimits    Float
+  aggregateLimits Float?
+  claimNumber     String?
+  adjustorName    String?
+  adjustorPhone   String?
+  adjustorEmail   String?
+  status          String   @default("active") // 'active', 'accepted', 'denied', 'exhausted'
+  notes           String?
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([caseId])
+}
+
+model CaseExpenseBudget {
+  id              String   @id @default(cuid())
+  caseId          String
+  contingencyCase ContingencyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  category        String
+  description     String
+  estimatedAmount Float
+  actualAmount    Float    @default(0)
+  status          String   @default("projected") // 'projected', 'spent', 'partially_spent'
+  priority        String   @default("required") // 'required', 'recommended', 'optional'
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([caseId])
+}
+
+// ==========================================
+// REVENUE FORECASTING
+// ==========================================
+
+model RevenueForecast {
+  id                      String   @id @default(cuid())
+  forecastPeriod          String   // '2026-Q2', '2026-04'
+  periodType              String   // 'monthly', 'quarterly', 'annual'
+  totalProjectedRevenue   Float
+  totalProjectedLow       Float
+  totalProjectedHigh      Float
+  totalConfirmed          Float    @default(0)
+  totalProbable           Float    @default(0)
+  totalPossible           Float    @default(0)
+  byPracticeArea          Json?    // { pi: { low, mid, high, confirmed, probable, possible }, ... }
+  byMonth                 Json?    // { '2026-04': { total, confirmed, probable, possible }, ... }
+  byBillingModel          Json?    // { hourly, flat_fee, contingency, subscription }
+  aiInsights              String?  @db.Text
+  assumptions             Json?    // snapshot of assumptions used
+  generatedAt             DateTime @default(now())
+  userId                  String
+  firmId                  String
+  createdAt               DateTime @default(now())
+
+  dataPoints              ForecastDataPoint[]
+
+  @@index([firmId])
+  @@index([forecastPeriod])
+}
+
+model ForecastDataPoint {
+  id                String   @id @default(cuid())
+  forecastId        String
+  forecast          RevenueForecast @relation(fields: [forecastId], references: [id], onDelete: Cascade)
+  source            String   // 'scheduled_payment', 'pending_invoice', 'hourly_projection', 'flat_fee_phase', 'contingency_expected', 'subscription_recurring', 'retainer_disbursement', 'intake_pipeline', 'historical_projection', 'manual'
+  matterId          String?
+  matterName        String?
+  clientName        String?
+  practiceArea      String?
+  billingModel      String?
+  projectedMonth    String   // '2026-04'
+  amount            Float
+  confidence        String   // 'confirmed', 'probable', 'possible'
+  confidenceScore   Float    // 0-1
+  description       String
+  isRecurring       Boolean  @default(false)
+  linkedEntityType  String?
+  linkedEntityId    String?
+  firmId            String
+  createdAt         DateTime @default(now())
+
+  @@index([forecastId])
+  @@index([confidence])
+  @@index([practiceArea])
+}
+
+model HistoricalRevenue {
+  id              String   @id @default(cuid())
+  period          String   // '2026-03'
+  periodType      String   @default("monthly")
+  practiceArea    String?  // null = firm total
+  billingModel    String?
+  amount          Float
+  collectionRate  Float?
+  invoiceCount    Int?
+  avgDaysToCollect Float?
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@unique([period, practiceArea, billingModel, firmId])
+  @@index([firmId])
+  @@index([period])
+}
+
+model ForecastAssumption {
+  id              String   @id @default(cuid())
+  name            String
+  category        String   // 'collection', 'pipeline', 'contingency', 'seasonal', 'growth', 'cost'
+  parameterType   String   // 'percentage', 'days', 'count', 'amount', 'multiplier'
+  defaultValue    Float
+  currentValue    Float
+  historicalValue Float?
+  benchmarkValue  Float?
+  description     String?
+  source          String   @default("manual") // 'manual', 'historical_calculated', 'benchmark'
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([name, firmId])
+  @@index([category])
+  @@index([firmId])
+}
+
+model RevenueGoal {
+  id              String   @id @default(cuid())
+  period          String   // '2026-Q2', '2026'
+  periodType      String   // 'monthly', 'quarterly', 'annual'
+  practiceArea    String?  // null = firm-wide
+  attorneyId      String?
+  goalAmount      Float
+  actualAmount    Float    @default(0)
+  percentComplete Float    @default(0)
+  status          String   @default("on_track") // 'on_track', 'at_risk', 'behind', 'exceeded', 'met'
+  notes           String?
+  firmId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([period, practiceArea, attorneyId, firmId])
+  @@index([firmId])
+  @@index([period])
+}
+
+model ForecastScenario {
+  id              String   @id @default(cuid())
+  forecastId      String?
+  name            String   // 'Optimistic', 'Conservative', 'Growth Plan'
+  adjustments     Json     // { piAdjustment: +10%, collectionRate: 95%, ... }
+  projectedTotal  Float
+  projectedByArea Json?
+  comparedToBase  Float?   // delta from base forecast
+  notes           String?
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([firmId])
+}
+
+// ==========================================
+// QUICK MOBILE INVOICING
+// ==========================================
+
+model QuickInvoice {
+  id                String   @id @default(cuid())
+  invoiceId         String?  // link to GeneratedInvoice once created
+  matterId          String
+  matterName        String?
+  clientName        String?
+  clientEmail       String?
+  presetId          String?
+  amount            Float
+  hours             Float    @default(0)
+  expenseAmount     Float    @default(0)
+  trustCreditApplied Float   @default(0)
+  amountDue         Float
+  description       String?  @db.Text
+  customNote        String?
+  sendMethod        Json?    // ['portal', 'email', 'sms']
+  templateId        String?
+  auditGrade        String?
+  generatedInSeconds Int?
+  source            String   @default("quick_mobile") // 'quick_mobile', 'voice', 'one_tap', 'batch'
+  status            String   @default("sent") // 'draft', 'sent', 'paid', 'overdue'
+  sentAt            DateTime?
+  paidAt            DateTime?
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+
+  @@index([matterId])
+  @@index([userId])
+  @@index([firmId])
+}
+
+model QuickInvoicePreset {
+  id                String   @id @default(cuid())
+  name              String
+  matterId          String?  // null = applies to any matching matter
+  presetType        String   // 'recurring_retainer', 'flat_fee_phase', 'hourly_periodic', 'expense_statement', 'custom'
+  practiceArea      String?
+  autoInclude       Json?    // { unbilledTimeEntries, unbilledExpenses, periodDays }
+  defaultNote       String?  @db.Text
+  sendMethod        Json?    // ['portal', 'email']
+  applyTrustCredit  Boolean  @default(false)
+  isPinned          Boolean  @default(false)
+  useCount          Int      @default(0)
+  lastUsedAt        DateTime?
+  userId            String
+  firmId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([matterId])
+  @@index([firmId])
+}
+
+model QuickInvoiceCandidate {
+  id                String   @id @default(cuid())
+  matterId          String
+  matterName        String?
+  clientName        String?
+  practiceArea      String?
+  billingModel      String?
+  unbilledAmount    Float    @default(0)
+  unbilledHours     Float    @default(0)
+  unbilledExpenses  Float    @default(0)
+  daysSinceLastInvoice Int   @default(0)
+  trustBalance      Float    @default(0)
+  autoPayEnabled    Boolean  @default(false)
+  presetId          String?
+  auditGrade        String?
+  isOneTapReady     Boolean  @default(false) // true if Grade A + auto template
+  priority          Int      @default(5) // 1-10, higher = more urgent
+  firmId            String
+  lastCalculatedAt  DateTime @default(now())
+
+  @@unique([matterId, firmId])
+  @@index([firmId])
+  @@index([isOneTapReady])
+}
+
+// ==========================================
+// TRIGGER-BASED TASK CASCADES
+// ==========================================
+
+model TaskCascadeTemplate {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?  @db.Text
+  practiceArea     String
+  triggerType      String   @default("stage_change") // 'stage_change', 'matter_created', 'deadline_approaching', 'manual', 'field_change'
+  triggerStage     String?
+  triggerCondition Json?
+  isActive         Boolean  @default(true)
+  isDefault        Boolean  @default(true)
+  priority         String   @default("normal") // 'low', 'normal', 'high', 'critical'
+  isSystemTemplate Boolean  @default(false)
+  firmId           String
+  createdBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tasks            TaskCascadeItem[]
+  executionLogs    TaskCascadeExecution[]
+
+  @@index([practiceArea, triggerStage])
+  @@index([firmId])
+  @@index([triggerType, isActive])
+}
+
+model TaskCascadeItem {
+  id                    String   @id @default(cuid())
+  templateId            String
+  template              TaskCascadeTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  title                 String
+  description           String?  @db.Text
+  category              String?  // 'filing', 'discovery', 'client_communication', 'document_prep', 'review', 'court', 'administrative'
+  relativeDueDays       Int
+  dueDateReference      String   @default("trigger_date")
+  dueDateReferenceField String?
+  isBusinessDays        Boolean  @default(true)
+  priority              String   @default("normal")
+  estimatedMinutes      Int?
+  assigneeType          String   @default("matter_attorney")
+  assigneeUserId        String?
+  assigneeRole          String?
+  dependsOnItemId       String?
+  sortOrder             Int      @default(0)
+  tags                  Json?
+  reminderDaysBefore    Json?
+  autoCreateSubtasks    Json?
+  requiredDocumentType  String?
+  completionWebhook     String?
+  isOptional            Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([templateId, sortOrder])
+}
+
+model TaskCascadeExecution {
+  id              String   @id @default(cuid())
+  templateId      String
+  template        TaskCascadeTemplate @relation(fields: [templateId], references: [id])
+  matterId        String
+  triggerStage    String?
+  triggerDate     DateTime
+  executedAt      DateTime @default(now())
+  executedBy      String?
+  executionType   String   @default("automatic")
+  tasksCreated    Int      @default(0)
+  taskIds         Json?
+  skippedItems    Json?
+  status          String   @default("completed")
+  rollbackAt      DateTime?
+  rollbackBy      String?
+  notes           String?  @db.Text
+  firmId          String
+  createdAt       DateTime @default(now())
+
+  @@index([matterId, templateId])
+  @@index([firmId, executedAt])
+}
+
+// ==========================================
+// DOCUMENT ASSEMBLY WITH CONDITIONAL LOGIC
+// ==========================================
+
+model AssemblyTemplate {
+  id                  String   @id @default(cuid())
+  name                String
+  description         String?  @db.Text
+  documentType        String   // 'retainer', 'demand_letter', 'complaint', 'motion', 'letter', 'agreement', 'notice', 'affidavit', 'stipulation', 'subpoena', 'closing_docs', 'custom'
+  practiceArea        String
+  jurisdiction        String?
+  version             Int      @default(1)
+  status              String   @default("draft") // 'draft', 'active', 'archived'
+  content             String   @db.Text
+  headerContent       String?  @db.Text
+  footerContent       String?  @db.Text
+  styleConfig         Json?
+  mergeFieldSchema    Json     // [{ fieldKey, label, source, dataType, defaultValue?, isRequired? }]
+  conditionalRules    Json?
+  computedFields      Json?
+  signatureBlocks     Json?
+  practiceAreaVariants Json?
+  isSystemTemplate    Boolean  @default(false)
+  usageCount          Int      @default(0)
+  lastUsedAt          DateTime?
+  parentTemplateId    String?
+  tags                Json?
+  firmId              String
+  createdBy           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  documents           AssembledDocument[]
+
+  @@index([practiceArea, documentType, status])
+  @@index([firmId, status])
+}
+
+model AssemblyDataSource {
+  id              String   @id @default(cuid())
+  sourceKey       String   @unique
+  label           String
+  description     String?
+  availableFields Json     // [{ fieldKey, label, dataType, path }]
+  isSystem        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AssemblyLookupTable {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  practiceArea    String?
+  lookupKey       String
+  entries         Json     // [{ key, values: {} }]
+  defaultEntry    Json?
+  firmId          String
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([name, firmId])
+  @@index([firmId, lookupKey])
+}
+
+model AssembledDocument {
+  id                  String   @id @default(cuid())
+  templateId          String
+  template            AssemblyTemplate @relation(fields: [templateId], references: [id])
+  matterId            String
+  title               String
+  assembledContent    String   @db.Text
+  mergeData           Json
+  resolvedConditions  Json?
+  computedValues      Json?
+  lookupResults       Json?
+  status              String   @default("draft") // 'draft', 'review', 'approved', 'sent', 'signed', 'filed'
+  exportedFormat      String?
+  exportedFileUrl     String?
+  documentId          String?
+  signatureStatus     String?
+  signatureRequestId  String?
+  reviewedBy          String?
+  reviewedAt          DateTime?
+  approvedBy          String?
+  approvedAt          DateTime?
+  assembledBy         String
+  firmId              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([matterId, templateId])
+  @@index([firmId, status])
+}
+
+model AssemblySnippet {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  category        String   // 'clause', 'paragraph', 'disclaimer', 'signature_block', 'header', 'footer', 'rider', 'exhibit'
+  practiceArea    String?
+  content         String   @db.Text
+  mergeFields     Json?
+  tags            Json?
+  isSystem        Boolean  @default(false)
+  firmId          String
+  createdBy       String?
+  usageCount      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([firmId, category, practiceArea])
+}
+
+// ==========================================
+// COURT E-FILING INTEGRATION
+// ==========================================
+
+model EFilingPlatform {
+  id                String   @id @default(cuid())
+  name              String
+  code              String   @unique // 'NYSCEF', 'PACER_CMECF', 'TYLER_ODYSSEY'
+  description       String?
+  baseUrl           String
+  loginUrl          String?
+  supportedStates   Json     // ['NY'] or ['Federal'] or ['TX','IL']
+  supportedCourts   Json?    // [{ code, name, ... }]
+  authType          String   // 'username_password', 'oauth2', 'api_key'
+  supportsStatus    Boolean  @default(true)
+  supportsReceipt   Boolean  @default(true)
+  maxFileSizeMb     Int      @default(25)
+  allowedFileTypes  Json     // ['pdf', 'docx']
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  credentials       EFilingPlatformCredential[]
+  submissions       EFilingSubmissionRecord[]
+}
+
+model EFilingPlatformCredential {
+  id              String   @id @default(cuid())
+  platformId      String
+  platform        EFilingPlatform @relation(fields: [platformId], references: [id])
+  firmId          String
+  userId          String?
+  displayName     String
+  username        String?
+  passwordEnc     String?
+  apiKeyEnc       String?
+  accessTokenEnc  String?
+  refreshTokenEnc String?
+  tokenExpiresAt  DateTime?
+  isActive        Boolean  @default(true)
+  lastVerifiedAt  DateTime?
+  lastVerifyError String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([platformId, firmId, userId])
+  @@index([firmId])
+}
+
+model EFilingSubmissionRecord {
+  id                  String   @id @default(cuid())
+  matterId            String
+  firmId              String
+  platformId          String
+  platform            EFilingPlatform @relation(fields: [platformId], references: [id])
+  credentialId        String
+  filedByUserId       String
+  courtCode           String
+  courtName           String
+  indexNumber         String?
+  federalCaseNumber   String?
+  externalCaseId      String?
+  filingType          String   // 'NEW_CASE_COMPLAINT', 'ANSWER', 'NOTICE_OF_MOTION', etc.
+  filingTypeName      String
+  filingCategory      String?
+  description         String?  @db.Text
+  isNewCase           Boolean  @default(false)
+  status              String   @default("DRAFT") // 'DRAFT', 'READY', 'SUBMITTING', 'SUBMITTED', 'PENDING_REVIEW', 'ACCEPTED', 'REJECTED', 'CANCELLED', 'ERROR'
+  submittedAt         DateTime?
+  externalFilingId    String?
+  confirmationNumber  String?
+  acceptedAt          DateTime?
+  rejectedAt          DateTime?
+  rejectionReason     String?  @db.Text
+  rejectionCode       String?
+  receiptUrl          String?
+  stampedDocUrls      Json?
+  estimatedFee        Float?
+  actualFee           Float?
+  feeWaived           Boolean  @default(false)
+  lastStatusCheck     DateTime?
+  statusCheckCount    Int      @default(0)
+  nextStatusCheck     DateTime?
+  notes               String?  @db.Text
+  rawResponse         Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  documents           EFilingSubmissionDocument[]
+
+  @@index([matterId])
+  @@index([status])
+  @@index([platformId])
+  @@index([confirmationNumber])
+}
+
+model EFilingSubmissionDocument {
+  id              String   @id @default(cuid())
+  submissionId    String
+  submission      EFilingSubmissionRecord @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  matterId        String
+  documentType    String
+  documentTypeName String
+  title           String
+  fileName        String
+  fileUrl         String
+  fileSizeBytes   Int
+  contentType     String   @default("application/pdf")
+  pageCount       Int?
+  isLeadDocument  Boolean  @default(false)
+  sequenceNumber  Int      @default(1)
+  externalDocId   String?
+  stampedUrl      String?
+  status          String   @default("pending") // 'pending', 'accepted', 'rejected'
+  rejectionReason String?
+  createdAt       DateTime @default(now())
+
+  @@index([submissionId])
+}
+
+model EFilingAlert {
+  id          String   @id @default(cuid())
+  submissionId String
+  firmId      String
+  userId      String
+  alertType   String   // 'ACCEPTED', 'REJECTED', 'STATUS_UPDATE', 'FEE_CHARGED', 'ERROR'
+  message     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([submissionId])
+  @@index([userId, isRead])
+}
+
+// ==========================================
+// AUTOMATED DISCOVERY CHECKLISTS
+// ==========================================
+
+model DiscoveryChecklist {
+  id              String   @id @default(cuid())
+  matterId        String
+  firmId          String
+  practiceArea    String
+  caseType        String
+  jurisdiction    String
+  generatedFrom   String   @default("template") // 'template', 'ai', 'hybrid'
+  aiPrompt        String?  @db.Text
+  matterFactsUsed Json?
+  status          String   @default("DRAFT") // 'DRAFT', 'ACTIVE', 'COMPLETE', 'ARCHIVED'
+  completionPct   Int      @default(0)
+  title           String
+  notes           String?  @db.Text
+  createdBy       String?
+  lastReviewedAt  DateTime?
+  lastReviewedBy  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sections        DiscoveryCLSection[]
+  items           DiscoveryCLItem[]
+
+  @@index([matterId])
+  @@index([practiceArea, caseType])
+}
+
+model DiscoveryCLSection {
+  id              String   @id @default(cuid())
+  checklistId     String
+  checklist       DiscoveryChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  category        String   // 'INTERROGATORIES_TO_SERVE', 'DOCUMENTS_TO_DEMAND', 'DOCUMENTS_TO_PRODUCE', 'DEPOSITIONS_TO_NOTICE', 'SUBPOENAS_TO_ISSUE', 'EXPERT_WITNESSES', 'ADMISSIONS_TO_REQUEST', 'ITEMS_TO_VERIFY', 'PRESERVATION_HOLDS', 'ESI_DISCOVERY', 'PHYSICAL_EXAMINATIONS'
+  sequenceNumber  Int
+  createdAt       DateTime @default(now())
+
+  items           DiscoveryCLItem[]
+
+  @@index([checklistId])
+}
+
+model DiscoveryCLItem {
+  id              String   @id @default(cuid())
+  checklistId     String
+  checklist       DiscoveryChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  sectionId       String
+  section         DiscoveryCLSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  matterId        String
+  title           String
+  description     String?  @db.Text
+  legalBasis      String?
+  sampleLanguage  String?  @db.Text
+  practiceNote    String?  @db.Text
+  category        String
+  priority        String   @default("STANDARD") // 'CRITICAL', 'HIGH', 'STANDARD', 'OPTIONAL'
+  isRequired      Boolean  @default(true)
+  isAiGenerated   Boolean  @default(false)
+  isCaseSpecific  Boolean  @default(false)
+  tags            Json?
+  conditionalOn   String?
+  dependsOnItemId String?
+  status          String   @default("PENDING") // 'PENDING', 'IN_PROGRESS', 'SERVED', 'RESPONDED', 'DEFICIENT', 'MOTION_PENDING', 'COMPLETE', 'WAIVED', 'NOT_APPLICABLE'
+  assignedTo      String?
+  dueDate         DateTime?
+  completedAt     DateTime?
+  completedBy     String?
+  responseReceivedAt DateTime?
+  notes           String?  @db.Text
+  linkedTaskId    String?
+  linkedDocId     String?
+  linkedFilingId  String?
+  sequenceNumber  Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([checklistId])
+  @@index([status])
+  @@index([category])
+}
+
+model DiscoveryCLTemplate {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?  @db.Text
+  practiceArea     String
+  caseTypes        Json     // ['contested_divorce', 'all']
+  jurisdiction     String?
+  isDefault        Boolean  @default(true)
+  isSystemTemplate Boolean  @default(true)
+  firmId           String?
+  version          Int      @default(1)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  sections         DiscoveryCLTemplateSection[]
+
+  @@index([practiceArea, isDefault])
+}
+
+model DiscoveryCLTemplateSection {
+  id              String   @id @default(cuid())
+  templateId      String
+  template        DiscoveryCLTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  name            String
+  category        String
+  sequenceNumber  Int
+
+  items           DiscoveryCLTemplateItem[]
+}
+
+model DiscoveryCLTemplateItem {
+  id              String   @id @default(cuid())
+  sectionId       String
+  section         DiscoveryCLTemplateSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?  @db.Text
+  legalBasis      String?
+  sampleLanguage  String?  @db.Text
+  practiceNote    String?  @db.Text
+  category        String
+  priority        String   @default("STANDARD")
+  isRequired      Boolean  @default(true)
+  conditionalOn   String?
+  tags            Json?
+  sequenceNumber  Int      @default(1)
+}
+
+// ==========================================
+// TEMPLATE-DRIVEN WORKFLOWS
+// ==========================================
+
+model WorkflowTemplate {
+  id                  String   @id @default(cuid())
+  name                String
+  description         String?  @db.Text
+  practiceArea        String
+  caseType            String
+  jurisdiction        String?
+  isDefault           Boolean  @default(false)
+  isSystemTemplate    Boolean  @default(true)
+  isPublished         Boolean  @default(false)
+  firmId              String?
+  version             Int      @default(1)
+  clonedFromId        String?
+  stagesConfig        Json
+  intakeConfig        Json?
+  billingConfig       Json?
+  customFieldsConfig  Json?
+  notificationConfig  Json?
+  usageCount          Int      @default(0)
+  lastUsedAt          DateTime?
+  rating              Float?   @default(0)
+  ratingCount         Int      @default(0)
+  tags                Json?
+  coverImageUrl       String?
+  createdBy           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  taskCascades        WFTemplateTaskCascade[]
+  documentTemplates   WFTemplateDocument[]
+  deadlineRules       WFTemplateDeadline[]
+  discoveryConfig     WFTemplateDiscovery?
+  checklistItems      WFTemplateChecklist[]
+  automationRules     WFTemplateAutomation[]
+  mattersUsingThis    MatterWorkflowInstance[]
+
+  @@index([practiceArea, caseType, isDefault])
+  @@index([firmId])
+}
+
+model WFTemplateTaskCascade {
+  id                  String   @id @default(cuid())
+  workflowTemplateId  String
+  workflowTemplate    WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+  cascadeTemplateId   String
+  triggerStage        String
+  triggerEvent        String   @default("stage_enter")
+  triggerCondition    Json?
+  isAutoExecute       Boolean  @default(true)
+  sequenceNumber      Int      @default(1)
+}
+
+model WFTemplateDocument {
+  id                  String   @id @default(cuid())
+  workflowTemplateId  String
+  workflowTemplate    WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+  documentTemplateId  String
+  documentTemplateName String?
+  autoGenerateOn      String?
+  isRequired          Boolean  @default(false)
+  requiresSignature   Boolean  @default(false)
+  description         String?
+  sequenceNumber      Int      @default(1)
+}
+
+model WFTemplateDeadline {
+  id                  String   @id @default(cuid())
+  workflowTemplateId  String
+  workflowTemplate    WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+  deadlineRuleId      String?
+  name                String
+  description         String?
+  triggerEvent        String
+  triggerField        String?
+  offsetDays          Int
+  offsetDirection     String   @default("after")
+  isBusinessDays      Boolean  @default(true)
+  isCritical          Boolean  @default(false)
+  legalBasis          String?
+  category            String
+  conditionalOn       String?
+  sequenceNumber      Int      @default(1)
+}
+
+model WFTemplateDiscovery {
+  id                  String   @id @default(cuid())
+  workflowTemplateId  String   @unique
+  workflowTemplate    WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+  discoveryTemplateId String?
+  discoveryTemplateName String?
+  autoGenerateOn      String   @default("stage:Discovery")
+  generationMode      String   @default("hybrid")
+  priorityFilter      String   @default("all")
+}
+
+model WFTemplateChecklist {
+  id                  String   @id @default(cuid())
+  workflowTemplateId  String
+  workflowTemplate    WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+  title               String
+  description         String?
+  category            String
+  triggerStage        String?
+  isRequired          Boolean  @default(false)
+  dueOffsetDays       Int?
+  assignTo            String   @default("matter_attorney")
+  sequenceNumber      Int      @default(1)
+}
+
+model WFTemplateAutomation {
+  id                  String   @id @default(cuid())
+  workflowTemplateId  String
+  workflowTemplate    WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+  name                String
+  triggerType         String
+  triggerStage        String?
+  triggerField        String?
+  triggerValue        String?
+  actions             Json
+  isActive            Boolean  @default(true)
+  sequenceNumber      Int      @default(1)
+}
+
+model MatterWorkflowInstance {
+  id                  String   @id @default(cuid())
+  matterId            String   @unique
+  workflowTemplateId  String
+  workflowTemplate    WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id])
+  firmId              String
+  status              String   @default("ACTIVE") // 'ACTIVE', 'PAUSED', 'COMPLETE', 'ARCHIVED'
+  currentStage        String?
+  completedStages     Json     @default("[]")
+  appliedAt           DateTime @default(now())
+  appliedBy           String?
+  customizations      Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  executionLog        WFExecutionEvent[]
+
+  @@index([matterId])
+  @@index([firmId])
+}
+
+model WFExecutionEvent {
+  id                  String   @id @default(cuid())
+  matterWorkflowId    String
+  matterWorkflow      MatterWorkflowInstance @relation(fields: [matterWorkflowId], references: [id], onDelete: Cascade)
+  matterId            String
+  eventType           String
+  description         String
+  entityType          String?
+  entityId            String?
+  triggeredBy         String?
+  metadata            Json?
+  isError             Boolean  @default(false)
+  errorMessage        String?
+  createdAt           DateTime @default(now())
+
+  @@index([matterWorkflowId])
+  @@index([matterId])
+}
+
+model WFTemplateRating {
+  id                  String   @id @default(cuid())
+  templateId          String
+  firmId              String
+  rating              Int
+  review              String?
+  createdAt           DateTime @default(now())
+
+  @@unique([templateId, firmId])
+}
+
+// ==========================================
+// SMART REMINDERS THAT LEARN
+// ==========================================
+
+model BehaviorEvent {
+  id          String   @id @default(cuid())
+  firmId      String
+  userId      String
+  eventType   String   // 'INVOICE_CREATED', 'BILLING_RUN', 'TASK_COMPLETED', 'FOLLOW_UP_SENT', 'COURT_APPEARANCE', 'TIME_ENTRY_CREATED', etc.
+  entityType  String?
+  entityId    String?
+  matterId    String?
+  metadata    Json?    // { dayOfWeek, weekOfMonth, hour, practiceArea, hoursAfterTrigger, ... }
+  occurredAt  DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([userId, eventType])
+  @@index([userId, occurredAt])
+  @@index([firmId, eventType, occurredAt])
+}
+
+model LearnedPattern {
+  id                  String   @id @default(cuid())
+  firmId              String
+  userId              String
+  patternType         String   // 'PERIODIC_BILLING', 'POST_EVENT_FOLLOW_UP', 'POST_HEARING_ACTION', 'PERIODIC_CLIENT_CHECKIN', 'TIME_TRACKING_HABIT', 'DISCOVERY_FOLLOW_UP', 'DEPOSITION_PREP_HABIT', 'CUSTOM'
+  label               String
+  description         String?  @db.Text
+  confidenceScore     Float
+  occurrenceCount     Int
+  firstObservedAt     DateTime
+  lastObservedAt      DateTime
+  triggerEventType    String?
+  triggerCondition    Json?
+  actionEventType     String
+  typicalOffsetHours  Float?
+  typicalDayOfWeek    Int?
+  typicalWeekOfMonth  String?
+  typicalHour         Int?
+  practiceAreaFilter  String?
+  matterTypeFilter    String?
+  additionalContext   Json?
+  status              String   @default("SUGGESTED") // 'SUGGESTED', 'SHOWN', 'CONFIRMED', 'ACTIVE', 'SNOOZED', 'DISMISSED'
+  reminderEnabled     Boolean  @default(false)
+  reminderOffsetHours Int?
+  reminderMessage     String?
+  reminderChannels    Json     @default("[\"in_app\",\"push\"]")
+  lastReminderSentAt  DateTime?
+  nextReminderAt      DateTime?
+  userFeedback        String?
+  userNotes           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  reminders           SmartReminderRecord[]
+
+  @@index([userId, patternType, status])
+  @@index([firmId, patternType])
+}
+
+model SmartReminderRecord {
+  id              String   @id @default(cuid())
+  firmId          String
+  userId          String
+  patternId       String?
+  pattern         LearnedPattern? @relation(fields: [patternId], references: [id])
+  reminderType    String   // 'BILLING_RUN', 'FOLLOW_UP_DUE', 'CLIENT_CHECKIN', 'DISCOVERY_FOLLOW_UP', 'TIME_LOG_HABIT', 'DEPOSITION_PREP', 'CUSTOM'
+  title           String
+  message         String   @db.Text
+  contextData     Json?
+  scheduledFor    DateTime
+  sentAt          DateTime?
+  channels        Json     @default("[\"in_app\",\"push\"]")
+  isSent          Boolean  @default(false)
+  status          String   @default("PENDING") // 'PENDING', 'SENT', 'ACTED', 'DISMISSED', 'SNOOZED', 'EXPIRED'
+  actedOnAt       DateTime?
+  dismissedAt     DateTime?
+  snoozedUntil    DateTime?
+  userResponse    String?
+  actionUrl       String?
+  actionLabel     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, scheduledFor, isSent])
+  @@index([userId, status])
+}
+
+model PatternDetectionRun {
+  id              String   @id @default(cuid())
+  firmId          String
+  userId          String?
+  startedAt       DateTime
+  completedAt     DateTime?
+  eventsAnalyzed  Int      @default(0)
+  patternsFound   Int      @default(0)
+  patternsNew     Int      @default(0)
+  patternsUpdated Int      @default(0)
+  error           String?
+  createdAt       DateTime @default(now())
+}
+
+// ==========================================
+// CLE TRACKING
+// ==========================================
+
+model CLEJurisdiction {
+  id                    String   @id @default(cuid())
+  code                  String   @unique
+  name                  String
+  regulatoryBody        String
+  regulatoryBodyUrl     String?
+  reportingPeriodType   String   // 'CALENDAR_YEAR', 'ANNIVERSARY', 'FIXED_BIENNIAL', 'FIXED_TRIENNIAL', 'ROLLING'
+  reportingPeriodMonths Int
+  totalCreditsRequired  Float
+  carryoverAllowed      Boolean  @default(false)
+  carryoverMaxCredits   Float?
+  gracePeriodDays       Int      @default(0)
+  newAdmitteeRules      Json?
+  selfStudyAllowed      Boolean  @default(true)
+  selfStudyMaxPct       Float?
+  onlineAllowed         Boolean  @default(true)
+  onlineMaxPct          Float?
+  reportingUrl          String?
+  notes                 String?  @db.Text
+  isActive              Boolean  @default(true)
+  lastVerifiedAt        DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  requirements          CLERequirementRule[]
+  attorneyRequirements  AttorneyCLEReq[]
+}
+
+model CLERequirementRule {
+  id                  String   @id @default(cuid())
+  jurisdictionId      String
+  jurisdiction        CLEJurisdiction @relation(fields: [jurisdictionId], references: [id])
+  category            String   // 'ETHICS', 'BIAS_ELIMINATION', 'CYBERSECURITY', 'MENTAL_HEALTH', 'SUBSTANCE_ABUSE', 'SKILLS', 'GENERAL', etc.
+  creditsRequired     Float
+  isMinimum           Boolean  @default(true)
+  canDoubleCount      Boolean  @default(false)
+  description         String?
+}
+
+model AttorneyCLEReq {
+  id                  String   @id @default(cuid())
+  userId              String
+  firmId              String
+  jurisdictionId      String
+  jurisdiction        CLEJurisdiction @relation(fields: [jurisdictionId], references: [id])
+  periodStart         DateTime
+  periodEnd           DateTime
+  reportingDeadline   DateTime
+  periodLabel         String
+  status              String   @default("IN_PROGRESS") // 'IN_PROGRESS', 'COMPLETE', 'FILED', 'OVERDUE', 'GRACE_PERIOD', 'EXEMPT'
+  isExempt            Boolean  @default(false)
+  exemptionReason     String?
+  filedAt             DateTime?
+  filingConfirmationNumber String?
+  carryoverCreditsApplied Float @default(0)
+  totalEarned         Float    @default(0)
+  totalRequired       Float
+  creditsRemaining    Float    @default(0)
+  categoryBreakdown   Json     @default("{}")
+  pctComplete         Float    @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  credits             CLECreditEntry[]
+  alerts              CLEAlertRecord[]
+
+  @@unique([userId, jurisdictionId, periodStart])
+  @@index([userId, status])
+  @@index([reportingDeadline])
+}
+
+model CLECreditEntry {
+  id                    String   @id @default(cuid())
+  userId                String
+  firmId                String
+  requirementId         String?
+  requirement           AttorneyCLEReq? @relation(fields: [requirementId], references: [id])
+  courseName            String
+  provider              String
+  courseNumber           String?
+  accreditationNumber   String?
+  format                String   // 'LIVE_IN_PERSON', 'LIVE_WEBINAR', 'ON_DEMAND_VIDEO', 'SELF_STUDY_READING', 'TEACHING_OR_SPEAKING', 'PRO_BONO_CREDIT'
+  deliveryMethod        String   // 'IN_PERSON', 'ONLINE_SYNCHRONOUS', 'ONLINE_ASYNCHRONOUS', 'SELF_STUDY'
+  totalCredits          Float
+  creditsByCategory     Json     // { ETHICS: 1.0, GENERAL: 1.5 }
+  jurisdictions         Json     // ['NY', 'NJ']
+  completedAt           DateTime
+  certificateUrl        String?
+  notes                 String?
+  isVerified            Boolean  @default(false)
+  verifiedAt            DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId, completedAt])
+}
+
+model CLEAlertRecord {
+  id              String   @id @default(cuid())
+  userId          String
+  firmId          String
+  requirementId   String
+  requirement     AttorneyCLEReq @relation(fields: [requirementId], references: [id])
+  alertType       String   // 'NINETY_DAYS', 'SIXTY_DAYS', 'THIRTY_DAYS', 'TWO_WEEKS', 'ONE_WEEK', 'THREE_DAYS', 'ONE_DAY', 'OVERDUE', 'HALFWAY_BEHIND'
+  daysUntilDeadline Int
+  creditsRemaining Float
+  message         String
+  isSent          Boolean  @default(false)
+  sentAt          DateTime?
+  isRead          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, isSent])
+}
+
+// ==========================================
+// BULK MATTER OPERATIONS
+// ==========================================
+
+model BulkOperation {
+  id              String   @id @default(cuid())
+  firmId          String
+  initiatedBy     String
+  operationType   String   // 'CLOSE_MATTERS', 'ARCHIVE_MATTERS', 'REASSIGN_ATTORNEY', 'REASSIGN_ALL_STAFF', 'CHANGE_STAGE', 'UPDATE_CUSTOM_FIELD', 'UPDATE_BILLING_TYPE', 'ADD_TAGS', 'SEND_CLIENT_EMAIL', 'GENERATE_DOCUMENT', 'EXPORT_MATTERS', 'ADD_TASK', 'ADD_NOTE'
+  status          String   @default("PENDING") // 'PENDING', 'PREVIEWING', 'PREVIEW_READY', 'RUNNING', 'COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED', 'CANCELLED', 'UNDONE'
+  selectionMode   String   @default("manual") // 'manual', 'filter', 'all'
+  matterIds       Json
+  filterCriteria  Json?
+  totalSelected   Int
+  totalProcessed  Int      @default(0)
+  totalSucceeded  Int      @default(0)
+  totalFailed     Int      @default(0)
+  totalSkipped    Int      @default(0)
+  payload         Json
+  previewData     Json?
+  previewApproved Boolean  @default(false)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  errorSummary    String?  @db.Text
+  isReversible    Boolean  @default(true)
+  undoData        Json?
+  undoneAt        DateTime?
+  undoneBy        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  results         BulkOperationResult[]
+
+  @@index([firmId, status])
+  @@index([firmId, operationType])
+}
+
+model BulkOperationResult {
+  id              String   @id @default(cuid())
+  operationId     String
+  operation       BulkOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  matterId        String
+  matterName      String
+  status          String   // 'success', 'failed', 'skipped'
+  skipReason      String?
+  errorMessage    String?
+  changeSnapshot  Json?
+  processedAt     DateTime @default(now())
+
+  @@index([operationId, status])
+}
+
+model BulkOperationPreset {
+  id              String   @id @default(cuid())
+  firmId          String
+  name            String
+  description     String?
+  operationType   String
+  filterCriteria  Json
+  payload         Json
+  createdBy       String
+  lastRunAt       DateTime?
+  runCount        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([firmId, operationType])
+}
+
+// ==========================================
+// PRACTICE AREA PROFITABILITY
+// ==========================================
+
+model ProfitabilityPeriod {
+  id                String   @id @default(cuid())
+  firmId            String
+  period            String
+  periodType        String
+  startDate         DateTime
+  endDate           DateTime
+  status            String   @default("computing")
+  computedAt        DateTime?
+  aiSummary         String?  @db.Text
+  createdAt         DateTime @default(now())
+
+  practiceAreas     ProfitabilityByPA[]
+
+  @@unique([firmId, period, periodType])
+  @@index([firmId])
+}
+
+model ProfitabilityByPA {
+  id                    String   @id @default(cuid())
+  periodId              String
+  period                ProfitabilityPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  firmId                String
+  practiceArea          String
+  grossBilled           Float    @default(0)
+  writeDowns            Float    @default(0)
+  writeOffs             Float    @default(0)
+  realizedRevenue       Float    @default(0)
+  collected             Float    @default(0)
+  uncollected           Float    @default(0)
+  billingRate           Float?
+  realizationRate       Float?
+  collectionRate        Float?
+  effectiveRate         Float?
+  matterCount           Int      @default(0)
+  activeMatterCount     Int      @default(0)
+  totalHours            Float    @default(0)
+  billableHours         Float    @default(0)
+  directLaborCost       Float    @default(0)
+  overheadAllocated     Float    @default(0)
+  totalCost             Float    @default(0)
+  grossProfit           Float    @default(0)
+  grossMargin           Float?
+  netProfit             Float    @default(0)
+  netMargin             Float?
+  contingencyFeesEarned Float    @default(0)
+  expensesAdvanced      Float    @default(0)
+  netMarginPriorPeriod  Float?
+  netMarginDelta        Float?
+  revenueGrowthPct      Float?
+  createdAt             DateTime @default(now())
+
+  @@index([periodId])
+  @@index([practiceArea])
+}
+
+model OverheadConfig {
+  id              String   @id @default(cuid())
+  firmId          String   @unique
+  lineItems       Json
+  totalMonthly    Float    @default(0)
+  allocationMethod String  @default("by_revenue")
+  customWeights   Json?
+  attorneyCosts   Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ProfitabilityScenario {
+  id              String   @id @default(cuid())
+  firmId          String
+  name            String
+  baselinePeriod  String
+  assumptions     Json
+  results         Json?
+  comparedToBase  Json?
+  createdBy       String
+  createdAt       DateTime @default(now())
+
+  @@index([firmId])
 }

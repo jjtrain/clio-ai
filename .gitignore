@@ -41,3 +41,7 @@ coverage
 
 # Claude Code local settings (may contain credentials)
 .claude/settings.local.json
+
+.vercel
+.env*.local
+nul

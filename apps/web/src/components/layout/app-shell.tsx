@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
+import { UrgencyBanner } from "@/components/next-actions/UrgencyBanner";
 
 const authRoutes = ["/login", "/register", "/book"];
-const publicPrefixes = ["/intake/", "/widget/", "/sign/", "/site/", "/pay/", "/financing/apply/"];
+const publicPrefixes = ["/intake/", "/widget/", "/sign/", "/site/", "/pay/", "/financing/apply/", "/pulse/respond"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -70,6 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <UrgencyBanner />
         <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-auto">
           <div className="px-4 py-6 sm:px-6 sm:py-8 max-w-7xl mx-auto">

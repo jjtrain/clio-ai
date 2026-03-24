@@ -2,6 +2,10 @@ import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
+import { generateStatusUpdateDraft, generateClientChecklist, notifyStatusUpdate, notifyDocumentShared, notifyNewMessage, getPortalAnalytics } from "@/lib/portal-engine";
+
+const DEFAULT_FIRM_ID = "demo-firm";
+const DEFAULT_USER_ID = "demo-user";
 
 export const clientPortalRouter = router({
   // ==================== ADMIN PROCEDURES ====================
@@ -371,5 +375,228 @@ export const clientPortalRouter = router({
         data: { loginToken: null, loginTokenExpiry: null },
       });
       return { success: true };
+    }),
+
+  // ==================== STATUS UPDATES ====================
+
+  publishStatusUpdate: publicProcedure
+    .input(z.object({
+      matterId: z.string(),
+      title: z.string(),
+      body: z.string(),
+      milestone: z.string().optional(),
+      phase: z.string().optional(),
+      phasePercentage: z.number().optional(),
+      notifyClient: z.boolean().optional().default(true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const update = await ctx.db.portalStatusUpdate.create({
+        data: {
+          matterId: input.matterId,
+          title: input.title,
+          body: input.body,
+          milestone: input.milestone,
+          phase: input.phase,
+          phasePercentage: input.phasePercentage,
+          isPublished: true,
+          isDraft: false,
+          publishedAt: new Date(),
+          notifyClient: input.notifyClient,
+          userId: DEFAULT_USER_ID,
+          firmId: DEFAULT_FIRM_ID,
+        },
+      });
+
+      if (input.notifyClient) {
+        const access = await ctx.db.portalMatterAccess.findMany({ where: { matterId: input.matterId, isActive: true } });
+        for (const a of access) {
+          await notifyStatusUpdate(a.portalUserId, input.matterId, input.title).catch(() => {});
+        }
+      }
+
+      return update;
+    }),
+
+  generateStatusUpdateDraft: publicProcedure
+    .input(z.object({ matterId: z.string() }))
+    .mutation(async ({ input }) => {
+      return generateStatusUpdateDraft(input.matterId, DEFAULT_FIRM_ID);
+    }),
+
+  getStatusUpdates: publicProcedure
+    .input(z.object({ matterId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.portalStatusUpdate.findMany({
+        where: { matterId: input.matterId },
+        orderBy: { createdAt: "desc" },
+      });
+    }),
+
+  deleteStatusUpdate: publicProcedure
+    .input(z.object({ updateId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.portalStatusUpdate.delete({ where: { id: input.updateId } });
+    }),
+
+  // ==================== DOCUMENT SHARING ====================
+
+  shareDocument: publicProcedure
+    .input(z.object({
+      matterId: z.string(),
+      fileName: z.string(),
+      fileUrl: z.string().optional(),
+      category: z.string(),
+      description: z.string().optional(),
+      requiresSignature: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const doc = await ctx.db.portalDocument.create({
+        data: {
+          matterId: input.matterId,
+          fileName: input.fileName,
+          fileUrl: input.fileUrl,
+          category: input.category,
+          description: input.description,
+          requiresSignature: input.requiresSignature || false,
+          uploaderType: "attorney",
+          userId: DEFAULT_USER_ID,
+          firmId: DEFAULT_FIRM_ID,
+        },
+      });
+
+      const access = await ctx.db.portalMatterAccess.findMany({ where: { matterId: input.matterId, isActive: true } });
+      for (const a of access) {
+        await notifyDocumentShared(a.portalUserId, input.matterId, input.fileName).catch(() => {});
+      }
+
+      return doc;
+    }),
+
+  hideDocument: publicProcedure
+    .input(z.object({ documentId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.portalDocument.update({ where: { id: input.documentId }, data: { isVisible: false } });
+    }),
+
+  getPortalDocuments: publicProcedure
+    .input(z.object({ matterId: z.string(), uploaderType: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const where: any = { matterId: input.matterId };
+      if (input.uploaderType) where.uploaderType = input.uploaderType;
+      return ctx.db.portalDocument.findMany({ where, orderBy: { createdAt: "desc" } });
+    }),
+
+  // ==================== CHECKLISTS ====================
+
+  generateChecklist: publicProcedure
+    .input(z.object({ matterId: z.string(), practiceArea: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const items = generateClientChecklist(input.practiceArea);
+      return ctx.db.portalChecklist.create({
+        data: {
+          matterId: input.matterId,
+          title: `${input.practiceArea.replace(/_/g, " ")} Document Checklist`,
+          practiceArea: input.practiceArea,
+          items: items as any,
+          totalItems: items.length,
+          completedItems: 0,
+          userId: DEFAULT_USER_ID,
+          firmId: DEFAULT_FIRM_ID,
+        },
+      });
+    }),
+
+  getChecklists: publicProcedure
+    .input(z.object({ matterId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.portalChecklist.findMany({ where: { matterId: input.matterId } });
+    }),
+
+  // ==================== BRANDING ====================
+
+  getThemes: publicProcedure.query(async ({ ctx }) => {
+    return ctx.db.portalBrandingTheme.findMany({ orderBy: { practiceArea: "asc" } });
+  }),
+
+  updateTheme: publicProcedure
+    .input(z.object({
+      themeId: z.string(),
+      colorPrimary: z.string().optional(),
+      colorSecondary: z.string().optional(),
+      colorAccent: z.string().optional(),
+      colorBackground: z.string().optional(),
+      welcomeHeading: z.string().optional(),
+      welcomeSubtext: z.string().optional(),
+      terminology: z.any().optional(),
+      faqItems: z.any().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { themeId, ...data } = input;
+      return ctx.db.portalBrandingTheme.update({ where: { id: themeId }, data });
+    }),
+
+  getThemeByPracticeArea: publicProcedure
+    .input(z.object({ practiceArea: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.portalBrandingTheme.findUnique({ where: { practiceArea: input.practiceArea } });
+    }),
+
+  // ==================== MATTER ACCESS ====================
+
+  grantMatterAccess: publicProcedure
+    .input(z.object({
+      portalUserId: z.string(),
+      matterId: z.string(),
+      role: z.string().optional(),
+      accessLevel: z.string().optional(),
+      permissions: z.any().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.portalMatterAccess.upsert({
+        where: { portalUserId_matterId: { portalUserId: input.portalUserId, matterId: input.matterId } },
+        create: {
+          portalUserId: input.portalUserId,
+          matterId: input.matterId,
+          role: input.role || "client",
+          accessLevel: input.accessLevel || "standard",
+          permissions: input.permissions,
+        },
+        update: {
+          role: input.role,
+          accessLevel: input.accessLevel,
+          permissions: input.permissions,
+          isActive: true,
+          revokedAt: null,
+        },
+      });
+    }),
+
+  revokeMatterAccess: publicProcedure
+    .input(z.object({ accessId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.portalMatterAccess.update({
+        where: { id: input.accessId },
+        data: { isActive: false, revokedAt: new Date() },
+      });
+    }),
+
+  // ==================== ANALYTICS ====================
+
+  getPortalAnalytics: publicProcedure.query(async () => {
+    return getPortalAnalytics(DEFAULT_FIRM_ID);
+  }),
+
+  getFeedbackRatings: publicProcedure
+    .input(z.object({ matterId: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const where: any = { firmId: DEFAULT_FIRM_ID };
+      if (input.matterId) where.matterId = input.matterId;
+
+      return ctx.db.portalFeedback.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        include: { portalUser: { select: { name: true } } },
+      });
     }),
 });

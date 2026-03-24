@@ -92,6 +92,33 @@ import { deadlineCalculatorRouter } from "./deadlineCalculator";
 import { documentReviewFlagsRouter } from "./documentReviewFlags";
 import { predictionsRouter } from "./predictions";
 import { intakeScreeningRouter } from "./intakeScreening";
+import { searchRouter } from "./search";
+import { billingAuditRouter } from "./billingAudit";
+import { nextActionsRouter } from "./nextActions";
+import { portalClientRouter } from "./portalClient";
+import { statusUpdatesRouter } from "./statusUpdates";
+import { pulseRouter } from "./pulse";
+import { paymentPlansRouter } from "./paymentPlans";
+import { clientTimelineRouter } from "./clientTimeline";
+import { translationRouter } from "./translation";
+import { appointmentSchedulingRouter } from "./appointmentScheduling";
+import { referralTrackingRouter } from "./referralTracking";
+import { feeStructureRouter } from "./feeStructure";
+import { trustAccountingRouter } from "./trustAccounting";
+import { invoicingRouter } from "./invoicing";
+import { feeSplitsRouter } from "./feeSplits";
+import { contingencyRouter } from "./contingency";
+import { revenueForecastRouter } from "./revenueForecast";
+import { quickInvoiceRouter } from "./quickInvoice";
+import { cascadeRouter } from "./cascade";
+import { documentAssemblyRouter } from "./documentAssembly";
+import { courtEfilingRouter } from "./courtEfiling";
+import { discoveryChecklistsRouter } from "./discoveryChecklists";
+import { workflowsRouter } from "./workflows";
+import { smartRemindersRouter } from "./smartReminders";
+import { cleTrackingRouter } from "./cleTracking";
+import { bulkOperationsRouter } from "./bulkOperations";
+import { profitabilityRouter } from "./profitability";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -187,6 +214,33 @@ export const appRouter = router({
   documentReviewFlags: documentReviewFlagsRouter,
   predictions: predictionsRouter,
   intakeScreening: intakeScreeningRouter,
+  search: searchRouter,
+  billingAudit: billingAuditRouter,
+  nextActions: nextActionsRouter,
+  portalClient: portalClientRouter,
+  statusUpdates: statusUpdatesRouter,
+  pulse: pulseRouter,
+  paymentPlans: paymentPlansRouter,
+  clientTimeline: clientTimelineRouter,
+  translation: translationRouter,
+  appointmentScheduling: appointmentSchedulingRouter,
+  referralTracking: referralTrackingRouter,
+  feeStructure: feeStructureRouter,
+  trustAccounting: trustAccountingRouter,
+  invoicing: invoicingRouter,
+  feeSplits: feeSplitsRouter,
+  contingency: contingencyRouter,
+  revenueForecast: revenueForecastRouter,
+  quickInvoice: quickInvoiceRouter,
+  cascade: cascadeRouter,
+  documentAssembly: documentAssemblyRouter,
+  courtEfiling: courtEfilingRouter,
+  discoveryChecklists: discoveryChecklistsRouter,
+  workflows: workflowsRouter,
+  smartReminders: smartRemindersRouter,
+  cleTracking: cleTrackingRouter,
+  bulkOperations: bulkOperationsRouter,
+  profitability: profitabilityRouter,
 });
 
 export type AppRouter = typeof appRouter;
