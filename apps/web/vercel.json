@@ -99,6 +99,10 @@
     {
       "path": "/api/cron/meeting-reminders",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/webhook-retry",
+      "schedule": "0 17 * * *"
     }
   ]
 }

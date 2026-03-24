@@ -16607,3 +16607,78 @@ enum RsvpStatus {
   ACCEPTED
   DECLINED
 }
+
+// ─── Zapier/Make Integration & Public API ─────────────────────────
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  firmId      String    @default("demo-firm")
+  createdById String?
+  name        String
+  keyHash     String    @unique
+  keyPrefix   String
+  scopes      String    @default("LEADS_READ,LEADS_WRITE,MATTERS_READ,CONTACTS_READ") // comma-separated ApiScope values
+  lastUsedAt  DateTime?
+  lastUsedIp  String?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  webhookSubscriptions WebhookSubscription[]
+
+  @@index([firmId])
+  @@index([keyPrefix])
+}
+
+model WebhookSubscription {
+  id            String    @id @default(cuid())
+  firmId        String    @default("demo-firm")
+  apiKeyId      String
+  apiKey        ApiKey    @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  event         String    // WebhookEvent value
+  targetUrl     String
+  secret        String
+  description   String?
+  isActive      Boolean   @default(true)
+  failureCount  Int       @default(0)
+  lastFiredAt   DateTime?
+  lastSuccessAt DateTime?
+  createdAt     DateTime  @default(now())
+  deliveries    WebhookDelivery[]
+
+  @@index([firmId, event])
+}
+
+model WebhookDelivery {
+  id              String              @id @default(cuid())
+  subscriptionId  String
+  subscription    WebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  event           String
+  payload         Json
+  responseStatus  Int?
+  responseBody    String?             @db.Text
+  durationMs      Int?
+  attempt         Int                 @default(1)
+  success         Boolean
+  deliveredAt     DateTime            @default(now())
+
+  @@index([subscriptionId])
+}
+
+model AutomationLog {
+  id           String   @id @default(cuid())
+  firmId       String   @default("demo-firm")
+  source       String   // "zapier" | "make" | "api"
+  action       String
+  resourceId   String?
+  resourceType String?
+  apiKeyId     String?
+  payload      Json?
+  success      Boolean
+  errorMsg     String?
+  createdAt    DateTime @default(now())
+
+  @@index([firmId])
+  @@index([createdAt])
+}

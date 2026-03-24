@@ -65,6 +65,7 @@ const seedFiles = [
   "seed-accounting-sync.ts",
   "seed-gmail.ts",
   "seed-meetings.ts",
+  "seed-api-integrations.ts",
 ];
 
 async function main() {
