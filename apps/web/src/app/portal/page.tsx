@@ -1,26 +1,66 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+export const dynamic = "force-dynamic";
+
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { usePortal } from "./portal-context";
-import { Shield, Briefcase, FileText, MessageSquare, Receipt, Calendar, Loader2 } from "lucide-react";
+import { MatterTimeline } from "@/components/portal/Timeline";
+import { Briefcase, FileText, MessageSquare, Receipt, Calendar, Loader2, Mail, ArrowRight, CheckCircle } from "lucide-react";
 import Link from "next/link";
 
-function LoginForm() {
+function LoginFormInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
+  const [loginMode, setLoginMode] = useState<"magic" | "password">("magic");
 
   const { data: settings } = trpc.clientPortal.getSettings.useQuery();
   const login = trpc.clientPortal.portalLogin.useMutation();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  // Handle magic link token from URL
+  useEffect(() => {
+    const token = searchParams.get("token");
+    if (token) {
+      fetch(`/api/portal/magic-link?token=${token}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.valid && data.userId) {
+            // Exchange for session token via portal login
+            localStorage.setItem("portal_token", token);
+            window.location.href = "/portal";
+          } else {
+            toast({ title: "Link expired", description: "Please request a new sign-in link.", variant: "destructive" });
+          }
+        });
+    }
+  }, [searchParams]);
+
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMagicLinkLoading(true);
+    try {
+      const res = await fetch("/api/portal/magic-link", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, firmName: settings?.firmName }),
+      });
+      const data = await res.json();
+      if (data.sent) setMagicLinkSent(true);
+      else toast({ title: "Error", description: data.error, variant: "destructive" });
+    } catch { toast({ title: "Error", description: "Could not send link", variant: "destructive" }); }
+    setMagicLinkLoading(false);
+  };
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const result = await login.mutateAsync({ email, password });
@@ -31,65 +71,86 @@ function LoginForm() {
     }
   };
 
-  const primaryColor = settings?.primaryColor || "#1E40AF";
+  const primaryColor = settings?.primaryColor || "#1AA8A0";
+
+  if (magicLinkSent) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="w-full max-w-md text-center">
+          <div className="h-14 w-14 rounded-xl mx-auto mb-4 flex items-center justify-center bg-[#E5F6F6]">
+            <Mail className="h-7 w-7 text-[#1AA8A0]" />
+          </div>
+          <h1 className="text-lg font-medium text-foreground">Check your email</h1>
+          <p className="text-[13px] text-muted-foreground mt-2 max-w-sm mx-auto">
+            We sent a sign-in link to <strong>{email}</strong>. Click the link in the email to access your portal. The link expires in 15 minutes.
+          </p>
+          <button onClick={() => setMagicLinkSent(false)} className="text-[12px] text-primary mt-4 hover:underline">Use a different email</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="h-14 w-14 rounded-xl mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: primaryColor }}>
-            <Shield className="h-7 w-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">{settings?.firmName || "Client Portal"}</h1>
-          <p className="text-gray-500 mt-1">Sign in to access your account</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-          {settings?.welcomeMessage && (
-            <div className="mb-6 p-3 rounded-lg bg-blue-50 text-sm text-blue-700">
-              {settings.welcomeMessage}
+          {settings?.logoUrl ? (
+            <img src={settings.logoUrl} alt={settings.firmName} className="h-10 mx-auto mb-4" />
+          ) : (
+            <div className="h-14 w-14 rounded-xl mx-auto mb-4 flex items-center justify-center" style={{ background: `linear-gradient(135deg, #1B3A8C, #1AA8A0)` }}>
+              <span className="text-xl font-medium text-white">M</span>
             </div>
           )}
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Password</Label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-              />
-            </div>
-            <Button
-              type="submit"
-              className="w-full"
-              style={{ backgroundColor: primaryColor }}
-              disabled={login.isPending}
-            >
-              {login.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              {login.isPending ? "Signing in..." : "Sign In"}
-            </Button>
-          </form>
+          <h1 className="text-lg font-medium text-foreground">{settings?.firmName || "Client Portal"}</h1>
+          <p className="text-[13px] text-muted-foreground mt-1">Your attorney has invited you to view your case</p>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
-          Secure client portal. Contact your attorney if you need access.
+        <div className="bg-card rounded-xl border p-6">
+          {loginMode === "magic" ? (
+            <form onSubmit={handleMagicLink} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-[12px]">Email address</Label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" required />
+              </div>
+              <Button type="submit" className="w-full" disabled={magicLinkLoading}>
+                {magicLinkLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+                Send sign-in link
+              </Button>
+              <button type="button" onClick={() => setLoginMode("password")} className="text-[12px] text-muted-foreground hover:text-foreground w-full text-center mt-2">
+                Or sign in with password
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handlePasswordLogin} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-[12px]">Email</Label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[12px]">Password</Label>
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              </div>
+              <Button type="submit" className="w-full" disabled={login.isPending}>
+                {login.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                Sign in
+              </Button>
+              <button type="button" onClick={() => setLoginMode("magic")} className="text-[12px] text-muted-foreground hover:text-foreground w-full text-center mt-2">
+                Use magic link instead
+              </button>
+            </form>
+          )}
+        </div>
+
+        <p className="text-center text-[11px] text-muted-foreground/60 mt-6">
+          Secure portal. Contact your attorney if you need access.
         </p>
       </div>
     </div>
   );
+}
+
+function LoginForm() {
+  return <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><span className="text-muted-foreground">Loading...</span></div>}><LoginFormInner /></Suspense>;
 }
 
 function Dashboard() {
@@ -98,78 +159,74 @@ function Dashboard() {
   const { data: matters } = trpc.clientPortal.portalGetMatters.useQuery({ token: token! }, { enabled: !!token });
   const { data: messages } = trpc.clientPortal.portalGetMessages.useQuery({ token: token! }, { enabled: !!token });
   const { data: invoices } = trpc.clientPortal.portalGetInvoices.useQuery({ token: token! }, { enabled: !!token });
-  const { data: appointments } = trpc.clientPortal.portalGetAppointments.useQuery({ token: token! }, { enabled: !!token });
 
-  const unreadMessages = messages?.filter((m) => m.direction === "FIRM_TO_CLIENT" && !m.isRead)?.length || 0;
-  const primaryColor = settings?.primaryColor || "#1E40AF";
+  const unreadMessages = messages?.filter((m: any) => m.direction === "FIRM_TO_CLIENT" && !m.isRead)?.length || 0;
+  const activeMatter = matters?.find((m: any) => m.status === "OPEN");
+
+  // Build timeline steps from matter tasks (simplified)
+  const timelineSteps = activeMatter ? [
+    { label: "Case opened", status: "complete" as const, date: activeMatter.createdAt ? new Date(activeMatter.createdAt).toLocaleDateString() : undefined },
+    { label: "Documents collected", status: "complete" as const },
+    { label: "Under review", status: "active" as const },
+    { label: "Next steps", status: "upcoming" as const },
+    { label: "Resolution", status: "upcoming" as const },
+  ] : [];
 
   const cards = [
-    { title: "Active Matters", count: matters?.filter((m) => m.status === "OPEN")?.length || 0, icon: Briefcase, href: "/portal/matters", color: "blue" },
-    { title: "Documents", count: matters?.reduce((sum, m) => sum + (m._count?.documents || 0), 0) || 0, icon: FileText, href: "/portal/documents", color: "green" },
-    { title: "Messages", count: messages?.length || 0, badge: unreadMessages > 0 ? `${unreadMessages} new` : undefined, icon: MessageSquare, href: "/portal/messages", color: "purple" },
-    { title: "Invoices", count: invoices?.length || 0, icon: Receipt, href: "/portal/invoices", color: "amber" },
-    { title: "Appointments", count: appointments?.length || 0, icon: Calendar, href: "/portal/appointments", color: "teal" },
+    { title: "Your documents", count: matters?.reduce((s: number, m: any) => s + (m._count?.documents || 0), 0) || 0, icon: FileText, href: "/portal/documents", description: "View and sign documents" },
+    { title: "Messages", count: messages?.length || 0, badge: unreadMessages, icon: MessageSquare, href: "/portal/messages", description: "Chat with your attorney" },
+    { title: "Your invoices", count: invoices?.length || 0, icon: Receipt, href: "/portal/invoices", description: "View and pay bills" },
   ];
 
-  const colorMap: Record<string, string> = {
-    blue: "bg-blue-50 text-blue-600",
-    green: "bg-green-50 text-green-600",
-    purple: "bg-purple-50 text-purple-600",
-    amber: "bg-amber-50 text-amber-600",
-    teal: "bg-teal-50 text-teal-600",
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="max-w-[680px] mx-auto space-y-6">
+      {/* Greeting */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Welcome, {user?.name}</h1>
-        <p className="text-gray-500">Here&apos;s an overview of your account</p>
+        <h1 className="text-lg font-medium text-foreground">Hi {user?.name?.split(" ")[0]}, here's your case</h1>
+        <p className="text-[13px] text-muted-foreground mt-0.5">{settings?.firmName || "Your attorney's office"}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Matter Timeline */}
+      {timelineSteps.length > 0 && (
+        <div className="bg-card rounded-xl border p-5">
+          <h2 className="text-[13px] font-medium text-foreground mb-4">Case progress</h2>
+          <MatterTimeline steps={timelineSteps} />
+        </div>
+      )}
+
+      {/* Action Cards */}
+      <div className="grid gap-3 sm:grid-cols-3">
         {cards.map((card) => (
           <Link key={card.href} href={card.href}>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer">
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`p-2 rounded-lg ${colorMap[card.color]}`}>
-                  <card.icon className="h-5 w-5" />
-                </div>
-                <span className="text-sm text-gray-500">{card.title}</span>
-                {card.badge && (
-                  <span className="ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: primaryColor }}>
-                    {card.badge}
-                  </span>
-                )}
+            <div className="bg-card rounded-xl border p-4 hover:bg-accent/30 transition-colors cursor-pointer group">
+              <div className="flex items-center justify-between mb-2">
+                <card.icon className="h-5 w-5 text-primary" />
+                {card.badge ? (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">{card.badge} new</span>
+                ) : null}
               </div>
-              <p className="text-2xl font-bold">{card.count}</p>
+              <p className="text-[13px] font-medium text-foreground">{card.title}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{card.description}</p>
+              <div className="flex items-center gap-1 mt-3 text-[11px] text-primary">
+                <span>View</span>
+                <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+              </div>
             </div>
           </Link>
         ))}
       </div>
 
-      {/* Recent Messages */}
-      {settings?.allowMessaging && messages && messages.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold">Recent Messages</h2>
-            <Link href="/portal/messages" className="text-sm text-blue-600 hover:underline">View all</Link>
+      {/* Next Step Callout */}
+      {unreadMessages > 0 && (
+        <div className="bg-[#E5F6F6] rounded-xl p-4 flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-[#1AA8A0] flex items-center justify-center flex-shrink-0">
+            <MessageSquare className="h-4 w-4 text-white" />
           </div>
-          <div className="divide-y divide-gray-50">
-            {messages.slice(0, 3).map((msg) => (
-              <div key={msg.id} className="p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                    msg.direction === "FIRM_TO_CLIENT" ? "bg-purple-50 text-purple-600" : "bg-blue-50 text-blue-600"
-                  }`}>
-                    {msg.direction === "FIRM_TO_CLIENT" ? "From Firm" : "You"}
-                  </span>
-                  <span className="text-xs text-gray-400">{new Date(msg.createdAt).toLocaleDateString()}</span>
-                </div>
-                {msg.subject && <p className="text-sm font-medium">{msg.subject}</p>}
-                <p className="text-sm text-gray-600 line-clamp-2">{msg.content}</p>
-              </div>
-            ))}
+          <div className="flex-1">
+            <p className="text-[13px] font-medium text-foreground">You have {unreadMessages} new message{unreadMessages !== 1 ? "s" : ""}</p>
+            <p className="text-[11px] text-muted-foreground">Your attorney sent you a message</p>
           </div>
+          <Link href="/portal/messages"><Button size="sm" variant="outline" className="text-[12px]">Read</Button></Link>
         </div>
       )}
     </div>
@@ -178,7 +235,6 @@ function Dashboard() {
 
 export default function PortalPage() {
   const { user } = usePortal();
-
   if (!user) return <LoginForm />;
   return <Dashboard />;
 }

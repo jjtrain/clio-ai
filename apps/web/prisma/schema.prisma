@@ -1996,6 +1996,8 @@ model ClientPortalUser {
   lastLoginAt      DateTime?
   loginToken       String?
   loginTokenExpiry DateTime?
+  magicLinkToken   String?
+  magicLinkExpiresAt DateTime?
   notificationPrefs Json?   // { email: true, sms: false, portal: true }
   firmId           String?
   createdAt        DateTime  @default(now())
