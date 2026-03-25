@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Sidebar } from "./sidebar";
+import { FlyoutNav } from "@/components/nav/FlyoutNav";
 import { Header } from "./header";
 import { UrgencyBanner } from "@/components/next-actions/UrgencyBanner";
 
@@ -15,56 +15,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Close sidebar when route changes
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [pathname]);
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
-  // Close sidebar on escape key
+  // Close on Escape
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setSidebarOpen(false);
-      }
-    };
+    const handleEscape = (e: KeyboardEvent) => { if (e.key === "Escape") setSidebarOpen(false); };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
   }, []);
 
   // Prevent body scroll when sidebar is open on mobile
   useEffect(() => {
-    if (sidebarOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    if (sidebarOpen) { document.body.style.overflow = "hidden"; }
+    else { document.body.style.overflow = ""; }
+    return () => { document.body.style.overflow = ""; };
   }, [sidebarOpen]);
 
-  if (isAuthRoute) {
-    return <>{children}</>;
-  }
+  if (isAuthRoute) return <>{children}</>;
 
   return (
     <div className="flex h-screen bg-slate-50">
-      {/* Desktop Sidebar - always visible on lg+ */}
-      <div className="hidden lg:block lg:w-64 lg:flex-shrink-0">
-        <Sidebar />
+      {/* Desktop: Primary sidebar always visible (180px) */}
+      <div className="hidden lg:flex lg:flex-shrink-0 h-full">
+        <FlyoutNav />
       </div>
 
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
-            onClick={() => setSidebarOpen(false)}
-            aria-hidden="true"
-          />
-          {/* Sidebar */}
-          <div className="fixed inset-y-0 left-0 w-64 animate-slide-in">
-            <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+          <div className="fixed inset-y-0 left-0 animate-slide-in flex">
+            <FlyoutNav mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
           </div>
         </div>
       )}
