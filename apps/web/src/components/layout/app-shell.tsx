@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { FlyoutNav } from "@/components/nav/FlyoutNav";
 import { Header } from "./header";
 import { UrgencyBanner } from "@/components/next-actions/UrgencyBanner";
+import { CommandBar, CommandBarFAB } from "@/components/CommandBar/CommandBar";
 
 const authRoutes = ["/login", "/register", "/book"];
 const publicPrefixes = ["/intake/", "/widget/", "/sign/", "/site/", "/pay/", "/financing/apply/", "/pulse/respond"];
@@ -13,6 +14,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAuthRoute = authRoutes.includes(pathname) || publicPrefixes.some(p => pathname.startsWith(p));
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [commandBarOpen, setCommandBarOpen] = useState(false);
 
   // Close sidebar when route changes
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
@@ -60,6 +62,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
+
+      {/* Command Bar (Cmd+K) */}
+      <CommandBar />
+      <CommandBarFAB onOpen={() => setCommandBarOpen(true)} />
     </div>
   );
 }
