@@ -24,7 +24,14 @@ export function FlyoutNav({ mobileOpen, onMobileClose }: FlyoutNavProps) {
     if (active) setOpenSection(active);
   }, [pathname]);
 
-  useEffect(() => { if (onMobileClose) onMobileClose(); }, [pathname]);
+  // Close mobile drawer on route *change* (not on mount)
+  const prevPathRef = useRef(pathname);
+  useEffect(() => {
+    if (prevPathRef.current !== pathname) {
+      prevPathRef.current = pathname;
+      if (onMobileClose) onMobileClose();
+    }
+  }, [pathname, onMobileClose]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
