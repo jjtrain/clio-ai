@@ -16965,3 +16965,121 @@ model TrademarkSpecimen {
   @@index([matterId])
   @@index([status])
 }
+
+// ─── Criminal Defense ─────────────────────────────────────────────
+
+model CriminalCase {
+  id                    String    @id @default(cuid())
+  matterId              String    @unique
+  chargeLevel           String    @default("MISDEMEANOR")
+  caseNumber            String?
+  indictmentNumber      String?
+  arrestDate            DateTime?
+  arraignmentDate       DateTime?
+  prelimHearingDate     DateTime?
+  bailAmount            Float?
+  bailStatus            String?
+  bondAgent             String?
+  bondAmount            Float?
+  nextAppearanceDate    DateTime?
+  nextAppearanceType    String?
+  judgeAssigned         String?
+  prosecutorName        String?
+  prosecutorOffice      String?
+  publicDefender        Boolean   @default(false)
+  defenseNotes          String?   @db.Text
+  casePhase             String    @default("ARREST")
+  dispositionType       String    @default("PENDING")
+  dispositionDate       DateTime?
+  sentenceType          String?
+  sentenceSummary       String?   @db.Text
+  probationMonths       Int?
+  fineAmount            Float?
+  restitutionAmount     Float?
+  communityServiceHours Int?
+  charges               CriminalCharge[]
+  appearances           CourtAppearance[]
+  pleaNegotiations      PleaNegotiation[]
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([matterId])
+  @@index([casePhase])
+  @@index([nextAppearanceDate])
+}
+
+model CriminalCharge {
+  id                     String       @id @default(cuid())
+  criminalCaseId         String
+  criminalCase           CriminalCase @relation(fields: [criminalCaseId], references: [id], onDelete: Cascade)
+  chargeCode             String
+  chargeDescription      String
+  statute                String?
+  chargeClass            String?
+  countsCharged          Int          @default(1)
+  countsPleaded          Int?
+  countsConvicted        Int?
+  severity               Int?
+  mandatoryMinimumMonths Int?
+  maximumMonths          Int?
+  enhancement            Boolean      @default(false)
+  enhancementDescription String?
+  disposition            String       @default("PENDING")
+  dispositionDate        DateTime?
+  notes                  String?
+  createdAt              DateTime     @default(now())
+
+  @@index([criminalCaseId])
+}
+
+model CourtAppearance {
+  id                  String       @id @default(cuid())
+  criminalCaseId      String
+  criminalCase        CriminalCase @relation(fields: [criminalCaseId], references: [id], onDelete: Cascade)
+  matterId            String?
+  appearanceDate      DateTime
+  appearanceType      String
+  judgePresiding      String?
+  adaAppearing        String?
+  defenseAttorneyId   String?
+  courtroom           String?
+  outcome             String?
+  outcomeDetail       String?      @db.Text
+  nextDate            DateTime?
+  nextDateType        String?
+  bailAction          String?
+  newBailAmount       Float?
+  pleaOffered         Boolean      @default(false)
+  pleaOfferedDetail   String?
+  pleaAccepted        Boolean      @default(false)
+  motionsFiled        Json?
+  orderIssued         Boolean      @default(false)
+  orderDetail         String?
+  attendanceStatus    String       @default("APPEARED")
+  benchWarrantIssued  Boolean      @default(false)
+  notes               String?      @db.Text
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@index([criminalCaseId])
+  @@index([appearanceDate])
+  @@index([matterId])
+}
+
+model PleaNegotiation {
+  id              String       @id @default(cuid())
+  criminalCaseId  String
+  criminalCase    CriminalCase @relation(fields: [criminalCaseId], references: [id], onDelete: Cascade)
+  offerDate       DateTime
+  offeredBy       String
+  chargesOffered  Json?
+  sentenceOffered String?
+  conditions      String?      @db.Text
+  status          String       @default("PENDING")
+  responseDate    DateTime?
+  responseNotes   String?      @db.Text
+  authorizedById  String?
+  createdAt       DateTime     @default(now())
+
+  @@index([criminalCaseId])
+}
