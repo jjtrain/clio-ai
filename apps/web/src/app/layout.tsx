@@ -8,8 +8,13 @@ import { AppShell } from "@/components/layout/app-shell";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Managal - Legal Practice Management",
+  title: "Managal — Legal Practice Management",
   description: "Modern legal practice management by Managal",
+  icons: {
+    icon: "/managal-logo-icon.svg",
+    shortcut: "/managal-logo-icon.svg",
+    apple: "/managal-logo-icon.svg",
+  },
 };
 
 export default function RootLayout({

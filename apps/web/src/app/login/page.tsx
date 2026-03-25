@@ -47,12 +47,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Logo */}
           <div className="flex justify-center mb-8">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-                <Scale className="h-7 w-7 text-white" />
-              </div>
-              <span className="text-2xl font-bold text-gray-900">Clio AI</span>
-            </div>
+            <img src="/managal-logo-full.svg" alt="Managal" className="h-10" />
           </div>
 
           <h1 className="text-2xl font-semibold text-center text-gray-900 mb-2">

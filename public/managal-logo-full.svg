@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" fill="none">
+  <defs>
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1B3A8C"/>
+      <stop offset="100%" stop-color="#1AA8A0"/>
+    </linearGradient>
+  </defs>
+  <path d="M18 72 L18 22 L38 22 L54 48 L70 22 L90 22 L90 72 L74 72 L74 46 L54 72 L34 46 L34 72 Z" fill="url(#brandGrad)"/>
+  <line x1="88" y1="28" x2="118" y2="28" stroke="url(#brandGrad)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="103" y1="28" x2="103" y2="66" stroke="url(#brandGrad)" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="96" y1="66" x2="110" y2="66" stroke="url(#brandGrad)" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="88" y1="28" x2="84" y2="42" stroke="url(#brandGrad)" stroke-width="1.8"/>
+  <line x1="84" y1="42" x2="94" y2="42" stroke="url(#brandGrad)" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M84 42 Q89 50 94 42" fill="none" stroke="url(#brandGrad)" stroke-width="1.8"/>
+  <line x1="118" y1="28" x2="114" y2="42" stroke="url(#brandGrad)" stroke-width="1.8"/>
+  <line x1="114" y1="42" x2="122" y2="42" stroke="url(#brandGrad)" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M114 42 Q118 50 122 42" fill="none" stroke="url(#brandGrad)" stroke-width="1.8"/>
+  <text x="18" y="100" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="3" fill="#3D3D3D">MANAGAL</text>
+  <text x="18" y="114" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="400" letter-spacing="1" fill="#888780">Legal SaaS  |  Practice Management</text>
+</svg>

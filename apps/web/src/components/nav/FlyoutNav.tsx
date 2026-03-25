@@ -48,12 +48,9 @@ export function FlyoutNav({ mobileOpen, onMobileClose }: FlyoutNavProps) {
       <div className="w-[180px] flex flex-col flex-shrink-0" style={{ background: "hsl(var(--nav-bg))" }}>
         {/* Logo */}
         <div className="flex h-14 items-center px-4" style={{ borderBottom: "1px solid hsl(var(--nav-border))" }}>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: "hsl(var(--brand))" }}>
-              <Scale className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-sm font-semibold text-white">Managal</span>
-          </div>
+          <Link href="/" className="flex items-center" onClick={() => { setOpenSection(null); onMobileClose?.(); }}>
+            <img src="/managal-logo-full-dark.svg" alt="Managal" className="h-7" style={{ maxWidth: "140px" }} />
+          </Link>
           {onMobileClose && <button onClick={onMobileClose} className="ml-auto lg:hidden p-1 text-white/40 hover:text-white"><X className="h-4 w-4" /></button>}
         </div>
 

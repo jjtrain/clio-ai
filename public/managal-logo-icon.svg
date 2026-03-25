@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 72" fill="none">
+  <defs>
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1B3A8C"/>
+      <stop offset="100%" stop-color="#1AA8A0"/>
+    </linearGradient>
+  </defs>
+  <path d="M2 66 L2 8 L20 8 L38 38 L56 8 L74 8 L74 66 L58 66 L58 36 L38 66 L18 36 L18 66 Z" fill="url(#brandGrad)"/>
+  <line x1="52" y1="14" x2="76" y2="14" stroke="url(#brandGrad)" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="64" y1="14" x2="64" y2="46" stroke="url(#brandGrad)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="58" y1="46" x2="70" y2="46" stroke="url(#brandGrad)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="52" y1="14" x2="48" y2="26" stroke="url(#brandGrad)" stroke-width="1.5"/>
+  <line x1="48" y1="26" x2="56" y2="26" stroke="url(#brandGrad)" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M48 26 Q52 33 56 26" fill="none" stroke="url(#brandGrad)" stroke-width="1.5"/>
+  <line x1="76" y1="14" x2="72" y2="26" stroke="url(#brandGrad)" stroke-width="1.5"/>
+  <line x1="72" y1="26" x2="80" y2="26" stroke="url(#brandGrad)" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M72 26 Q76 33 80 26" fill="none" stroke="url(#brandGrad)" stroke-width="1.5"/>
+</svg>

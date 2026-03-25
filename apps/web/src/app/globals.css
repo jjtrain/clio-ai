@@ -4,11 +4,14 @@
 
 @layer base {
   :root {
-    /* ═══ Brand ═══ */
-    --brand: 252 37% 50%;          /* #534AB7 */
-    --brand-light: 248 83% 97%;    /* #EEEDFE */
-    --brand-mid: 245 56% 67%;      /* #7F77DD */
+    /* ═══ Brand — Managal official palette ═══ */
+    --brand: 174 75% 38%;          /* #1AA8A0 teal — primary interactive */
+    --brand-light: 174 50% 93%;    /* #E5F6F6 teal-50 */
+    --brand-mid: 222 66% 33%;      /* #1B3A8C navy — active/selected */
     --brand-foreground: 0 0% 100%;
+    --brand-teal-100: 174 50% 80%; /* #B3E5E3 hover */
+    --brand-navy-50: 222 50% 94%;  /* #E8EDF7 info bg */
+    --brand-navy-100: 222 45% 83%; /* #C0CCE8 nav active tint */
 
     /* ═══ Surfaces ═══ */
     --background: 240 5% 97%;      /* #F7F7F8 surface-1 */
@@ -20,14 +23,14 @@
     --surface-2: 250 10% 95%;      /* #F1F0F5 hover/stripe */
 
     /* ═══ Shadcn compat ═══ */
-    --primary: 252 37% 50%;
+    --primary: 174 75% 38%;
     --primary-foreground: 0 0% 100%;
     --secondary: 250 10% 95%;
     --secondary-foreground: 222 47% 11%;
     --muted: 250 10% 95%;
     --muted-foreground: 220 9% 46%;
-    --accent: 248 83% 97%;
-    --accent-foreground: 252 37% 40%;
+    --accent: 174 50% 93%;
+    --accent-foreground: 174 75% 28%;
     --destructive: 0 72% 59%;
     --destructive-foreground: 0 0% 100%;
 
@@ -46,7 +49,7 @@
     /* ═══ Borders & inputs ═══ */
     --border: 214 32% 91%;
     --input: 250 10% 95%;
-    --ring: 252 37% 50%;
+    --ring: 174 75% 38%;
     --radius: 0.5rem;
 
     /* ═══ Nav shell (always dark) ═══ */
@@ -54,13 +57,13 @@
     --nav-flyout: 240 15% 8%;
     --nav-border: 0 0% 100% / 0.06;
     --nav-text: 0 0% 100% / 0.45;
-    --nav-active: 245 56% 67% / 0.15;
+    --nav-active: 174 75% 38% / 0.12;
     --nav-active-text: 0 0% 100%;
 
     /* ═══ Sidebar legacy ═══ */
     --sidebar: 240 20% 4%;
     --sidebar-foreground: 250 10% 95%;
-    --sidebar-accent: 252 37% 50%;
+    --sidebar-accent: 174 75% 38%;
   }
 
   .dark {
@@ -71,19 +74,19 @@
     --popover: 240 10% 10%;
     --popover-foreground: 0 0% 95%;
     --surface-2: 240 10% 14%;
-    --primary: 252 37% 60%;
+    --primary: 174 75% 45%;
     --primary-foreground: 0 0% 100%;
     --secondary: 240 10% 14%;
     --secondary-foreground: 0 0% 90%;
     --muted: 240 10% 14%;
     --muted-foreground: 240 5% 55%;
-    --accent: 252 37% 15%;
-    --accent-foreground: 252 37% 70%;
+    --accent: 174 75% 15%;
+    --accent-foreground: 174 75% 60%;
     --destructive: 0 72% 59%;
     --destructive-foreground: 0 0% 100%;
     --border: 240 10% 18%;
     --input: 240 10% 14%;
-    --ring: 252 37% 60%;
+    --ring: 174 75% 45%;
   }
 }
 
