@@ -139,6 +139,7 @@ import { estatePlanningRouter } from "./estatePlanning";
 import { corporateEntitiesRouter } from "./corporateEntities";
 import { bankruptcyRouter } from "./bankruptcy";
 import { migrationRouter } from "./migration";
+import { onboardingRouter } from "./onboarding";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -281,6 +282,7 @@ export const appRouter = router({
   corporateEntities: corporateEntitiesRouter,
   bankruptcy: bankruptcyRouter,
   migration: migrationRouter,
+  onboarding: onboardingRouter,
 });
 
 export type AppRouter = typeof appRouter;
