@@ -202,6 +202,7 @@ const navGroups: NavGroup[] = [
       { label: "Smart Reminders", href: "/smart-reminders", icon: Brain },
       { label: "CLE Tracker", href: "/cle", icon: BookOpen },
       { label: "Entities", href: "/entities", icon: Building2 },
+      { label: "Data Migration", href: "/migration", icon: Upload },
     ],
   },
 ];

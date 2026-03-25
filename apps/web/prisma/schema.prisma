@@ -17626,3 +17626,55 @@ model MeansTestSnapshot {
 
   @@index([caseId, snapshotDate])
 }
+
+// ─── Migration Wizard ─────────────────────────────────────────────
+
+model MigrationJob {
+  id                String    @id @default(cuid())
+  firmId            String    @default("demo-firm")
+  provider          String    // CLIO | PRACTICEPANTHER | MYCASE
+  status            String    @default("PENDING") // PENDING | RUNNING | COMPLETED | FAILED | CANCELLED
+  accessToken       String?   @db.Text
+  refreshToken      String?   @db.Text
+  tokenEncrypted    Boolean   @default(false)
+  fieldMappings     Json?
+  selectedTypes     Json      @default("[\"contacts\",\"matters\",\"documents\",\"billing\"]")
+  isDryRun          Boolean   @default(false)
+  totalRecords      Int       @default(0)
+  importedCount     Int       @default(0)
+  skippedCount      Int       @default(0)
+  failedCount       Int       @default(0)
+  progressPct       Int       @default(0)
+  currentType       String?
+  errorLog          Json      @default("[]")
+  previewData       Json?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  cancelledAt       DateTime?
+  createdById       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  records           MigrationRecord[]
+
+  @@index([firmId])
+  @@index([status])
+}
+
+model MigrationRecord {
+  id              String       @id @default(cuid())
+  jobId           String
+  job             MigrationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  provider        String
+  sourceId        String
+  entityType      String       // CONTACT | MATTER | DOCUMENT | INVOICE
+  sourceData      Json?
+  mappedData      Json?
+  destinationId   String?
+  status          String       @default("PENDING") // PENDING | IMPORTED | SKIPPED | FAILED
+  errorMessage    String?
+  createdAt       DateTime     @default(now())
+
+  @@unique([provider, sourceId, entityType])
+  @@index([jobId])
+  @@index([entityType, status])
+}
