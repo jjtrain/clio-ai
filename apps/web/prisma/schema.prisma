@@ -17153,3 +17153,146 @@ model MatterMessageNotification {
   @@unique([userId, threadId])
   @@index([userId])
 }
+
+// ─── Estate Planning ──────────────────────────────────────────────
+
+model EstatePlanningProfile {
+  id                          String    @id @default(cuid())
+  matterId                    String    @unique
+  clientFullName              String
+  clientDOB                   DateTime?
+  clientSSNLast4              String?
+  spouseName                  String?
+  spouseDOB                   DateTime?
+  spouseSSNLast4              String?
+  domicileState               String?
+  maritalStatus               String    @default("SINGLE")
+  priorMarriages              Boolean   @default(false)
+  priorMarriageNotes          String?
+  hasMinorChildren            Boolean   @default(false)
+  hasSpecialNeedsDependent    Boolean   @default(false)
+  dependents                  Json      @default("[]")
+  primaryGoals                Json      @default("[]")
+  estimatedGrossEstate        Decimal?  @db.Decimal(14, 2)
+  federalExemptionYear        Int?
+  planType                    String    @default("WILL_ONLY")
+  existingDocuments           Json      @default("[]")
+  healthcareProxyName         String?
+  healthcareProxyRelationship String?
+  poaAgentName                String?
+  poaAgentRelationship        String?
+  successorTrusteeName        String?
+  successorTrusteeRelationship String?
+  assets                      EstateAsset[]
+  beneficiaries               EstateBeneficiary[]
+  allocations                 EstateAllocation[]
+  documents                   EstateDocument[]
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+}
+
+model EstateAsset {
+  id                      String              @id @default(cuid())
+  profileId               String
+  profile                 EstatePlanningProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  matterId                String
+  assetCategory           String
+  assetSubtype            String?
+  description             String
+  institutionName         String?
+  accountNumberLast4      String?
+  titleHolder             String              @default("CLIENT")
+  titleHolderDetail       String?
+  estimatedValue          Decimal             @default(0) @db.Decimal(14, 2)
+  valuationDate           DateTime?
+  valuationMethod         String?
+  hasDesignatedBeneficiary Boolean            @default(false)
+  primaryBeneficiary      String?
+  contingentBeneficiary   String?
+  isRetirement            Boolean             @default(false)
+  hasStepUpBasis          Boolean             @default(false)
+  mortgageBalance         Decimal?            @db.Decimal(14, 2)
+  liabilityDescription    String?
+  liabilityAmount         Decimal?            @db.Decimal(14, 2)
+  propertyAddress         String?
+  propertyState           String?
+  annualIncome            Decimal?            @db.Decimal(12, 2)
+  notes                   String?
+  sortOrder               Int                 @default(0)
+  allocations             EstateAllocation[]
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  @@index([profileId])
+  @@index([matterId])
+  @@index([assetCategory])
+}
+
+model EstateBeneficiary {
+  id                  String              @id @default(cuid())
+  profileId           String
+  profile             EstatePlanningProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name                String
+  relationship        String
+  relationshipDetail  String?
+  dob                 DateTime?
+  isMinor             Boolean             @default(false)
+  hasSpecialNeeds     Boolean             @default(false)
+  sharePercentage     Decimal?            @db.Decimal(5, 2)
+  shareDescription    String?
+  isTrustee           Boolean             @default(false)
+  isExecutor          Boolean             @default(false)
+  isPOAAgent          Boolean             @default(false)
+  isHealthcareProxy   Boolean             @default(false)
+  address             String?
+  email               String?
+  phone               String?
+  notes               String?
+  allocations         EstateAllocation[]
+  createdAt           DateTime            @default(now())
+
+  @@index([profileId])
+}
+
+model EstateAllocation {
+  id              String              @id @default(cuid())
+  assetId         String
+  asset           EstateAsset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  beneficiaryId   String
+  beneficiary     EstateBeneficiary   @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  profileId       String
+  profile         EstatePlanningProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  dispositionType String              @default("RESIDUARY")
+  percentage      Decimal?            @db.Decimal(5, 2)
+  amount          Decimal?            @db.Decimal(14, 2)
+  conditions      String?             @db.Text
+  trustName       String?
+  notes           String?
+  createdAt       DateTime            @default(now())
+
+  @@index([assetId])
+  @@index([beneficiaryId])
+  @@index([profileId])
+}
+
+model EstateDocument {
+  id            String              @id @default(cuid())
+  profileId     String
+  profile       EstatePlanningProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  matterId      String
+  documentType  String
+  title         String
+  fileUrl       String?
+  templateId    String?
+  status        String              @default("DRAFT")
+  executedDate  DateTime?
+  witnessCount  Int?
+  notarized     Boolean             @default(false)
+  notes         String?
+  generatedData Json?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([profileId])
+  @@index([matterId])
+}
