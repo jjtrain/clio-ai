@@ -134,6 +134,7 @@ import { supportCalculatorRouter } from "./supportCalculator";
 import { equitableDistributionRouter } from "./equitableDistribution";
 import { specimensRouter } from "./specimens";
 import { criminalRouter } from "./criminal";
+import { matterMessagingRouter } from "./matterMessaging";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -271,6 +272,7 @@ export const appRouter = router({
   equitableDistribution: equitableDistributionRouter,
   specimens: specimensRouter,
   criminal: criminalRouter,
+  matterMessaging: matterMessagingRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -17083,3 +17083,73 @@ model PleaNegotiation {
 
   @@index([criminalCaseId])
 }
+
+// ─── Internal Matter Messaging ────────────────────────────────────
+
+model MatterThread {
+  id                 String    @id @default(cuid())
+  matterId           String    @unique
+  lastMessageAt      DateTime?
+  lastMessagePreview String?
+  messageCount       Int       @default(0)
+  participantIds     Json      @default("[]")
+  pinnedMessageId    String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  messages           MatterMessage[]
+  readReceipts       MatterMessageRead[]
+  notifications      MatterMessageNotification[]
+
+  @@index([matterId])
+  @@index([lastMessageAt])
+}
+
+model MatterMessage {
+  id              String       @id @default(cuid())
+  threadId        String
+  thread          MatterThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  matterId        String
+  authorId        String
+  body            String       @db.Text
+  editedAt        DateTime?
+  deletedAt       DateTime?
+  parentId        String?
+  mentions        Json         @default("[]")
+  attachmentUrls  Json         @default("[]")
+  reactions       Json         @default("{}")
+  isPinned        Boolean      @default(false)
+  isSystemMessage Boolean      @default(false)
+  systemEventType String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([threadId, createdAt])
+  @@index([matterId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model MatterMessageRead {
+  id                String       @id @default(cuid())
+  threadId          String
+  thread            MatterThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  userId            String
+  lastReadAt        DateTime
+  lastReadMessageId String?
+
+  @@unique([threadId, userId])
+}
+
+model MatterMessageNotification {
+  id             String       @id @default(cuid())
+  userId         String
+  threadId       String
+  thread         MatterThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  matterId       String
+  unreadCount    Int          @default(0)
+  lastNotifiedAt DateTime?
+  mentioned      Boolean      @default(false)
+
+  @@unique([userId, threadId])
+  @@index([userId])
+}

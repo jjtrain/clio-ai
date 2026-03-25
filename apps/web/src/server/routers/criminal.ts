@@ -1,5 +1,15 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
+import { db } from "@/lib/db";
+
+async function postSystemMessage(matterId: string, body: string, eventType?: string) {
+  try {
+    let thread = await db.matterThread.findUnique({ where: { matterId } });
+    if (!thread) thread = await db.matterThread.create({ data: { matterId } });
+    await db.matterMessage.create({ data: { threadId: thread.id, matterId, authorId: "system", body, isSystemMessage: true, systemEventType: eventType } });
+    await db.matterThread.update({ where: { id: thread.id }, data: { lastMessageAt: new Date(), lastMessagePreview: body.slice(0, 140), messageCount: { increment: 1 } } });
+  } catch {}
+}
 
 export const criminalRouter = router({
   getCriminalCase: publicProcedure
@@ -178,6 +188,12 @@ export const criminalRouter = router({
             status: "NOT_STARTED",
           },
         });
+      }
+
+      // Post system message to matter thread
+      if (crimCase.matterId) {
+        const outcomeText = input.outcome ? ` — ${input.outcome}` : "";
+        postSystemMessage(crimCase.matterId, `Court appearance logged: ${input.appearanceType.replace(/_/g, " ")} on ${new Date(input.appearanceDate).toLocaleDateString()}${outcomeText}`, "COURT_APPEARANCE");
       }
 
       return appearance;
