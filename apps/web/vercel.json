@@ -107,6 +107,10 @@
     {
       "path": "/api/cron/whatsapp-template-sync",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/entity-deadlines",
+      "schedule": "0 7 * * 1-5"
     }
   ]
 }

@@ -17296,3 +17296,180 @@ model EstateDocument {
   @@index([profileId])
   @@index([matterId])
 }
+
+// ─── Corporate Entity Management ──────────────────────────────────
+
+model CorporateEntity {
+  id                        String    @id @default(cuid())
+  matterId                  String?
+  firmId                    String    @default("demo-firm")
+  entityName                String
+  entityType                String    @default("LLC")
+  entitySubtype             String?
+  stateOfFormation          String
+  foreignQualificationStates Json     @default("[]")
+  ein                       String?
+  formationDate             DateTime?
+  dissolutionDate           DateTime?
+  fiscalYearEnd             String    @default("12/31")
+  status                    String    @default("ACTIVE")
+  purpose                   String?   @db.Text
+  authorizedShares          Int?
+  issuedShares              Int?
+  parValuePerShare          Decimal?  @db.Decimal(10, 4)
+  memberCount               Int?
+  ownershipSummary          String?   @db.Text
+  taxClassification         String    @default("DISREGARDED")
+  operatingAgreementDate    DateTime?
+  bylawsDate                DateTime?
+  minutesLastUpdated        DateTime?
+  annualReportDueDate       DateTime?
+  annualReportLastFiled     DateTime?
+  nextFilingDeadline        DateTime?
+  nextFilingType            String?
+  notes                     String?   @db.Text
+  officers                  EntityOfficer[]
+  registeredAgents          RegisteredAgent[]
+  filings                   EntityFiling[]
+  documents                 EntityDocument[]
+  ledger                    EntityOwnershipLedger[]
+  deadlineAlerts            EntityDeadlineAlert[]
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@index([matterId])
+  @@index([stateOfFormation])
+  @@index([status])
+  @@index([nextFilingDeadline])
+}
+
+model EntityOfficer {
+  id                  String          @id @default(cuid())
+  entityId            String
+  entity              CorporateEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  contactName         String
+  contactEmail        String?
+  contactPhone        String?
+  role                String
+  roleDetail          String?
+  ownershipPercentage Decimal?        @db.Decimal(5, 2)
+  sharesHeld          Int?
+  appointmentDate     DateTime?
+  resignationDate     DateTime?
+  isActive            Boolean         @default(true)
+  address             String?
+  isMatterClient      Boolean         @default(false)
+  linkedContactId     String?
+  notes               String?
+  outgoingTransfers   EntityOwnershipLedger[] @relation("LedgerFrom")
+  incomingTransfers   EntityOwnershipLedger[] @relation("LedgerTo")
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([entityId])
+  @@index([isActive])
+}
+
+model RegisteredAgent {
+  id                  String          @id @default(cuid())
+  entityId            String
+  entity              CorporateEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  agentName           String
+  agentType           String          @default("INDIVIDUAL")
+  serviceName         String?
+  stateOfAppointment  String
+  agentAddress        String?
+  agentEmail          String?
+  agentPhone          String?
+  appointmentDate     DateTime?
+  isActive            Boolean         @default(true)
+  notes               String?
+  createdAt           DateTime        @default(now())
+
+  @@index([entityId])
+}
+
+model EntityFiling {
+  id                  String          @id @default(cuid())
+  entityId            String
+  entity              CorporateEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  filingType          String
+  filingJurisdiction  String
+  filingPeriod        String?
+  dueDate             DateTime
+  filedDate           DateTime?
+  confirmationNumber  String?
+  filedBy             String?
+  fee                 Decimal?        @db.Decimal(10, 2)
+  feePaid             Boolean         @default(false)
+  status              String          @default("UPCOMING")
+  notes               String?
+  autoRenew           Boolean         @default(false)
+  reminderSent        Boolean         @default(false)
+  alerts              EntityDeadlineAlert[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([entityId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model EntityDocument {
+  id              String          @id @default(cuid())
+  entityId        String
+  entity          CorporateEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  matterId        String?
+  documentType    String
+  title           String
+  fileUrl         String?
+  fileName        String?
+  fileType        String?
+  fileSize        Int?
+  effectiveDate   DateTime?
+  expirationDate  DateTime?
+  version         String?
+  supersededById  String?
+  notes           String?
+  uploadedById    String?
+  generatedData   Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([entityId])
+  @@index([documentType])
+}
+
+model EntityOwnershipLedger {
+  id                String          @id @default(cuid())
+  entityId          String
+  entity            CorporateEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  transactionType   String
+  transactionDate   DateTime
+  fromOfficerId     String?
+  fromOfficer       EntityOfficer?  @relation("LedgerFrom", fields: [fromOfficerId], references: [id])
+  toOfficerId       String?
+  toOfficer         EntityOfficer?  @relation("LedgerTo", fields: [toOfficerId], references: [id])
+  shareClass        String?
+  unitsOrShares     Decimal         @db.Decimal(14, 4)
+  pricePerUnit      Decimal?        @db.Decimal(10, 4)
+  consideration     String?         @db.Text
+  certificateNumber String?
+  notes             String?
+  createdAt         DateTime        @default(now())
+
+  @@index([entityId])
+}
+
+model EntityDeadlineAlert {
+  id        String       @id @default(cuid())
+  entityId  String
+  entity    CorporateEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  filingId  String
+  filing    EntityFiling @relation(fields: [filingId], references: [id], onDelete: Cascade)
+  alertType String
+  sentAt    DateTime     @default(now())
+  taskId    String?
+
+  @@unique([filingId, alertType])
+}

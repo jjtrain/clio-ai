@@ -201,6 +201,7 @@ const navGroups: NavGroup[] = [
       { label: "Translations", href: "/translations", icon: Globe },
       { label: "Smart Reminders", href: "/smart-reminders", icon: Brain },
       { label: "CLE Tracker", href: "/cle", icon: BookOpen },
+      { label: "Entities", href: "/entities", icon: Building2 },
     ],
   },
 ];

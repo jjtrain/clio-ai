@@ -136,6 +136,7 @@ import { specimensRouter } from "./specimens";
 import { criminalRouter } from "./criminal";
 import { matterMessagingRouter } from "./matterMessaging";
 import { estatePlanningRouter } from "./estatePlanning";
+import { corporateEntitiesRouter } from "./corporateEntities";
 
 export const appRouter = router({
   clients: clientsRouter,
@@ -275,6 +276,7 @@ export const appRouter = router({
   criminal: criminalRouter,
   matterMessaging: matterMessagingRouter,
   estatePlanning: estatePlanningRouter,
+  corporateEntities: corporateEntitiesRouter,
 });
 
 export type AppRouter = typeof appRouter;
