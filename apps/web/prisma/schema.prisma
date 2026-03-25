@@ -17473,3 +17473,156 @@ model EntityDeadlineAlert {
 
   @@unique([filingId, alertType])
 }
+
+// ─── Bankruptcy Means Test ────────────────────────────────────────
+
+model BankruptcyCase {
+  id                        String    @id @default(cuid())
+  matterId                  String    @unique
+  chapterFiled              String    @default("UNDETERMINED")
+  filingState               String?
+  filingCounty              String?
+  filingDate                DateTime?
+  householdSize             Int       @default(1)
+  maritalStatus             String    @default("SINGLE")
+  spouseIncluded            Boolean   @default(false)
+  lookbackStartDate         DateTime?
+  lookbackEndDate           DateTime?
+  currentMonthlyIncome      Decimal?  @db.Decimal(12, 2)
+  annualizedIncome          Decimal?  @db.Decimal(12, 2)
+  stateMedianIncome         Decimal?  @db.Decimal(12, 2)
+  isAboveMedian             Boolean?
+  meansTestComplete         Boolean   @default(false)
+  presumptionArises         Boolean?
+  presumptionRebutted       Boolean?
+  rebuttingCircumstances    String?   @db.Text
+  chapter13DisposableIncome Decimal?  @db.Decimal(12, 2)
+  chapter13PlanMonths       Int?
+  estimatedUnsecuredDebt    Decimal?  @db.Decimal(14, 2)
+  estimatedSecuredDebt      Decimal?  @db.Decimal(14, 2)
+  estimatedPriorityDebt     Decimal?  @db.Decimal(14, 2)
+  trusteeDistrict           String?
+  trusteeName               String?
+  caseNumber                String?
+  judge                     String?
+  attorney341Date           DateTime?
+  notes                     String?   @db.Text
+  lastCalculatedAt          DateTime?
+  incomeSources             BankruptcyIncomeSource[]
+  expenses                  BankruptcyExpense[]
+  assets                    BankruptcyAsset[]
+  creditors                 BankruptcyCreditor[]
+  snapshots                 MeansTestSnapshot[]
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@index([matterId])
+}
+
+model BankruptcyIncomeSource {
+  id               String         @id @default(cuid())
+  caseId           String
+  bankruptcyCase   BankruptcyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  sourceType       String
+  description      String?
+  isSocialSecurity Boolean        @default(false)
+  isSpouseIncome   Boolean        @default(false)
+  month1           Decimal        @default(0) @db.Decimal(12, 2)
+  month2           Decimal        @default(0) @db.Decimal(12, 2)
+  month3           Decimal        @default(0) @db.Decimal(12, 2)
+  month4           Decimal        @default(0) @db.Decimal(12, 2)
+  month5           Decimal        @default(0) @db.Decimal(12, 2)
+  month6           Decimal        @default(0) @db.Decimal(12, 2)
+  averageMonthly   Decimal?       @db.Decimal(12, 2)
+  annualAmount     Decimal?       @db.Decimal(12, 2)
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([caseId])
+}
+
+model BankruptcyExpense {
+  id                String         @id @default(cuid())
+  caseId            String
+  bankruptcyCase    BankruptcyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  expenseCategory   String
+  expenseType       String         @default("IRS_NATIONAL")
+  irsAllowedAmount  Decimal?       @db.Decimal(10, 2)
+  actualAmount      Decimal?       @db.Decimal(10, 2)
+  deductibleAmount  Decimal?       @db.Decimal(10, 2)
+  description       String?
+  isSpouseExpense   Boolean        @default(false)
+  vehicleCount      Int?
+  loanOrLeasePayment Decimal?      @db.Decimal(10, 2)
+  notes             String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([caseId])
+}
+
+model BankruptcyAsset {
+  id               String         @id @default(cuid())
+  caseId           String
+  bankruptcyCase   BankruptcyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assetType        String
+  description      String
+  location         String?
+  currentValue     Decimal        @default(0) @db.Decimal(14, 2)
+  exemptionClaimed Decimal?       @db.Decimal(14, 2)
+  exemptionBasis   String?
+  isExempt         Boolean        @default(false)
+  lienAmount       Decimal?       @db.Decimal(14, 2)
+  lienHolder       String?
+  netEquity        Decimal?       @db.Decimal(14, 2)
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([caseId])
+}
+
+model BankruptcyCreditor {
+  id                    String         @id @default(cuid())
+  caseId                String
+  bankruptcyCase        BankruptcyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  creditorName          String
+  creditorType          String
+  accountNumberLast4    String?
+  claimAmount           Decimal        @default(0) @db.Decimal(14, 2)
+  disputedAmount        Decimal?       @db.Decimal(14, 2)
+  isDisputed            Boolean        @default(false)
+  isContingent          Boolean        @default(false)
+  isUnliquidated        Boolean        @default(false)
+  collateralDescription String?
+  collateralValue       Decimal?       @db.Decimal(14, 2)
+  arrearsAmount         Decimal?       @db.Decimal(14, 2)
+  priorityType          String?
+  notes                 String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@index([caseId, creditorType])
+}
+
+model MeansTestSnapshot {
+  id                    String         @id @default(cuid())
+  caseId                String
+  bankruptcyCase        BankruptcyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  snapshotDate          DateTime       @default(now())
+  chapterFiled          String?
+  currentMonthlyIncome  Decimal?       @db.Decimal(12, 2)
+  annualizedIncome      Decimal?       @db.Decimal(12, 2)
+  stateMedianIncome     Decimal?       @db.Decimal(12, 2)
+  isAboveMedian         Boolean?
+  totalAllowedExpenses  Decimal?       @db.Decimal(12, 2)
+  disposableIncome      Decimal?       @db.Decimal(12, 2)
+  presumptionArises     Boolean?
+  formData              Json?
+  calculationDetail     Json?
+  createdById           String?
+  createdAt             DateTime       @default(now())
+
+  @@index([caseId, snapshotDate])
+}
